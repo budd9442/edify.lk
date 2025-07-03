@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  strapi:
+    container_name: edify-strapi
+    image: strapi/strapi
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./strapi-app:/srv/app
+    ports:
+      - '1337:1337'
+    depends_on:
+      - postgres
+
+  postgres:
+    container_name: edify-postgres
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: ${DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
