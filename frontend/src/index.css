@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    line-height: 1.5;
+  }
+
+  body {
+    @apply bg-dark-950 text-white;
+  }
+}
+
+@layer components {
+  .prose {
+    @apply text-gray-300;
+  }
+
+  .prose h1,
+  .prose h2,
+  .prose h3,
+  .prose h4,
+  .prose h5,
+  .prose h6 {
+    @apply text-white font-bold;
+    line-height: 1.2;
+  }
+
+  .prose h1 {
+    @apply text-3xl mb-6;
+  }
+
+  .prose h2 {
+    @apply text-2xl mb-4 mt-8;
+  }
+
+  .prose h3 {
+    @apply text-xl mb-3 mt-6;
+  }
+
+  .prose p {
+    @apply mb-4;
+    line-height: 1.6;
+  }
+
+  .prose strong {
+    @apply text-white font-semibold;
+  }
+
+  .prose a {
+    @apply text-primary-400 hover:text-primary-300 transition-colors;
+  }
+
+  .prose blockquote {
+    @apply border-l-4 border-primary-500 pl-4 italic text-gray-400 my-6;
+  }
+
+  .prose code {
+    @apply bg-dark-800 text-primary-300 px-2 py-1 rounded text-sm;
+  }
+
+  .prose pre {
+    @apply bg-dark-800 p-4 rounded-lg overflow-x-auto text-sm;
+  }
+
+  .prose ul,
+  .prose ol {
+    @apply mb-4 pl-6;
+  }
+
+  .prose li {
+    @apply mb-2;
+  }
+
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-dark-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-dark-700 rounded;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-dark-600;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Focus styles */
+*:focus {
+  outline: 2px solid theme('colors.primary.500');
+  outline-offset: 2px;
+}
+
+/* Selection styles */
+::selection {
+  @apply bg-primary-600/30;
+}
+
+/* Loading animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, #374151 0%, #4b5563 50%, #374151 100%);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
+}
