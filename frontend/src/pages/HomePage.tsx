@@ -53,7 +53,7 @@ const HomePage: React.FC = () => {
                 </h1>
                 <p className="text-xl text-gray-300 max-w-2xl mx-auto">
                   Join thousands of readers exploring ideas that matter. From technology to culture, 
-                  find your next great read on edify.exposition.
+                  find your next great read on edify community.
                 </p>
               </div>
             </motion.div>
