@@ -1,21 +1,21 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { Chrome, Linkedin, BookOpen, ArrowRight } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { Chrome, Linkedin, BookOpen, ArrowRight } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = async (provider: 'google' | 'linkedin') => {
+  const handleLogin = async (provider: "google" | "linkedin") => {
     setIsLoading(true);
     try {
       await login(provider);
-      navigate('/');
+      navigate("/");
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error("Login failed:", error);
     } finally {
       setIsLoading(false);
     }
@@ -32,14 +32,13 @@ const LoginPage: React.FC = () => {
           {/* Logo */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center space-x-2 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-primary-400 to-primary-600 rounded-xl flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-dark-950" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white">
-                  edify<span className="text-primary-400">.exposition</span>
-                </h1>
-              </div>
+              {/* Logo */}
+
+              <img
+                src="/logo.png"
+                alt="edify.exposition.lk logo"
+                className="w-48 h-16 object-contain"
+              />
             </div>
             <p className="text-gray-300">
               Join the community of thinkers and creators
@@ -49,35 +48,41 @@ const LoginPage: React.FC = () => {
           {/* Login Buttons */}
           <div className="space-y-4">
             <button
-              onClick={() => handleLogin('google')}
+              onClick={() => handleLogin("google")}
               disabled={isLoading}
               className="w-full flex items-center justify-center space-x-3 bg-white text-dark-950 py-3 px-4 rounded-lg font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Chrome className="w-5 h-5" />
               <span>Continue with Google</span>
-              {isLoading && <div className="w-4 h-4 border-2 border-dark-950 border-t-transparent rounded-full animate-spin" />}
+              {isLoading && (
+                <div className="w-4 h-4 border-2 border-dark-950 border-t-transparent rounded-full animate-spin" />
+              )}
             </button>
 
             <button
-              onClick={() => handleLogin('linkedin')}
+              onClick={() => handleLogin("linkedin")}
               disabled={isLoading}
               className="w-full flex items-center justify-center space-x-3 bg-[#0077B5] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#006699] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Linkedin className="w-5 h-5" />
               <span>Continue with LinkedIn</span>
-              {isLoading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+              {isLoading && (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              )}
             </button>
           </div>
 
           {/* Features */}
           <div className="mt-8 pt-8 border-t border-dark-800">
-            <h3 className="text-lg font-semibold text-white mb-4">Why join edify.exposition?</h3>
+            <h3 className="text-lg font-semibold text-white mb-4">
+              Why join the Edify community?
+            </h3>
             <div className="space-y-3">
               {[
-                'Discover premium content from expert writers',
-                'Connect with like-minded professionals',
-                'Share your insights with the community',
-                'Access exclusive articles and resources'
+                "Discover premium content from expert writers",
+                "Connect with like-minded professionals",
+                "Share your insights with the community",
+                "Access exclusive articles and resources",
               ].map((feature, index) => (
                 <motion.div
                   key={index}
@@ -96,12 +101,18 @@ const LoginPage: React.FC = () => {
           {/* Terms */}
           <div className="mt-8 text-center">
             <p className="text-xs text-gray-500">
-              By continuing, you agree to our{' '}
-              <a href="#" className="text-primary-400 hover:text-primary-300 transition-colors">
+              By continuing, you agree to our{" "}
+              <a
+                href="#"
+                className="text-primary-400 hover:text-primary-300 transition-colors"
+              >
                 Terms of Service
-              </a>{' '}
-              and{' '}
-              <a href="#" className="text-primary-400 hover:text-primary-300 transition-colors">
+              </a>{" "}
+              and{" "}
+              <a
+                href="#"
+                className="text-primary-400 hover:text-primary-300 transition-colors"
+              >
                 Privacy Policy
               </a>
             </p>
