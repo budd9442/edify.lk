@@ -61,6 +61,10 @@ const QuizCard: React.FC<QuizCardProps> = ({ articleId }) => {
     return null;
   }
 
+  // Check if user has perfect score to determine layout
+  const isPerfectScore = state.showResults && state.score === state.currentQuiz.questions.length;
+  const showLeaderboard = !state.showResults || isPerfectScore;
+
   return (
     <div className="mt-12 space-y-6">
       <div className="flex flex-col lg:flex-row gap-6">
@@ -134,10 +138,12 @@ const QuizCard: React.FC<QuizCardProps> = ({ articleId }) => {
           </motion.div>
         </div>
 
-        {/* Leaderboard Widget */}
-        <div className="lg:w-80">
-          <LeaderboardWidget articleId={articleId} />
-        </div>
+        {/* Leaderboard Widget - Only show if not showing results or if perfect score */}
+        {showLeaderboard && (
+          <div className="lg:w-80">
+            <LeaderboardWidget articleId={articleId} />
+          </div>
+        )}
       </div>
     </div>
   );
