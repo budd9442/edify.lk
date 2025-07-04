@@ -75,9 +75,9 @@ const QuizResults: React.FC<QuizResultsProps> = ({ onRetake }) => {
   );
 
   return (
-    <div className="grid lg:grid-cols-3 gap-6">
+    <div className={`${isPerfectScore ? 'grid lg:grid-cols-3 gap-6' : ''}`}>
       {/* Main Results */}
-      <div className="lg:col-span-2">
+      <div className={isPerfectScore ? 'lg:col-span-2' : 'w-full'}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -176,7 +176,7 @@ const QuizResults: React.FC<QuizResultsProps> = ({ onRetake }) => {
               <span>Review Incorrect Answers</span>
             </h4>
             
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-96 overflow-y-auto">
               {state.currentQuiz.questions.map((question, index) => {
                 const userAnswer = state.selectedAnswers[index];
                 const isCorrect = userAnswer === question.correctAnswer;
@@ -195,9 +195,9 @@ const QuizResults: React.FC<QuizResultsProps> = ({ onRetake }) => {
                       <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
                         <X className="w-4 h-4 text-white" />
                       </div>
-                      <div className="flex-1">
-                        <p className="text-white font-medium mb-2">{question.question}</p>
-                        <div className="space-y-2 text-sm">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-medium mb-2 text-sm">{question.question}</p>
+                        <div className="space-y-2 text-xs">
                           <p className="text-red-300">
                             <span className="font-medium">Your answer:</span> {question.options[userAnswer]}
                           </p>
@@ -205,10 +205,10 @@ const QuizResults: React.FC<QuizResultsProps> = ({ onRetake }) => {
                             <span className="font-medium">Correct answer:</span> {question.options[question.correctAnswer]}
                           </p>
                           {question.explanation && (
-                            <div className="mt-3 p-3 bg-blue-900/20 rounded-lg border border-blue-500/30">
+                            <div className="mt-2 p-2 bg-blue-900/20 rounded border border-blue-500/30">
                               <div className="flex items-start space-x-2">
-                                <Lightbulb className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
-                                <p className="text-blue-200 text-sm">{question.explanation}</p>
+                                <Lightbulb className="w-3 h-3 text-blue-400 flex-shrink-0 mt-0.5" />
+                                <p className="text-blue-200 text-xs leading-relaxed">{question.explanation}</p>
                               </div>
                             </div>
                           )}
@@ -221,12 +221,98 @@ const QuizResults: React.FC<QuizResultsProps> = ({ onRetake }) => {
             </div>
           </motion.div>
         )}
+
+        {/* Study Tips for Imperfect Scores - Show below main content when no sidebar */}
+        {!isPerfectScore && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.4 }}
+            className="mt-6 bg-dark-900 border border-dark-800 rounded-xl overflow-hidden"
+          >
+            <div className="bg-gradient-to-r from-blue-900/20 to-blue-800/20 border-b border-blue-800/30 p-4">
+              <div className="flex items-center space-x-2">
+                <BookOpen className="w-5 h-5 text-blue-500" />
+                <h3 className="font-bold text-white">Keep Learning!</h3>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                Review the explanations above to improve your understanding
+              </p>
+            </div>
+            
+            <div className="p-4">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Lightbulb className="w-8 h-8 text-blue-500" />
+                  </div>
+                  <h4 className="text-lg font-bold text-white mb-2">Study Progress</h4>
+                  <p className="text-gray-300 text-sm mb-4">
+                    {wrongAnswers.length === 1 
+                      ? "You got 1 question wrong. Review the explanation to master this topic!"
+                      : `You got ${wrongAnswers.length} questions wrong. Study the explanations and try again!`
+                    }
+                  </p>
+                  
+                  <div className="bg-dark-800 rounded-lg p-4">
+                    <div className="grid grid-cols-2 gap-4 text-center mb-4">
+                      <div>
+                        <div className="text-2xl font-bold text-green-400">{state.score}</div>
+                        <div className="text-xs text-gray-400">Correct</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-red-400">{wrongAnswers.length}</div>
+                        <div className="text-xs text-gray-400">To Review</div>
+                      </div>
+                    </div>
+                    
+                    <div className="w-full bg-dark-700 rounded-full h-2">
+                      <div 
+                        className="bg-primary-600 h-2 rounded-full transition-all duration-1000"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                    <p className="text-center text-sm text-gray-400 mt-2">
+                      {percentage}% mastery
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <h5 className="text-lg font-bold text-white mb-4">Next Steps</h5>
+                  <div className="space-y-3">
+                    <div className="flex items-start space-x-3 p-3 bg-dark-800 rounded-lg">
+                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">1</div>
+                      <div>
+                        <p className="text-white text-sm font-medium">Review Explanations</p>
+                        <p className="text-gray-400 text-xs">Study the detailed explanations above</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3 p-3 bg-dark-800 rounded-lg">
+                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">2</div>
+                      <div>
+                        <p className="text-white text-sm font-medium">Re-read Article</p>
+                        <p className="text-gray-400 text-xs">Focus on the relevant sections</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3 p-3 bg-dark-800 rounded-lg">
+                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">3</div>
+                      <div>
+                        <p className="text-white text-sm font-medium">Retake Quiz</p>
+                        <p className="text-gray-400 text-xs">Aim for 100% to join the leaderboard</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
 
-      {/* Right Sidebar - Leaderboard or Explanations */}
-      <div className="lg:w-full">
-        {isPerfectScore ? (
-          /* Show Leaderboard for Perfect Scores */
+      {/* Right Sidebar - Only show for Perfect Scores */}
+      {isPerfectScore && (
+        <div className="lg:w-full">
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -274,84 +360,8 @@ const QuizResults: React.FC<QuizResultsProps> = ({ onRetake }) => {
               </div>
             </div>
           </motion.div>
-        ) : (
-          /* Show Study Tips for Imperfect Scores */
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 1.4 }}
-            className="bg-dark-900 border border-dark-800 rounded-xl overflow-hidden"
-          >
-            <div className="bg-gradient-to-r from-blue-900/20 to-blue-800/20 border-b border-blue-800/30 p-4">
-              <div className="flex items-center space-x-2">
-                <BookOpen className="w-5 h-5 text-blue-500" />
-                <h3 className="font-bold text-white">Keep Learning!</h3>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">
-                Review the explanations to improve your understanding
-              </p>
-            </div>
-            
-            <div className="p-4">
-              <div className="space-y-4">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Lightbulb className="w-8 h-8 text-blue-500" />
-                  </div>
-                  <h4 className="text-lg font-bold text-white mb-2">Study Tips</h4>
-                  <p className="text-gray-300 text-sm mb-4">
-                    {wrongAnswers.length === 1 
-                      ? "You got 1 question wrong. Review the explanation to master this topic!"
-                      : `You got ${wrongAnswers.length} questions wrong. Study the explanations and try again!`
-                    }
-                  </p>
-                </div>
-
-                <div className="bg-dark-800 rounded-lg p-4">
-                  <div className="grid grid-cols-2 gap-4 text-center mb-4">
-                    <div>
-                      <div className="text-2xl font-bold text-green-400">{state.score}</div>
-                      <div className="text-xs text-gray-400">Correct</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-red-400">{wrongAnswers.length}</div>
-                      <div className="text-xs text-gray-400">To Review</div>
-                    </div>
-                  </div>
-                  
-                  <div className="w-full bg-dark-700 rounded-full h-2">
-                    <div 
-                      className="bg-primary-600 h-2 rounded-full transition-all duration-1000"
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                  <p className="text-center text-sm text-gray-400 mt-2">
-                    {percentage}% mastery
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-white">Next Steps:</p>
-                  <ul className="text-sm text-gray-300 space-y-1">
-                    <li className="flex items-center space-x-2">
-                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                      <span>Review the explanations above</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                      <span>Re-read the article sections</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                      <span>Retake the quiz for 100%</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Perfect Score Badge */}
       {showBadge && (
