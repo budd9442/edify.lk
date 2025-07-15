@@ -126,7 +126,9 @@
     white-space: nowrap;
     border: 0;
   }
+}
 
+@layer utilities {
   /* Enhanced prose styles */
   .prose {
     @apply text-gray-300;
