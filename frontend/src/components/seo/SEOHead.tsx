@@ -29,8 +29,9 @@ const SEOHead: React.FC<SEOHeadProps> = ({
   tags
 }) => {
   const fullTitle = title.includes('Edify') ? title : `${title} | Edify`;
-  const fullUrl = url.startsWith('http') ? url : `https://edify.exposition.lk${url}`;
-  const fullImage = image.startsWith('http') ? image : `https://edify.exposition.lk${image}`;
+  const baseUrl = import.meta.env.PROD ? 'https://edify.exposition.lk' : 'http://localhost:5173';
+  const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
+  const fullImage = image.startsWith('http') ? image : `${baseUrl}${image}`;
 
   return (
     <Helmet>
