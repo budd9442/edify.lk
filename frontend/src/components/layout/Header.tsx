@@ -1,25 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Bell, 
-  Menu, 
-  X, 
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Bell,
+  Menu,
+  X,
   PenTool,
   User,
   Settings,
   LogOut,
   Home,
   Compass,
-  Rss
-} from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import { notificationService } from '../../services/notificationService';
-import { useScrollDirection } from '../../hooks/useScrollPosition';
-import SearchBar from '../SearchBar';
-import NotificationDropdown from '../notifications/NotificationDropdown';
-import Container from './Container';
-import Button from '../ui/Button';
+  Rss,
+} from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
+import { notificationService } from "../../services/notificationService";
+import { useScrollDirection } from "../../hooks/useScrollPosition";
+import SearchBar from "../SearchBar";
+import NotificationDropdown from "../notifications/NotificationDropdown";
+import Container from "./Container";
+import Button from "../ui/Button";
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -33,10 +33,13 @@ const Header: React.FC = () => {
   useEffect(() => {
     if (user) {
       loadUnreadCount();
-      
-      const unsubscribe = notificationService.subscribeToNotifications('1', () => {
-        loadUnreadCount();
-      });
+
+      const unsubscribe = notificationService.subscribeToNotifications(
+        "1",
+        () => {
+          loadUnreadCount();
+        }
+      );
 
       return unsubscribe;
     }
@@ -44,40 +47,40 @@ const Header: React.FC = () => {
 
   const loadUnreadCount = async () => {
     try {
-      const count = await notificationService.getUnreadCount('1');
+      const count = await notificationService.getUnreadCount("1");
       setUnreadCount(count);
     } catch (error) {
-      console.error('Failed to load unread count:', error);
+      console.error("Failed to load unread count:", error);
     }
   };
 
   const handleLogout = () => {
     signOut();
-    navigate('/');
+    navigate("/");
     setIsProfileOpen(false);
   };
 
   const navItems = [
-    { to: '/', label: 'Home', icon: Home },
-    { to: '/feed', label: 'My Feed', icon: Rss },
-    { to: '/explore', label: 'Explore', icon: Compass },
+    { to: "/", label: "Home", icon: Home },
+    { to: "/feed", label: "My Feed", icon: Rss },
+    { to: "/explore", label: "Explore", icon: Compass },
   ];
 
   return (
     <motion.header
       initial={{ y: 0 }}
-      animate={{ 
-        y: scrollDirection === 'down' && !isMenuOpen ? -100 : 0,
-        backdropFilter: 'blur(20px)'
+      animate={{
+        y: scrollDirection === "down" && !isMenuOpen ? -100 : 0,
+        backdropFilter: "blur(20px)",
       }}
-      transition={{ duration: 0.3, ease: 'easeInOut' }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
       className="bg-dark-950/90 backdrop-blur-xl border-b border-dark-800/50 sticky top-0 z-50 shadow-lg"
     >
       <Container>
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link 
-            to="/" 
+          <Link
+            to="/"
             className="flex items-center space-x-2 focus:outline-none group"
           >
             <motion.img
@@ -126,10 +129,10 @@ const Header: React.FC = () => {
                     Write
                   </Button>
                 </Link>
-                
+
                 {/* Notifications */}
                 <div className="relative">
-                  <motion.button 
+                  <motion.button
                     onClick={() => setIsNotificationOpen(!isNotificationOpen)}
                     className="relative p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-dark-800/50"
                     whileHover={{ scale: 1.05 }}
@@ -144,7 +147,7 @@ const Header: React.FC = () => {
                           exit={{ scale: 0, opacity: 0 }}
                           className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-full flex items-center justify-center font-medium shadow-lg"
                         >
-                          {unreadCount > 9 ? '9+' : unreadCount}
+                          {unreadCount > 9 ? "9+" : unreadCount}
                         </motion.span>
                       )}
                     </AnimatePresence>
@@ -182,10 +185,12 @@ const Header: React.FC = () => {
                         className="absolute right-0 mt-2 w-56 bg-dark-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-dark-800/50 py-2 overflow-hidden"
                       >
                         <div className="px-4 py-3 border-b border-dark-800/50">
-                          <p className="text-sm font-medium text-white">{profile?.full_name || user?.email}</p>
+                          <p className="text-sm font-medium text-white">
+                            {profile?.full_name || user?.email}
+                          </p>
                           <p className="text-xs text-gray-400">{user?.email}</p>
                         </div>
-                        
+
                         <Link
                           to="/profile"
                           className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-dark-800/50 transition-all duration-200"
@@ -202,7 +207,7 @@ const Header: React.FC = () => {
                           <Settings className="w-4 h-4" />
                           <span>Settings</span>
                         </Link>
-                        
+
                         <div className="border-t border-dark-800/50 mt-2 pt-2">
                           <button
                             onClick={handleLogout}
@@ -219,9 +224,7 @@ const Header: React.FC = () => {
               </>
             ) : (
               <Link to="/login">
-                <Button variant="gradient">
-                  Sign In
-                </Button>
+                <Button variant="gradient">Sign In</Button>
               </Link>
             )}
 
@@ -264,9 +267,9 @@ const Header: React.FC = () => {
           {isMenuOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
+              animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
               className="lg:hidden py-4 border-t border-dark-800/50 overflow-hidden"
             >
               <div className="flex flex-col space-y-2">
@@ -274,7 +277,7 @@ const Header: React.FC = () => {
                 <div className="px-2 mb-4">
                   <SearchBar />
                 </div>
-                
+
                 {navItems.map(({ to, label, icon: Icon }, index) => (
                   <motion.div
                     key={to}
@@ -292,7 +295,7 @@ const Header: React.FC = () => {
                     </Link>
                   </motion.div>
                 ))}
-                
+
                 {user && (
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}

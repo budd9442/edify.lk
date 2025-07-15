@@ -1,55 +1,62 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, User, AlertCircle } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
-import Card from '../components/ui/Card';
-import Container from '../components/layout/Container';
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { Eye, EyeOff, Mail, Lock, User, AlertCircle } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import Button from "../components/ui/Button";
+import Input from "../components/ui/Input";
+import Card from "../components/ui/Card";
+import Container from "../components/layout/Container";
 
 const LoginPage: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    fullName: '',
-    confirmPassword: ''
+    email: "",
+    password: "",
+    fullName: "",
+    confirmPassword: "",
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { signIn, signUp } = useAuth();
+  const [error, setError] = useState("");
+  const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate("/feed");
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
       if (isSignUp) {
         if (formData.password !== formData.confirmPassword) {
-          throw new Error('Passwords do not match');
+          throw new Error("Passwords do not match");
         }
         if (formData.password.length < 6) {
-          throw new Error('Password must be at least 6 characters');
+          throw new Error("Password must be at least 6 characters");
         }
         await signUp(formData.email, formData.password, formData.fullName);
-        setError('Check your email for a confirmation link');
+        setError("Check your email for a confirmation link");
       } else {
         await signIn(formData.email, formData.password);
-        navigate('/');
+        // The useEffect above will handle the redirect
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      setError(err.message || "An error occurred");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, [field]: e.target.value }));
-  };
+  const handleInputChange =
+    (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+    };
 
   return (
     <div className="min-h-screen bg-dark-950 flex items-center justify-center py-12">
@@ -70,13 +77,12 @@ const LoginPage: React.FC = () => {
                 />
               </Link>
               <h1 className="text-2xl font-bold text-white mb-2">
-                {isSignUp ? 'Create your account' : 'Welcome back'}
+                {isSignUp ? "Create your account" : "Welcome back"}
               </h1>
               <p className="text-gray-400">
-                {isSignUp 
-                  ? 'Join the community of writers and readers'
-                  : 'Sign in to your account to continue'
-                }
+                {isSignUp
+                  ? "Join the community of writers and readers"
+                  : "Sign in to your account to continue"}
               </p>
             </div>
 
@@ -99,7 +105,7 @@ const LoginPage: React.FC = () => {
                   label="Full Name"
                   type="text"
                   value={formData.fullName}
-                  onChange={handleInputChange('fullName')}
+                  onChange={handleInputChange("fullName")}
                   leftIcon={<User className="w-5 h-5" />}
                   required
                   placeholder="Enter your full name"
@@ -110,7 +116,7 @@ const LoginPage: React.FC = () => {
                 label="Email"
                 type="email"
                 value={formData.email}
-                onChange={handleInputChange('email')}
+                onChange={handleInputChange("email")}
                 leftIcon={<Mail className="w-5 h-5" />}
                 required
                 placeholder="Enter your email"
@@ -120,12 +126,14 @@ const LoginPage: React.FC = () => {
                 label="Password"
                 type="password"
                 value={formData.password}
-                onChange={handleInputChange('password')}
+                onChange={handleInputChange("password")}
                 leftIcon={<Lock className="w-5 h-5" />}
                 showPasswordToggle
                 required
                 placeholder="Enter your password"
-                helperText={isSignUp ? "Must be at least 6 characters" : undefined}
+                helperText={
+                  isSignUp ? "Must be at least 6 characters" : undefined
+                }
               />
 
               {isSignUp && (
@@ -133,7 +141,7 @@ const LoginPage: React.FC = () => {
                   label="Confirm Password"
                   type="password"
                   value={formData.confirmPassword}
-                  onChange={handleInputChange('confirmPassword')}
+                  onChange={handleInputChange("confirmPassword")}
                   leftIcon={<Lock className="w-5 h-5" />}
                   showPasswordToggle
                   required
@@ -148,29 +156,31 @@ const LoginPage: React.FC = () => {
                 fullWidth
                 loading={loading}
               >
-                {isSignUp ? 'Create Account' : 'Sign In'}
+                {isSignUp ? "Create Account" : "Sign In"}
               </Button>
             </form>
 
             {/* Toggle Sign Up/Sign In */}
             <div className="mt-6 text-center">
               <p className="text-gray-400">
-                {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+                {isSignUp
+                  ? "Already have an account?"
+                  : "Don't have an account?"}{" "}
                 <button
                   type="button"
                   onClick={() => {
                     setIsSignUp(!isSignUp);
-                    setError('');
+                    setError("");
                     setFormData({
-                      email: '',
-                      password: '',
-                      fullName: '',
-                      confirmPassword: ''
+                      email: "",
+                      password: "",
+                      fullName: "",
+                      confirmPassword: "",
                     });
                   }}
                   className="text-primary-400 hover:text-primary-300 transition-colors font-medium"
                 >
-                  {isSignUp ? 'Sign in' : 'Sign up'}
+                  {isSignUp ? "Sign in" : "Sign up"}
                 </button>
               </p>
             </div>
@@ -182,10 +192,10 @@ const LoginPage: React.FC = () => {
               </h3>
               <div className="space-y-2">
                 {[
-                  'Write and publish your articles',
-                  'Connect with like-minded readers',
-                  'Build your personal brand',
-                  'Engage with quality content'
+                  "Write and publish your articles",
+                  "Connect with like-minded readers",
+                  "Build your personal brand",
+                  "Engage with quality content",
                 ].map((feature, index) => (
                   <div key={index} className="flex items-center space-x-2">
                     <div className="w-1.5 h-1.5 bg-primary-500 rounded-full" />

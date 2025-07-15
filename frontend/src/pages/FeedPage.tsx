@@ -1,20 +1,60 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Rss, Filter, TrendingUp, Clock, Users, RefreshCw } from 'lucide-react';
-import { useApp } from '../contexts/AppContext';
-import { useAuth } from '../contexts/AuthContext';
-import ArticleCard from '../components/ArticleCard';
-import LoaderSkeleton from '../components/LoaderSkeleton';
-import { Article } from '../mock-data/articles';
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { Rss, Filter, TrendingUp, Clock, Users, RefreshCw } from "lucide-react";
+import { useApp } from "../contexts/AppContext";
+import { useAuth } from "../contexts/AuthContext";
+import ArticleCard from "../components/ArticleCard";
+import LoaderSkeleton from "../components/LoaderSkeleton";
+import { Article } from "../mock-data/articles";
+import { ArticleWithAuthor } from "../services/articleService";
 
 const FeedPage: React.FC = () => {
-  const [feedArticles, setFeedArticles] = useState<Article[]>([]);
+  const [feedArticles, setFeedArticles] = useState<ArticleWithAuthor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState<'newest' | 'likes'>('newest');
+  const [sortBy, setSortBy] = useState<"newest" | "likes">("newest");
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const { state } = useApp();
-  const { state: authState } = useAuth();
+  const { user } = useAuth();
+
+  // Helper function to convert mock Article to ArticleWithAuthor
+  const convertMockToArticleWithAuthor = (
+    mockArticle: Article
+  ): ArticleWithAuthor => ({
+    id: mockArticle.id,
+    title: mockArticle.title,
+    slug: mockArticle.title.toLowerCase().replace(/\s+/g, "-"),
+    content: mockArticle.content,
+    excerpt: mockArticle.excerpt,
+    author_id: mockArticle.author.id,
+    cover_image: mockArticle.coverImage,
+    published_at: mockArticle.publishedAt,
+    created_at: mockArticle.publishedAt,
+    updated_at: mockArticle.publishedAt,
+    status: mockArticle.status as "draft" | "published" | "archived",
+    featured: mockArticle.featured,
+    likes_count: mockArticle.likes,
+    comments_count: mockArticle.comments.length,
+    views_count: 0,
+    reading_time: mockArticle.readingTime,
+    profiles: {
+      id: mockArticle.author.id,
+      full_name: mockArticle.author.name,
+      avatar_url: mockArticle.author.avatar,
+      bio: mockArticle.author.bio,
+      is_verified: false,
+      followers_count: mockArticle.author.followersCount,
+      articles_count: mockArticle.author.articlesCount,
+    },
+    tags: mockArticle.tags.map((tag: string, index: number) => ({
+      id: `${index}`,
+      name: tag,
+      slug: tag.toLowerCase(),
+      color: null,
+    })),
+    is_liked: false,
+    is_bookmarked: false,
+  });
 
   // Simulate real-time updates
   useEffect(() => {
@@ -31,25 +71,29 @@ const FeedPage: React.FC = () => {
 
   const fetchFeedArticles = async () => {
     setLoading(true);
-    
+
     // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
     // Filter articles from followed authors
-    const followedArticles = state.articles.filter(article => 
+    const followedArticles = state.articles.filter((article) =>
       state.followedUsers.includes(article.author.id)
     );
 
     // Sort articles
     const sorted = [...followedArticles].sort((a, b) => {
-      if (sortBy === 'newest') {
-        return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+      if (sortBy === "newest") {
+        return (
+          new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+        );
       } else {
         return b.likes - a.likes;
       }
     });
 
-    setFeedArticles(sorted);
+    // Convert to ArticleWithAuthor format
+    const convertedArticles = sorted.map(convertMockToArticleWithAuthor);
+    setFeedArticles(convertedArticles);
     setLoading(false);
   };
 
@@ -61,14 +105,17 @@ const FeedPage: React.FC = () => {
     fetchFeedArticles();
   };
 
-  if (!authState.isAuthenticated) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-dark-950 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
           <Rss className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-white mb-2">Sign in to see your feed</h1>
+          <h1 className="text-2xl font-bold text-white mb-2">
+            Sign in to see your feed
+          </h1>
           <p className="text-gray-400 mb-6">
-            Follow authors and topics to create a personalized reading experience.
+            Follow authors and topics to create a personalized reading
+            experience.
           </p>
           <Link
             to="/login"
@@ -86,7 +133,9 @@ const FeedPage: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}
         <nav className="flex items-center space-x-2 text-sm text-gray-400 mb-6">
-          <Link to="/" className="hover:text-white transition-colors">Home</Link>
+          <Link to="/" className="hover:text-white transition-colors">
+            Home
+          </Link>
           <span>/</span>
           <span className="text-white">My Feed</span>
         </nav>
@@ -107,7 +156,7 @@ const FeedPage: React.FC = () => {
             disabled={loading}
             className="flex items-center space-x-2 px-4 py-2 bg-dark-800 text-gray-300 rounded-lg hover:bg-dark-700 transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             <span>Refresh</span>
           </button>
         </div>
@@ -121,22 +170,22 @@ const FeedPage: React.FC = () => {
             </div>
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => setSortBy('newest')}
+                onClick={() => setSortBy("newest")}
                 className={`flex items-center space-x-1 px-3 py-1 rounded-lg text-sm transition-colors ${
-                  sortBy === 'newest'
-                    ? 'bg-primary-900/30 text-primary-300 border border-primary-500/50'
-                    : 'text-gray-400 hover:text-white'
+                  sortBy === "newest"
+                    ? "bg-primary-900/30 text-primary-300 border border-primary-500/50"
+                    : "text-gray-400 hover:text-white"
                 }`}
               >
                 <Clock className="w-3 h-3" />
                 <span>Newest</span>
               </button>
               <button
-                onClick={() => setSortBy('likes')}
+                onClick={() => setSortBy("likes")}
                 className={`flex items-center space-x-1 px-3 py-1 rounded-lg text-sm transition-colors ${
-                  sortBy === 'likes'
-                    ? 'bg-primary-900/30 text-primary-300 border border-primary-500/50'
-                    : 'text-gray-400 hover:text-white'
+                  sortBy === "likes"
+                    ? "bg-primary-900/30 text-primary-300 border border-primary-500/50"
+                    : "text-gray-400 hover:text-white"
                 }`}
               >
                 <TrendingUp className="w-3 h-3" />
@@ -172,9 +221,12 @@ const FeedPage: React.FC = () => {
             className="text-center py-12"
           >
             <Users className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">Start following authors</h2>
+            <h2 className="text-2xl font-bold text-white mb-2">
+              Start following authors
+            </h2>
             <p className="text-gray-400 mb-6">
-              Follow authors to see their latest articles in your personalized feed.
+              Follow authors to see their latest articles in your personalized
+              feed.
             </p>
             <Link
               to="/explore"
@@ -190,9 +242,12 @@ const FeedPage: React.FC = () => {
             className="text-center py-12"
           >
             <Rss className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">No new articles</h2>
+            <h2 className="text-2xl font-bold text-white mb-2">
+              No new articles
+            </h2>
             <p className="text-gray-400 mb-6">
-              The authors you follow haven't published any new articles yet. Check back later!
+              The authors you follow haven't published any new articles yet.
+              Check back later!
             </p>
             <div className="flex items-center justify-center space-x-4">
               <button

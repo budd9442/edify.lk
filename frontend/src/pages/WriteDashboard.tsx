@@ -1,30 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  PenTool, 
-  Upload, 
-  FileText, 
-  Plus, 
-  Target, 
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  PenTool,
+  Upload,
+  FileText,
+  Target,
   Award,
   TrendingUp,
   Users,
   Eye,
   Save,
-  Send
-} from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { Draft, StrapiBlock, ProfileProgress, profileTasks } from '../mock-data/strapiBlocks';
-import { draftService } from '../services/draftService';
-import { StrapiBlockUtils } from '../services/strapiBlockUtils';
-import BlockEditor from '../components/write/BlockEditor';
-import BlockRenderer from '../components/write/BlockRenderer';
-import ImportHandler from '../components/write/ImportHandler';
-import DraftCard from '../components/write/DraftCard';
+  Send,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import {
+  Draft,
+  StrapiBlock,
+  ProfileProgress,
+  profileTasks,
+} from "../mock-data/strapiBlocks";
+import { draftService } from "../services/draftService";
+import BlockEditor from "../components/write/BlockEditor";
+import BlockRenderer from "../components/write/BlockRenderer";
+import ImportHandler from "../components/write/ImportHandler";
+import DraftCard from "../components/write/DraftCard";
 
 const WriteDashboard: React.FC = () => {
-  const { state: authState } = useAuth();
-  const [activeView, setActiveView] = useState<'options' | 'editor' | 'preview'>('options');
+  const { user, profile } = useAuth();
+  const [activeView, setActiveView] = useState<
+    "options" | "editor" | "preview"
+  >("options");
   const [showImportModal, setShowImportModal] = useState(false);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [currentDraft, setCurrentDraft] = useState<Partial<Draft> | null>(null);
@@ -33,27 +38,31 @@ const WriteDashboard: React.FC = () => {
 
   // Mock profile progress
   const [profileProgress] = useState<ProfileProgress>({
-    userId: '1',
-    completedTasks: ['profile_picture_added', 'bio_written', 'first_article_published'],
+    userId: "1",
+    completedTasks: [
+      "profile_picture_added",
+      "bio_written",
+      "first_article_published",
+    ],
     badges: [
       {
-        id: 'badge-1',
-        name: 'First Steps',
-        description: 'Completed profile setup',
-        icon: '🎯',
-        earnedAt: '2024-01-10T12:00:00Z',
-        rarity: 'common'
+        id: "badge-1",
+        name: "First Steps",
+        description: "Completed profile setup",
+        icon: "🎯",
+        earnedAt: "2024-01-10T12:00:00Z",
+        rarity: "common",
       },
       {
-        id: 'badge-2',
-        name: 'Author',
-        description: 'Published first article',
-        icon: '✍️',
-        earnedAt: '2024-01-12T15:30:00Z',
-        rarity: 'rare'
-      }
+        id: "badge-2",
+        name: "Author",
+        description: "Published first article",
+        icon: "✍️",
+        earnedAt: "2024-01-12T15:30:00Z",
+        rarity: "rare",
+      },
     ],
-    totalScore: 75
+    totalScore: 75,
   });
 
   useEffect(() => {
@@ -63,10 +72,10 @@ const WriteDashboard: React.FC = () => {
   const loadDrafts = async () => {
     setLoading(true);
     try {
-      const data = await draftService.getDrafts('1');
+      const data = await draftService.getDrafts("1");
       setDrafts(data);
     } catch (error) {
-      console.error('Failed to load drafts:', error);
+      console.error("Failed to load drafts:", error);
     } finally {
       setLoading(false);
     }
@@ -74,12 +83,12 @@ const WriteDashboard: React.FC = () => {
 
   const handleStartNew = () => {
     setCurrentDraft({
-      title: '',
-      content: [{ type: 'paragraph', children: [{ text: '' }] }],
+      title: "",
+      content: [{ type: "paragraph", children: [{ text: "" }] }],
       tags: [],
-      status: 'draft'
+      status: "draft",
     });
-    setActiveView('editor');
+    setActiveView("editor");
   };
 
   const handleImportComplete = (content: StrapiBlock[], title: string) => {
@@ -87,40 +96,42 @@ const WriteDashboard: React.FC = () => {
       title,
       content,
       tags: [],
-      status: 'draft'
+      status: "draft",
     });
     setShowImportModal(false);
-    setActiveView('editor');
+    setActiveView("editor");
   };
 
   const handleEditDraft = (draft: Draft) => {
     setCurrentDraft(draft);
-    setActiveView('editor');
+    setActiveView("editor");
   };
 
   const handleDeleteDraft = async (draftId: string) => {
     try {
       await draftService.deleteDraft(draftId);
-      setDrafts(prev => prev.filter(d => d.id !== draftId));
+      setDrafts((prev) => prev.filter((d) => d.id !== draftId));
     } catch (error) {
-      console.error('Failed to delete draft:', error);
+      console.error("Failed to delete draft:", error);
     }
   };
 
   const handleSubmitDraft = async (draftId: string) => {
     try {
       await draftService.submitForReview(draftId);
-      setDrafts(prev => prev.map(d => 
-        d.id === draftId ? { ...d, status: 'submitted' as const } : d
-      ));
+      setDrafts((prev) =>
+        prev.map((d) =>
+          d.id === draftId ? { ...d, status: "submitted" as const } : d
+        )
+      );
     } catch (error) {
-      console.error('Failed to submit draft:', error);
+      console.error("Failed to submit draft:", error);
     }
   };
 
   const handlePreviewDraft = (draft: Draft) => {
     setCurrentDraft(draft);
-    setActiveView('preview');
+    setActiveView("preview");
   };
 
   const handleSaveDraft = async () => {
@@ -133,13 +144,13 @@ const WriteDashboard: React.FC = () => {
         content: currentDraft.content,
         coverImage: currentDraft.coverImage,
         tags: currentDraft.tags || [],
-        status: 'draft'
+        status: "draft",
       });
 
-      setDrafts(prev => {
-        const existing = prev.find(d => d.id === savedDraft.id);
+      setDrafts((prev) => {
+        const existing = prev.find((d) => d.id === savedDraft.id);
         if (existing) {
-          return prev.map(d => d.id === savedDraft.id ? savedDraft : d);
+          return prev.map((d) => (d.id === savedDraft.id ? savedDraft : d));
         } else {
           return [savedDraft, ...prev];
         }
@@ -147,7 +158,7 @@ const WriteDashboard: React.FC = () => {
 
       setCurrentDraft(savedDraft);
     } catch (error) {
-      console.error('Failed to save draft:', error);
+      console.error("Failed to save draft:", error);
     } finally {
       setSaving(false);
     }
@@ -161,12 +172,14 @@ const WriteDashboard: React.FC = () => {
 
     try {
       await draftService.submitForReview(currentDraft.id);
-      setDrafts(prev => prev.map(d => 
-        d.id === currentDraft.id ? { ...d, status: 'submitted' as const } : d
-      ));
-      setActiveView('options');
+      setDrafts((prev) =>
+        prev.map((d) =>
+          d.id === currentDraft.id ? { ...d, status: "submitted" as const } : d
+        )
+      );
+      setActiveView("options");
     } catch (error) {
-      console.error('Failed to submit for review:', error);
+      console.error("Failed to submit for review:", error);
     }
   };
 
@@ -174,13 +187,17 @@ const WriteDashboard: React.FC = () => {
   const totalTasks = profileTasks.length;
   const progressPercentage = (completedTasksCount / totalTasks) * 100;
 
-  if (!authState.isAuthenticated) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-dark-950 flex items-center justify-center">
         <div className="text-center">
           <PenTool className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-white mb-2">Sign in to start writing</h1>
-          <p className="text-gray-400">Create and manage your articles with our premium editor.</p>
+          <h1 className="text-2xl font-bold text-white mb-2">
+            Sign in to start writing
+          </h1>
+          <p className="text-gray-400">
+            Create and manage your articles with our premium editor.
+          </p>
         </div>
       </div>
     );
@@ -190,7 +207,7 @@ const WriteDashboard: React.FC = () => {
     <div className="min-h-screen bg-dark-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <AnimatePresence mode="wait">
-          {activeView === 'options' && (
+          {activeView === "options" && (
             <motion.div
               key="options"
               initial={{ opacity: 0, y: 20 }}
@@ -199,9 +216,12 @@ const WriteDashboard: React.FC = () => {
             >
               {/* Header */}
               <div className="mb-8">
-                <h1 className="text-3xl font-bold text-white mb-2">Write & Create</h1>
+                <h1 className="text-3xl font-bold text-white mb-2">
+                  Write & Create
+                </h1>
                 <p className="text-gray-400">
-                  Share your ideas with the world using our premium writing tools
+                  Share your ideas with the world using our premium writing
+                  tools
                 </p>
               </div>
 
@@ -210,7 +230,9 @@ const WriteDashboard: React.FC = () => {
                 <div className="lg:col-span-2 space-y-8">
                   {/* Write Options */}
                   <section>
-                    <h2 className="text-2xl font-bold text-white mb-6">Start Writing</h2>
+                    <h2 className="text-2xl font-bold text-white mb-6">
+                      Start Writing
+                    </h2>
                     <div className="grid md:grid-cols-2 gap-6">
                       {/* Import Document */}
                       <motion.div
@@ -221,9 +243,12 @@ const WriteDashboard: React.FC = () => {
                         <div className="w-12 h-12 bg-blue-900/30 rounded-lg flex items-center justify-center mb-4">
                           <Upload className="w-6 h-6 text-blue-400" />
                         </div>
-                        <h3 className="text-xl font-semibold text-white mb-2">Import Document</h3>
+                        <h3 className="text-xl font-semibold text-white mb-2">
+                          Import Document
+                        </h3>
                         <p className="text-gray-400 mb-4">
-                          Upload a .docx, .md, or .txt file and convert it to our structured format
+                          Upload a .docx, .md, or .txt file and convert it to
+                          our structured format
                         </p>
                         <div className="flex items-center space-x-2 text-sm text-blue-400">
                           <span>Supports Word, Markdown, Text</span>
@@ -239,9 +264,12 @@ const WriteDashboard: React.FC = () => {
                         <div className="w-12 h-12 bg-primary-900/30 rounded-lg flex items-center justify-center mb-4">
                           <PenTool className="w-6 h-6 text-primary-400" />
                         </div>
-                        <h3 className="text-xl font-semibold text-white mb-2">Start New Article</h3>
+                        <h3 className="text-xl font-semibold text-white mb-2">
+                          Start New Article
+                        </h3>
                         <p className="text-gray-400 mb-4">
-                          Create a new article from scratch with our rich text editor
+                          Create a new article from scratch with our rich text
+                          editor
                         </p>
                         <div className="flex items-center space-x-2 text-sm text-primary-400">
                           <span>Strapi Blocks Compatible</span>
@@ -253,16 +281,22 @@ const WriteDashboard: React.FC = () => {
                   {/* Drafts Section */}
                   <section>
                     <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold text-white">Your Drafts</h2>
+                      <h2 className="text-2xl font-bold text-white">
+                        Your Drafts
+                      </h2>
                       <span className="text-sm text-gray-400">
-                        {drafts.length} {drafts.length === 1 ? 'draft' : 'drafts'}
+                        {drafts.length}{" "}
+                        {drafts.length === 1 ? "draft" : "drafts"}
                       </span>
                     </div>
-                    
+
                     {loading ? (
                       <div className="grid md:grid-cols-2 gap-6">
                         {[...Array(4)].map((_, i) => (
-                          <div key={i} className="bg-dark-900 border border-dark-800 rounded-lg p-6 animate-pulse">
+                          <div
+                            key={i}
+                            className="bg-dark-900 border border-dark-800 rounded-lg p-6 animate-pulse"
+                          >
                             <div className="h-6 bg-dark-700 rounded mb-4"></div>
                             <div className="h-4 bg-dark-700 rounded mb-2"></div>
                             <div className="h-4 bg-dark-700 rounded w-3/4"></div>
@@ -285,7 +319,9 @@ const WriteDashboard: React.FC = () => {
                     ) : (
                       <div className="text-center py-12 bg-dark-900 border border-dark-800 rounded-lg">
                         <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-white mb-2">No drafts yet</h3>
+                        <h3 className="text-lg font-semibold text-white mb-2">
+                          No drafts yet
+                        </h3>
                         <p className="text-gray-400 mb-6">
                           Start writing your first article to see it here
                         </p>
@@ -310,13 +346,19 @@ const WriteDashboard: React.FC = () => {
                   >
                     <div className="flex items-center space-x-2 mb-4">
                       <Target className="w-5 h-5 text-primary-500" />
-                      <h3 className="text-lg font-semibold text-white">Profile Progress</h3>
+                      <h3 className="text-lg font-semibold text-white">
+                        Profile Progress
+                      </h3>
                     </div>
-                    
+
                     <div className="mb-4">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-400">Completion</span>
-                        <span className="text-sm font-medium text-white">{Math.round(progressPercentage)}%</span>
+                        <span className="text-sm text-gray-400">
+                          Completion
+                        </span>
+                        <span className="text-sm font-medium text-white">
+                          {Math.round(progressPercentage)}%
+                        </span>
                       </div>
                       <div className="w-full bg-dark-800 rounded-full h-2">
                         <motion.div
@@ -330,19 +372,35 @@ const WriteDashboard: React.FC = () => {
 
                     <div className="space-y-3">
                       {profileTasks.slice(0, 5).map((task) => {
-                        const isCompleted = profileProgress.completedTasks.includes(task.id);
+                        const isCompleted =
+                          profileProgress.completedTasks.includes(task.id);
                         return (
-                          <div key={task.id} className="flex items-center space-x-3">
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                              isCompleted ? 'bg-green-500' : 'bg-dark-700'
-                            }`}>
-                              {isCompleted && <span className="text-white text-xs">✓</span>}
+                          <div
+                            key={task.id}
+                            className="flex items-center space-x-3"
+                          >
+                            <div
+                              className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                                isCompleted ? "bg-green-500" : "bg-dark-700"
+                              }`}
+                            >
+                              {isCompleted && (
+                                <span className="text-white text-xs">✓</span>
+                              )}
                             </div>
                             <div className="flex-1">
-                              <p className={`text-sm ${isCompleted ? 'text-gray-400 line-through' : 'text-white'}`}>
+                              <p
+                                className={`text-sm ${
+                                  isCompleted
+                                    ? "text-gray-400 line-through"
+                                    : "text-white"
+                                }`}
+                              >
                                 {task.title}
                               </p>
-                              <p className="text-xs text-gray-500">{task.points} points</p>
+                              <p className="text-xs text-gray-500">
+                                {task.points} points
+                              </p>
                             </div>
                             <span className="text-lg">{task.icon}</span>
                           </div>
@@ -360,17 +418,26 @@ const WriteDashboard: React.FC = () => {
                   >
                     <div className="flex items-center space-x-2 mb-4">
                       <Award className="w-5 h-5 text-yellow-500" />
-                      <h3 className="text-lg font-semibold text-white">Earned Badges</h3>
+                      <h3 className="text-lg font-semibold text-white">
+                        Earned Badges
+                      </h3>
                     </div>
-                    
+
                     {profileProgress.badges.length > 0 ? (
                       <div className="space-y-3">
                         {profileProgress.badges.map((badge) => (
-                          <div key={badge.id} className="flex items-center space-x-3">
+                          <div
+                            key={badge.id}
+                            className="flex items-center space-x-3"
+                          >
                             <span className="text-2xl">{badge.icon}</span>
                             <div>
-                              <p className="text-sm font-medium text-white">{badge.name}</p>
-                              <p className="text-xs text-gray-400">{badge.description}</p>
+                              <p className="text-sm font-medium text-white">
+                                {badge.name}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                {badge.description}
+                              </p>
                             </div>
                           </div>
                         ))}
@@ -389,31 +456,39 @@ const WriteDashboard: React.FC = () => {
                     transition={{ delay: 0.2 }}
                     className="bg-dark-900 border border-dark-800 rounded-xl p-6"
                   >
-                    <h3 className="text-lg font-semibold text-white mb-4">Quick Stats</h3>
+                    <h3 className="text-lg font-semibold text-white mb-4">
+                      Quick Stats
+                    </h3>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <FileText className="w-4 h-4 text-gray-400" />
                           <span className="text-sm text-gray-400">Drafts</span>
                         </div>
-                        <span className="text-sm font-medium text-white">{drafts.length}</span>
+                        <span className="text-sm font-medium text-white">
+                          {drafts.length}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <TrendingUp className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-400">Published</span>
+                          <span className="text-sm text-gray-400">
+                            Published
+                          </span>
                         </div>
                         <span className="text-sm font-medium text-white">
-                          {authState.user?.articlesCount || 0}
+                          {profile?.articles_count || 0}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <Users className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-400">Followers</span>
+                          <span className="text-sm text-gray-400">
+                            Followers
+                          </span>
                         </div>
                         <span className="text-sm font-medium text-white">
-                          {authState.user?.followersCount || 0}
+                          {profile?.followers_count || 0}
                         </span>
                       </div>
                     </div>
@@ -423,7 +498,7 @@ const WriteDashboard: React.FC = () => {
             </motion.div>
           )}
 
-          {activeView === 'editor' && currentDraft && (
+          {activeView === "editor" && currentDraft && (
             <motion.div
               key="editor"
               initial={{ opacity: 0, y: 20 }}
@@ -434,16 +509,18 @@ const WriteDashboard: React.FC = () => {
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <button
-                    onClick={() => setActiveView('options')}
+                    onClick={() => setActiveView("options")}
                     className="text-gray-400 hover:text-white transition-colors mb-2"
                   >
                     ← Back to Dashboard
                   </button>
-                  <h1 className="text-3xl font-bold text-white">Write Article</h1>
+                  <h1 className="text-3xl font-bold text-white">
+                    Write Article
+                  </h1>
                 </div>
                 <div className="flex items-center space-x-4">
                   <button
-                    onClick={() => setActiveView('preview')}
+                    onClick={() => setActiveView("preview")}
                     className="flex items-center space-x-2 px-4 py-2 bg-dark-800 text-gray-300 rounded-lg hover:bg-dark-700 transition-colors"
                   >
                     <Eye className="w-4 h-4" />
@@ -455,7 +532,7 @@ const WriteDashboard: React.FC = () => {
                     className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
                   >
                     <Save className="w-4 h-4" />
-                    <span>{saving ? 'Saving...' : 'Save Draft'}</span>
+                    <span>{saving ? "Saving..." : "Save Draft"}</span>
                   </button>
                   <button
                     onClick={handleSubmitForReview}
@@ -473,8 +550,13 @@ const WriteDashboard: React.FC = () => {
                 <div className="mb-6">
                   <input
                     type="text"
-                    value={currentDraft.title || ''}
-                    onChange={(e) => setCurrentDraft(prev => ({ ...prev, title: e.target.value }))}
+                    value={currentDraft.title || ""}
+                    onChange={(e) =>
+                      setCurrentDraft((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
                     placeholder="Article title..."
                     className="w-full text-3xl font-bold bg-transparent border-none outline-none text-white placeholder-gray-500"
                   />
@@ -484,11 +566,16 @@ const WriteDashboard: React.FC = () => {
                 <div className="mb-6">
                   <input
                     type="text"
-                    value={currentDraft.tags?.join(', ') || ''}
-                    onChange={(e) => setCurrentDraft(prev => ({ 
-                      ...prev, 
-                      tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean)
-                    }))}
+                    value={currentDraft.tags?.join(", ") || ""}
+                    onChange={(e) =>
+                      setCurrentDraft((prev) => ({
+                        ...prev,
+                        tags: e.target.value
+                          .split(",")
+                          .map((tag) => tag.trim())
+                          .filter(Boolean),
+                      }))
+                    }
                     placeholder="Tags (comma separated)..."
                     className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-gray-300 placeholder-gray-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none"
                   />
@@ -497,14 +584,16 @@ const WriteDashboard: React.FC = () => {
                 {/* Content Editor */}
                 <BlockEditor
                   content={currentDraft.content || []}
-                  onChange={(content) => setCurrentDraft(prev => ({ ...prev, content }))}
+                  onChange={(content) =>
+                    setCurrentDraft((prev) => ({ ...prev, content }))
+                  }
                   placeholder="Start writing your article..."
                 />
               </div>
             </motion.div>
           )}
 
-          {activeView === 'preview' && currentDraft && (
+          {activeView === "preview" && currentDraft && (
             <motion.div
               key="preview"
               initial={{ opacity: 0, y: 20 }}
@@ -515,7 +604,7 @@ const WriteDashboard: React.FC = () => {
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <button
-                    onClick={() => setActiveView('editor')}
+                    onClick={() => setActiveView("editor")}
                     className="text-gray-400 hover:text-white transition-colors mb-2"
                   >
                     ← Back to Editor
@@ -524,7 +613,7 @@ const WriteDashboard: React.FC = () => {
                 </div>
                 <div className="flex items-center space-x-4">
                   <button
-                    onClick={() => setActiveView('editor')}
+                    onClick={() => setActiveView("editor")}
                     className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                   >
                     <PenTool className="w-4 h-4" />
@@ -536,9 +625,9 @@ const WriteDashboard: React.FC = () => {
               {/* Preview Content */}
               <div className="bg-dark-900 border border-dark-800 rounded-xl p-8">
                 <h1 className="text-4xl font-bold text-white mb-6">
-                  {currentDraft.title || 'Untitled Article'}
+                  {currentDraft.title || "Untitled Article"}
                 </h1>
-                
+
                 {currentDraft.tags && currentDraft.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-8">
                     {currentDraft.tags.map((tag, index) => (
