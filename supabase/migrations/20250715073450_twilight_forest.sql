@@ -151,8 +151,8 @@ ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 -- Profiles policies
-CREATE POLICY "Public profiles are viewable by everyone" ON profiles
-  FOR SELECT USING (true);
+--CREATE POLICY "Public profiles are viewable by everyone" ON profiles
+  --FOR SELECT USING (true);
 
 CREATE POLICY "Users can insert their own profile" ON profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
