@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import SEOHead from '../components/seo/SEOHead';
+import LazyImage from '../components/layout/LazyImage';
 import { formatDistanceToNow } from 'date-fns';
 import { 
   Heart, 
@@ -113,9 +115,23 @@ const ArticlePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-dark-950">
+      {article && (
+        <SEOHead
+          title={article.title}
+          description={article.excerpt}
+          type="article"
+          author={article.author.name}
+          publishedTime={article.publishedAt}
+          image={article.coverImage}
+          keywords={article.tags}
+          tags={article.tags}
+          section="Blog"
+        />
+      )}
+      
       {/* Hero Section */}
       <div className="relative h-96 overflow-hidden">
-        <img
+        <LazyImage
           src={article.coverImage}
           alt={article.title}
           className="w-full h-full object-cover"

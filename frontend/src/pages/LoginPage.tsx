@@ -1,124 +1,202 @@
-import React, { useState } from "react";
-import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
-import { Chrome, Linkedin, BookOpen, ArrowRight } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Eye, EyeOff, Mail, Lock, User, AlertCircle } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
+import Card from '../components/ui/Card';
+import Container from '../components/layout/Container';
 
 const LoginPage: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    fullName: '',
+    confirmPassword: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = async (provider: "google" | "linkedin") => {
-    setIsLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
     try {
-      await login(provider);
-      navigate("/");
-    } catch (error) {
-      console.error("Login failed:", error);
+      if (isSignUp) {
+        if (formData.password !== formData.confirmPassword) {
+          throw new Error('Passwords do not match');
+        }
+        if (formData.password.length < 6) {
+          throw new Error('Password must be at least 6 characters');
+        }
+        await signUp(formData.email, formData.password, formData.fullName);
+        setError('Check your email for a confirmation link');
+      } else {
+        await signIn(formData.email, formData.password);
+        navigate('/');
+      }
+    } catch (err: any) {
+      setError(err.message || 'An error occurred');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
+  const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, [field]: e.target.value }));
+  };
+
   return (
-    <div className="min-h-screen bg-dark-950 flex items-center justify-center px-4">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen bg-dark-950 flex items-center justify-center py-12">
+      <Container size="sm">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-dark-900 border border-dark-800 rounded-xl p-8 shadow-2xl"
+          transition={{ duration: 0.6 }}
         >
-          {/* Logo */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center space-x-2 mb-4">
-              {/* Logo */}
+          <Card padding="xl" className="max-w-md mx-auto">
+            {/* Logo */}
+            <div className="text-center mb-8">
+              <Link to="/" className="inline-block">
+                <img
+                  src="/logo.png"
+                  alt="Edify"
+                  className="h-12 mx-auto mb-4"
+                />
+              </Link>
+              <h1 className="text-2xl font-bold text-white mb-2">
+                {isSignUp ? 'Create your account' : 'Welcome back'}
+              </h1>
+              <p className="text-gray-400">
+                {isSignUp 
+                  ? 'Join the community of writers and readers'
+                  : 'Sign in to your account to continue'
+                }
+              </p>
+            </div>
 
-              <img
-                src="/logo.png"
-                alt="edify.exposition.lk logo"
-                className="w-48 h-16 object-contain"
+            {/* Error Message */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 p-4 bg-red-900/20 border border-red-500/50 rounded-lg flex items-center space-x-2"
+              >
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                <p className="text-red-300 text-sm">{error}</p>
+              </motion.div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {isSignUp && (
+                <Input
+                  label="Full Name"
+                  type="text"
+                  value={formData.fullName}
+                  onChange={handleInputChange('fullName')}
+                  leftIcon={<User className="w-5 h-5" />}
+                  required
+                  placeholder="Enter your full name"
+                />
+              )}
+
+              <Input
+                label="Email"
+                type="email"
+                value={formData.email}
+                onChange={handleInputChange('email')}
+                leftIcon={<Mail className="w-5 h-5" />}
+                required
+                placeholder="Enter your email"
               />
-            </div>
-            <p className="text-gray-300">
-              Join the community of thinkers and creators
-            </p>
-          </div>
 
-          {/* Login Buttons */}
-          <div className="space-y-4">
-            <button
-              onClick={() => handleLogin("google")}
-              disabled={isLoading}
-              className="w-full flex items-center justify-center space-x-3 bg-white text-dark-950 py-3 px-4 rounded-lg font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Chrome className="w-5 h-5" />
-              <span>Continue with Google</span>
-              {isLoading && (
-                <div className="w-4 h-4 border-2 border-dark-950 border-t-transparent rounded-full animate-spin" />
+              <Input
+                label="Password"
+                type="password"
+                value={formData.password}
+                onChange={handleInputChange('password')}
+                leftIcon={<Lock className="w-5 h-5" />}
+                showPasswordToggle
+                required
+                placeholder="Enter your password"
+                helperText={isSignUp ? "Must be at least 6 characters" : undefined}
+              />
+
+              {isSignUp && (
+                <Input
+                  label="Confirm Password"
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange('confirmPassword')}
+                  leftIcon={<Lock className="w-5 h-5" />}
+                  showPasswordToggle
+                  required
+                  placeholder="Confirm your password"
+                />
               )}
-            </button>
 
-            <button
-              onClick={() => handleLogin("linkedin")}
-              disabled={isLoading}
-              className="w-full flex items-center justify-center space-x-3 bg-[#0077B5] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#006699] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Linkedin className="w-5 h-5" />
-              <span>Continue with LinkedIn</span>
-              {isLoading && (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              )}
-            </button>
-          </div>
+              <Button
+                type="submit"
+                variant="gradient"
+                size="lg"
+                fullWidth
+                loading={loading}
+              >
+                {isSignUp ? 'Create Account' : 'Sign In'}
+              </Button>
+            </form>
 
-          {/* Features */}
-          <div className="mt-8 pt-8 border-t border-dark-800">
-            <h3 className="text-lg font-semibold text-white mb-4">
-              Why join the Edify community?
-            </h3>
-            <div className="space-y-3">
-              {[
-                "Discover premium content from expert writers",
-                "Connect with like-minded professionals",
-                "Share your insights with the community",
-                "Access exclusive articles and resources",
-              ].map((feature, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-center space-x-3"
+            {/* Toggle Sign Up/Sign In */}
+            <div className="mt-6 text-center">
+              <p className="text-gray-400">
+                {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignUp(!isSignUp);
+                    setError('');
+                    setFormData({
+                      email: '',
+                      password: '',
+                      fullName: '',
+                      confirmPassword: ''
+                    });
+                  }}
+                  className="text-primary-400 hover:text-primary-300 transition-colors font-medium"
                 >
-                  <div className="w-1.5 h-1.5 bg-primary-500 rounded-full"></div>
-                  <span className="text-gray-300 text-sm">{feature}</span>
-                </motion.div>
-              ))}
+                  {isSignUp ? 'Sign in' : 'Sign up'}
+                </button>
+              </p>
             </div>
-          </div>
 
-          {/* Terms */}
-          <div className="mt-8 text-center">
-            <p className="text-xs text-gray-500">
-              By continuing, you agree to our{" "}
-              <a
-                href="#"
-                className="text-primary-400 hover:text-primary-300 transition-colors"
-              >
-                Terms of Service
-              </a>{" "}
-              and{" "}
-              <a
-                href="#"
-                className="text-primary-400 hover:text-primary-300 transition-colors"
-              >
-                Privacy Policy
-              </a>
-            </p>
-          </div>
+            {/* Features */}
+            <div className="mt-8 pt-6 border-t border-dark-800">
+              <h3 className="text-sm font-medium text-white mb-3">
+                Join the Edify community
+              </h3>
+              <div className="space-y-2">
+                {[
+                  'Write and publish your articles',
+                  'Connect with like-minded readers',
+                  'Build your personal brand',
+                  'Engage with quality content'
+                ].map((feature, index) => (
+                  <div key={index} className="flex items-center space-x-2">
+                    <div className="w-1.5 h-1.5 bg-primary-500 rounded-full" />
+                    <span className="text-gray-400 text-sm">{feature}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
         </motion.div>
-      </div>
+      </Container>
     </div>
   );
 };
