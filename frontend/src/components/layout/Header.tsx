@@ -10,15 +10,12 @@ import {
   Settings,
   LogOut,
   Home,
-  Users,
-  BookOpen,
   Compass,
   Rss
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { notificationService } from '../../services/notificationService';
 import { useScrollDirection } from '../../hooks/useScrollPosition';
-import { useMediaQuery } from '../../hooks/useMediaQuery';
 import SearchBar from '../SearchBar';
 import NotificationDropdown from '../notifications/NotificationDropdown';
 import Container from './Container';
@@ -29,13 +26,12 @@ const Header: React.FC = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const { state, logout } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const scrollDirection = useScrollDirection();
-  const isMobile = useMediaQuery('(max-width: 768px)');
 
   useEffect(() => {
-    if (state.isAuthenticated) {
+    if (user) {
       loadUnreadCount();
       
       const unsubscribe = notificationService.subscribeToNotifications('1', () => {
@@ -44,7 +40,7 @@ const Header: React.FC = () => {
 
       return unsubscribe;
     }
-  }, [state.isAuthenticated]);
+  }, [user]);
 
   const loadUnreadCount = async () => {
     try {
@@ -56,7 +52,7 @@ const Header: React.FC = () => {
   };
 
   const handleLogout = () => {
-    logout();
+    signOut();
     navigate('/');
     setIsProfileOpen(false);
   };
@@ -121,7 +117,7 @@ const Header: React.FC = () => {
 
           {/* Actions */}
           <div className="flex items-center space-x-3">
-            {state.isAuthenticated ? (
+            {user ? (
               <>
                 {/* Write Button */}
                 <Link to="/write" className="hidden md:block">
@@ -171,8 +167,8 @@ const Header: React.FC = () => {
                     whileTap={{ scale: 0.95 }}
                   >
                     <img
-                      src={state.user?.avatar}
-                      alt={state.user?.name}
+                      src={profile?.avatar_url || undefined}
+                      alt={profile?.full_name || undefined}
                       className="w-full h-full object-cover"
                     />
                   </motion.button>
@@ -186,8 +182,8 @@ const Header: React.FC = () => {
                         className="absolute right-0 mt-2 w-56 bg-dark-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-dark-800/50 py-2 overflow-hidden"
                       >
                         <div className="px-4 py-3 border-b border-dark-800/50">
-                          <p className="text-sm font-medium text-white">{state.user?.name}</p>
-                          <p className="text-xs text-gray-400">{state.user?.email}</p>
+                          <p className="text-sm font-medium text-white">{profile?.full_name || user?.email}</p>
+                          <p className="text-xs text-gray-400">{user?.email}</p>
                         </div>
                         
                         <Link
@@ -297,7 +293,7 @@ const Header: React.FC = () => {
                   </motion.div>
                 ))}
                 
-                {state.isAuthenticated && (
+                {user && (
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
