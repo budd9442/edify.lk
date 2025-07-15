@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@headlessui/react": "^1.7.18",
+    "@tailwindcss/container-queries": "^0.1.1",
+    "@tailwindcss/typography": "^0.5.16",
     "date-fns": "^3.3.1",
     "framer-motion": "^11.0.0",
     "fuse.js": "^7.0.0",
