@@ -2,11 +2,9 @@ import React from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
-import { AppProvider } from './contexts/AppContext';
-import { QuizProvider } from './contexts/QuizContext';
 import { ToastProvider } from './components/ui/Toast';
 import ErrorBoundary from './components/layout/ErrorBoundary';
-import Header from './components/Header';
+import Header from './components/layout/Header';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import ArticlePage from './pages/ArticlePage';
@@ -27,24 +25,20 @@ function App() {
       <HelmetProvider>
         <ToastProvider>
           <AuthProvider>
-            <AppProvider>
-              <QuizProvider>
-                <Router>
-                  <div className="min-h-screen bg-dark-950">
-                    <Header />
-                    <Routes>
-                      <Route path="/" element={<HomePage />} />
-                      <Route path="/login" element={<LoginPage />} />
-                      <Route path="/article/:id" element={<ArticlePage />} />
-                      <Route path="/search" element={<SearchPage />} />
-                      <Route path="/feed" element={<FeedPage />} />
-                      <Route path="/explore" element={<ExplorePage />} />
-                      <Route path="/write" element={<WriteDashboard />} />
-                    </Routes>
-                  </div>
-                </Router>
-              </QuizProvider>
-            </AppProvider>
+            <Router>
+              <div className="min-h-screen bg-dark-950">
+                <Header />
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/article/:slug" element={<ArticlePage />} />
+                  <Route path="/search" element={<SearchPage />} />
+                  <Route path="/feed" element={<FeedPage />} />
+                  <Route path="/explore" element={<ExplorePage />} />
+                  <Route path="/write" element={<WriteDashboard />} />
+                </Routes>
+              </div>
+            </Router>
           </AuthProvider>
         </ToastProvider>
       </HelmetProvider>

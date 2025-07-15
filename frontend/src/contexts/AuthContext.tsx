@@ -1,126 +1,135 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
+import { Database } from '../types/database';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  bio: string;
-  role: 'user' | 'admin';
-  followersCount: number;
-  followingCount: number;
-  articlesCount: number;
-  verified: boolean;
-}
+type Profile = Database['public']['Tables']['profiles']['Row'];
 
 interface AuthState {
   user: User | null;
-  isAuthenticated: boolean;
+  profile: Profile | null;
+  session: Session | null;
   loading: boolean;
 }
 
-type AuthAction =
-  | { type: 'LOGIN_START' }
-  | { type: 'LOGIN_SUCCESS'; payload: User }
-  | { type: 'LOGIN_FAILURE' }
-  | { type: 'LOGOUT' }
-  | { type: 'UPDATE_USER'; payload: Partial<User> };
+interface AuthContextType extends AuthState {
+  signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  updateProfile: (updates: Partial<Profile>) => Promise<void>;
+}
 
-const initialState: AuthState = {
-  user: null,
-  isAuthenticated: false,
-  loading: false,
-};
-
-const authReducer = (state: AuthState, action: AuthAction): AuthState => {
-  switch (action.type) {
-    case 'LOGIN_START':
-      return { ...state, loading: true };
-    case 'LOGIN_SUCCESS':
-      return {
-        ...state,
-        user: action.payload,
-        isAuthenticated: true,
-        loading: false,
-      };
-    case 'LOGIN_FAILURE':
-      return { ...state, loading: false };
-    case 'LOGOUT':
-      return { ...state, user: null, isAuthenticated: false };
-    case 'UPDATE_USER':
-      return {
-        ...state,
-        user: state.user ? { ...state.user, ...action.payload } : null,
-      };
-    default:
-      return state;
-  }
-};
-
-const AuthContext = createContext<{
-  state: AuthState;
-  login: (provider: 'google' | 'linkedin') => Promise<void>;
-  logout: () => void;
-  updateUser: (updates: Partial<User>) => void;
-} | null>(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(authReducer, initialState);
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    profile: null,
+    session: null,
+    loading: true,
+  });
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('edify-user');
-    if (savedUser) {
-      dispatch({ type: 'LOGIN_SUCCESS', payload: JSON.parse(savedUser) });
-    }
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setState(prev => ({ ...prev, session, user: session?.user ?? null }));
+      if (session?.user) {
+        loadProfile(session.user.id);
+      } else {
+        setState(prev => ({ ...prev, loading: false }));
+      }
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setState(prev => ({ ...prev, session, user: session?.user ?? null }));
+      
+      if (session?.user) {
+        await loadProfile(session.user.id);
+      } else {
+        setState(prev => ({ ...prev, profile: null, loading: false }));
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (provider: 'google' | 'linkedin') => {
-    dispatch({ type: 'LOGIN_START' });
-    
-    // Simulate API call
-    setTimeout(() => {
-      const mockUser: User = {
-        id: '1',
-        name: 'Alex Thompson',
-        email: 'alex@example.com',
-        avatar: 'https://media.licdn.com/dms/image/v2/D4E03AQFM2bia86LEpQ/profile-displayphoto-shrink_100_100/B4EZQ1W9ILHEAU-/0/1736062004138?e=1756944000&v=beta&t=NRca3iZVIMWnDQX4DSCf3jjF73JgMJJkV_QeUUxxPiY',
-        bio: 'Technology enthusiast and creative writer exploring the intersection of innovation and human experience.',
-        role: 'user',
-        followersCount: 1247,
-        followingCount: 89,
-        articlesCount: 12,
-        verified: false,
-      };
-      
-      localStorage.setItem('edify-user', JSON.stringify(mockUser));
-      dispatch({ type: 'LOGIN_SUCCESS', payload: mockUser });
-    }, 1000);
-  };
+  const loadProfile = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-  const logout = () => {
-    localStorage.removeItem('edify-user');
-    dispatch({ type: 'LOGOUT' });
-  };
+      if (error) throw error;
 
-  const updateUser = (updates: Partial<User>) => {
-    dispatch({ type: 'UPDATE_USER', payload: updates });
-    if (state.user) {
-      const updatedUser = { ...state.user, ...updates };
-      localStorage.setItem('edify-user', JSON.stringify(updatedUser));
+      setState(prev => ({ ...prev, profile, loading: false }));
+    } catch (error) {
+      console.error('Error loading profile:', error);
+      setState(prev => ({ ...prev, loading: false }));
     }
   };
 
-  return (
-    <AuthContext.Provider value={{ state, login, logout, updateUser }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const signUp = async (email: string, password: string, fullName: string) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
+    });
+
+    if (error) throw error;
+  };
+
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) throw error;
+  };
+
+  const signOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  };
+
+  const updateProfile = async (updates: Partial<Profile>) => {
+    if (!state.user) throw new Error('No user logged in');
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', state.user.id);
+
+    if (error) throw error;
+
+    // Reload profile
+    await loadProfile(state.user.id);
+  };
+
+  const value: AuthContextType = {
+    ...state,
+    signUp,
+    signIn,
+    signOut,
+    updateProfile,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, TrendingUp, Users, BookOpen } from 'lucide-react';
+import { Sparkles, TrendingUp, Users, BookOpen, ArrowRight } from 'lucide-react';
 import SEOHead from '../components/seo/SEOHead';
 import ArticleCard from '../components/ArticleCard';
 import Sidebar from '../components/Sidebar';
@@ -11,37 +11,40 @@ import Grid from '../components/layout/Grid';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
-import { api } from '../services/api';
+import { articleService, ArticleWithAuthor } from '../services/articleService';
 
 const HomePage: React.FC = () => {
-  const { state, dispatch } = useApp();
-  const { state: authState } = useAuth();
+  const [articles, setArticles] = useState<ArticleWithAuthor[]>([]);
+  const [featuredArticles, setFeaturedArticles] = useState<ArticleWithAuthor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchArticles = async () => {
-      dispatch({ type: 'SET_LOADING', payload: true });
       try {
-        const articles = await api.getArticles();
-        dispatch({ type: 'SET_ARTICLES', payload: articles });
+        const [articlesData, featuredData] = await Promise.all([
+          articleService.getPublishedArticles(10),
+          articleService.getFeaturedArticles()
+        ]);
+        
+        setArticles(articlesData);
+        setFeaturedArticles(featuredData);
       } catch (error) {
         console.error('Failed to fetch articles:', error);
       } finally {
-        dispatch({ type: 'SET_LOADING', payload: false });
+        setLoading(false);
       }
     };
 
     fetchArticles();
-  }, [dispatch]);
+  }, []);
 
-  const featuredArticles = state.articles.filter(article => article.featured);
-  const regularArticles = state.articles.filter(article => !article.featured);
-  const trendingArticles = [...state.articles]
-    .sort((a, b) => b.likes - a.likes)
+  const trendingArticles = [...articles]
+    .sort((a, b) => b.likes_count - a.likes_count)
     .slice(0, 3);
 
-  if (state.loading) {
+  if (loading) {
     return <LoadingSpinner />;
   }
 
@@ -86,8 +89,9 @@ const HomePage: React.FC = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              {!authState.isAuthenticated && (
+              {!user && (
                 <Button variant="gradient" size="lg" className="min-w-[200px]">
+                  <ArrowRight className="w-5 h-5 ml-2" />
                   Start Reading
                 </Button>
               )}
@@ -113,7 +117,7 @@ const HomePage: React.FC = () => {
                 transition={{ delay: 0.3 }}
                 className="text-center"
               >
-                <div className="text-3xl font-bold text-primary-400 mb-2">500+</div>
+                <div className="text-3xl font-bold text-primary-400 mb-2">{articles.length}+</div>
                 <div className="text-gray-400">Published Articles</div>
               </motion.div>
               <motion.div
@@ -196,7 +200,7 @@ const HomePage: React.FC = () => {
               </div>
               
               <div className="space-y-6">
-                {regularArticles.map((article, index) => (
+                {articles.filter(article => !article.featured).map((article, index) => (
                   <motion.div
                     key={article.id}
                     initial={{ opacity: 0, y: 20 }}
