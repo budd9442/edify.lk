@@ -209,9 +209,6 @@ const HomePage: React.FC = () => {
               </div>
             </Section>
           </main>
-    </div>
-  );
-};
 
           {/* Sidebar */}
           <aside className="lg:w-80">
@@ -221,4 +218,8 @@ const HomePage: React.FC = () => {
           </aside>
         </div>
       </Container>
+    </div>
+  );
+};
+
 export default HomePage;
