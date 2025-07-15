@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import LazyImage from './layout/LazyImage';
 import { Heart, MessageCircle, Clock, BookmarkPlus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Article } from '../mock-data/articles';
@@ -35,7 +36,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
       >
         <Link to={`/article/${article.id}`}>
           <div className="aspect-w-16 aspect-h-9 relative">
-            <img
+            <LazyImage
               src={article.coverImage}
               alt={article.title}
               className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
@@ -149,7 +150,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
           </div>
           {article.coverImage && (
             <div className="w-24 h-24 flex-shrink-0">
-              <img
+              <LazyImage
                 src={article.coverImage}
                 alt={article.title}
                 className="w-full h-full object-cover rounded-lg"

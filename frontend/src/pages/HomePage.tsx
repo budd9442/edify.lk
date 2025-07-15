@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
+import SEOHead from '../components/seo/SEOHead';
 import ArticleCard from '../components/ArticleCard';
 import Sidebar from '../components/Sidebar';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -34,6 +35,12 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-dark-950">
+      <SEOHead
+        title="Edify - Discover Stories That Inspire"
+        description="Join thousands of readers exploring ideas that matter. From technology to culture, find your next great read on Edify community."
+        keywords={['blog', 'articles', 'technology', 'writing', 'community', 'ideas']}
+      />
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Main Content */}
