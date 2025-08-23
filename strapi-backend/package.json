@@ -1,5 +1,5 @@
 {
-  "name": "edify-backend",
+  "name": "strapi-backend",
   "version": "0.1.0",
   "private": true,
   "description": "A Strapi application",
@@ -9,21 +9,22 @@
     "deploy": "strapi deploy",
     "dev": "strapi develop",
     "develop": "strapi develop",
+    "seed:example": "node ./scripts/seed.js",
     "start": "strapi start",
     "strapi": "strapi",
     "upgrade": "npx @strapi/upgrade latest",
     "upgrade:dry": "npx @strapi/upgrade latest --dry"
   },
   "dependencies": {
-    "@strapi/plugin-cloud": "5.17.0",
-    "@strapi/plugin-users-permissions": "5.17.0",
-    "@strapi/strapi": "5.17.0",
-    "better-sqlite3": "^12.2.0",
-    "pg": "8.8.0",
+    "@strapi/plugin-cloud": "5.22.0",
+    "@strapi/plugin-users-permissions": "5.22.0",
+    "@strapi/strapi": "5.22.0",
+    "better-sqlite3": "11.3.0",
+    "fs-extra": "^10.0.0",
+    "mime-types": "^2.1.27",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
-    "strapi": "^3.6.11",
     "styled-components": "^6.0.0"
   },
   "devDependencies": {
@@ -37,7 +38,7 @@
     "npm": ">=6.0.0"
   },
   "strapi": {
-    "uuid": "8d518947-b13d-4071-8565-b56fe149d8ce",
-    "installId": "c93ac86b0e4d0751d26d3e99a24e364f90d7d72065fc91385f173462781ff704"
+    "uuid": "d83b5b46-ac13-4407-a5dd-6420f8917083",
+    "installId": "acb80a07a880a54d942cfb1118ddca56215f1934a5890455a74f7156e841ba01"
   }
 }

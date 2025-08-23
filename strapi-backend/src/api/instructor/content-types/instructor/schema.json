@@ -1,0 +1,37 @@
+{
+  "kind": "collectionType",
+  "collectionName": "instructors",
+  "info": {
+    "singularName": "instructor",
+    "pluralName": "instructors",
+    "displayName": "Instructor"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "bio": {
+      "type": "richtext"
+    },
+    "profile_picture": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "blogs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::blog.blog",
+      "mappedBy": "instructor"
+    }
+  }
+}
