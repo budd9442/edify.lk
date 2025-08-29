@@ -16,7 +16,6 @@ import {
   Rss
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { notificationService } from '../services/notificationService';
 import SearchBar from './SearchBar';
 import NotificationDropdown from './notifications/NotificationDropdown';
 
@@ -30,30 +29,19 @@ const Header: React.FC = () => {
 
   useEffect(() => {
     if (state.isAuthenticated) {
-      loadUnreadCount();
-      
-      // Subscribe to real-time notifications
-      const unsubscribe = notificationService.subscribeToNotifications('1', () => {
-        loadUnreadCount();
-      });
-
-      return unsubscribe;
+      // TODO: Load unread notifications count from PayloadCMS
+      // loadUnreadCount();
     }
   }, [state.isAuthenticated]);
 
-  const loadUnreadCount = async () => {
+  const handleLogout = async () => {
     try {
-      const count = await notificationService.getUnreadCount('1');
-      setUnreadCount(count);
+      await logout();
+      navigate('/');
+      setIsProfileOpen(false);
     } catch (error) {
-      console.error('Failed to load unread count:', error);
+      console.error('Logout failed:', error);
     }
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-    setIsProfileOpen(false);
   };
 
   return (
@@ -98,55 +86,57 @@ const Header: React.FC = () => {
                   <PenTool className="w-4 h-4" />
                   <span>Write</span>
                 </Link>
-                
+
                 {/* Notifications */}
                 <div className="relative">
-                  <button 
+                  <button
                     onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                    className="relative p-2 text-gray-400 hover:text-white transition-colors"
+                    className="relative p-2 text-gray-300 hover:text-white transition-colors focus:outline-none"
                   >
                     <Bell className="w-5 h-5" />
                     {unreadCount > 0 && (
-                      <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute -top-1 -right-1 w-5 h-5 bg-primary-500 text-white text-xs rounded-full flex items-center justify-center font-medium"
-                      >
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                         {unreadCount > 9 ? '9+' : unreadCount}
-                      </motion.span>
+                      </span>
                     )}
                   </button>
-
-                  <NotificationDropdown
-                    isOpen={isNotificationOpen}
-                    onClose={() => setIsNotificationOpen(false)}
-                    unreadCount={unreadCount}
-                    onUnreadCountChange={setUnreadCount}
-                  />
+                  
+                  {isNotificationOpen && (
+                    <NotificationDropdown
+                      onClose={() => setIsNotificationOpen(false)}
+                    />
+                  )}
                 </div>
 
+                {/* Profile Menu */}
                 <div className="relative">
                   <button
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
-                    className="w-8 h-8 rounded-full overflow-hidden border-2 border-primary-500"
+                    className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors focus:outline-none"
                   >
-                    <img
-                      src={state.user?.avatar}
-                      alt={state.user?.name}
-                      className="w-full h-full object-cover"
-                    />
+                    <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
+                      {state.user?.avatar ? (
+                        <img
+                          src={state.user.avatar.url}
+                          alt={state.user.name}
+                          className="w-8 h-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-4 h-4 text-white" />
+                      )}
+                    </div>
+                    <span className="hidden md:block">{state.user?.name}</span>
                   </button>
 
                   {isProfileOpen && (
                     <motion.div
-                      initial={{ opacity: 0, y: -10 }}
+                      initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute right-0 mt-2 w-48 bg-dark-900 rounded-lg shadow-lg border border-dark-800 py-1"
+                      className="absolute right-0 mt-2 w-48 bg-dark-900 border border-dark-800 rounded-lg shadow-lg py-2 z-50"
                     >
                       <Link
                         to="/profile"
-                        className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-dark-800 transition-colors"
+                        className="flex items-center space-x-3 px-4 py-2 text-gray-300 hover:text-white hover:bg-dark-800 transition-colors"
                         onClick={() => setIsProfileOpen(false)}
                       >
                         <User className="w-4 h-4" />
@@ -154,7 +144,7 @@ const Header: React.FC = () => {
                       </Link>
                       <Link
                         to="/settings"
-                        className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-dark-800 transition-colors"
+                        className="flex items-center space-x-3 px-4 py-2 text-gray-300 hover:text-white hover:bg-dark-800 transition-colors"
                         onClick={() => setIsProfileOpen(false)}
                       >
                         <Settings className="w-4 h-4" />
@@ -162,7 +152,7 @@ const Header: React.FC = () => {
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-dark-800 transition-colors w-full text-left"
+                        className="w-full flex items-center space-x-3 px-4 py-2 text-gray-300 hover:text-white hover:bg-dark-800 transition-colors"
                       >
                         <LogOut className="w-4 h-4" />
                         <span>Logout</span>
@@ -172,25 +162,33 @@ const Header: React.FC = () => {
                 </div>
               </>
             ) : (
-              <Link
-                to="/login"
-                className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
-              >
-                Sign In
-              </Link>
+              <div className="flex items-center space-x-4">
+                <Link
+                  to="/login"
+                  className="text-gray-300 hover:text-white transition-colors focus:outline-none"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
+                >
+                  Get Started
+                </Link>
+              </div>
             )}
 
-            {/* Mobile menu button */}
+            {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 text-gray-400 hover:text-white"
+              className="md:hidden p-2 text-gray-300 hover:text-white transition-colors focus:outline-none"
             >
               {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Navigation */}
+        {/* Mobile Menu */}
         {isMenuOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
@@ -198,45 +196,50 @@ const Header: React.FC = () => {
             exit={{ opacity: 0, height: 0 }}
             className="md:hidden py-4 border-t border-dark-800"
           >
-            <div className="flex flex-col space-y-4">
-              {/* Mobile Search */}
-              <div className="px-2">
-                <SearchBar />
-              </div>
-              
+            <div className="space-y-4">
               <Link
                 to="/"
-                className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
+                className="block text-gray-300 hover:text-white transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <Home className="w-4 h-4" />
-                <span>Home</span>
+                <Home className="inline w-4 h-4 mr-2" />
+                Home
               </Link>
               <Link
                 to="/feed"
-                className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
+                className="block text-gray-300 hover:text-white transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <Rss className="w-4 h-4" />
-                <span>My Feed</span>
+                <Rss className="inline w-4 h-4 mr-2" />
+                My Feed
               </Link>
               <Link
                 to="/explore"
-                className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
+                className="block text-gray-300 hover:text-white transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
-                <Compass className="w-4 h-4" />
-                <span>Explore</span>
+                <Compass className="inline w-4 h-4 mr-2" />
+                Explore
               </Link>
               {state.isAuthenticated && (
-                <Link
-                  to="/write"
-                  className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <PenTool className="w-4 h-4" />
-                  <span>Write</span>
-                </Link>
+                <>
+                  <Link
+                    to="/write"
+                    className="block text-gray-300 hover:text-white transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <PenTool className="inline w-4 h-4 mr-2" />
+                    Write
+                  </Link>
+                  <Link
+                    to="/profile"
+                    className="block text-gray-300 hover:text-white transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <User className="inline w-4 h-4 mr-2" />
+                    Profile
+                  </Link>
+                </>
               )}
             </div>
           </motion.div>

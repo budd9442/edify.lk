@@ -1,7 +1,0 @@
-.env
-node_modules/
-build/
-dist/
-pgdata/
-.DS_Store
-.env.*

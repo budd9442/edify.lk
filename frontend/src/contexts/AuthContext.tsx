@@ -1,50 +1,45 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  bio: string;
-  role: 'user' | 'admin';
-  followersCount: number;
-  followingCount: number;
-  articlesCount: number;
-  verified: boolean;
-}
+import { User, LoginCredentials, RegisterData } from '../types/payload';
+import payloadApi from '../services/payloadApi';
 
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
+  error: string | null;
 }
 
 type AuthAction =
-  | { type: 'LOGIN_START' }
+  | { type: 'AUTH_START' }
   | { type: 'LOGIN_SUCCESS'; payload: User }
-  | { type: 'LOGIN_FAILURE' }
+  | { type: 'REGISTER_SUCCESS'; payload: User }
+  | { type: 'AUTH_FAILURE'; payload: string }
   | { type: 'LOGOUT' }
-  | { type: 'UPDATE_USER'; payload: Partial<User> };
+  | { type: 'UPDATE_USER'; payload: Partial<User> }
+  | { type: 'CLEAR_ERROR' };
 
 const initialState: AuthState = {
   user: null,
   isAuthenticated: false,
   loading: false,
+  error: null,
 };
 
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
-    case 'LOGIN_START':
-      return { ...state, loading: true };
+    case 'AUTH_START':
+      return { ...state, loading: true, error: null };
     case 'LOGIN_SUCCESS':
+    case 'REGISTER_SUCCESS':
       return {
         ...state,
         user: action.payload,
         isAuthenticated: true,
         loading: false,
+        error: null,
       };
-    case 'LOGIN_FAILURE':
-      return { ...state, loading: false };
+    case 'AUTH_FAILURE':
+      return { ...state, loading: false, error: action.payload };
     case 'LOGOUT':
       return { ...state, user: null, isAuthenticated: false };
     case 'UPDATE_USER':
@@ -52,6 +47,8 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         ...state,
         user: state.user ? { ...state.user, ...action.payload } : null,
       };
+    case 'CLEAR_ERROR':
+      return { ...state, error: null };
     default:
       return state;
   }
@@ -59,9 +56,11 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 
 const AuthContext = createContext<{
   state: AuthState;
-  login: (provider: 'google' | 'linkedin') => Promise<void>;
-  logout: () => void;
+  login: (credentials: LoginCredentials) => Promise<void>;
+  register: (userData: RegisterData) => Promise<void>;
+  logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
+  clearError: () => void;
 } | null>(null);
 
 export const useAuth = () => {
@@ -76,51 +75,72 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('edify-user');
-    if (savedUser) {
-      dispatch({ type: 'LOGIN_SUCCESS', payload: JSON.parse(savedUser) });
-    }
+    const checkAuth = async () => {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        try {
+          const user = await payloadApi.getCurrentUser();
+          dispatch({ type: 'LOGIN_SUCCESS', payload: user });
+        } catch (error) {
+          console.error('Failed to get current user:', error);
+          payloadApi.clearToken();
+        }
+      }
+    };
+
+    checkAuth();
   }, []);
 
-  const login = async (provider: 'google' | 'linkedin') => {
-    dispatch({ type: 'LOGIN_START' });
+  const login = async (credentials: LoginCredentials) => {
+    dispatch({ type: 'AUTH_START' });
     
-    // Simulate API call
-    setTimeout(() => {
-      const mockUser: User = {
-        id: '1',
-        name: 'Alex Thompson',
-        email: 'alex@example.com',
-        avatar: 'https://media.licdn.com/dms/image/v2/D4E03AQFM2bia86LEpQ/profile-displayphoto-shrink_100_100/B4EZQ1W9ILHEAU-/0/1736062004138?e=1756944000&v=beta&t=NRca3iZVIMWnDQX4DSCf3jjF73JgMJJkV_QeUUxxPiY',
-        bio: 'Technology enthusiast and creative writer exploring the intersection of innovation and human experience.',
-        role: 'user',
-        followersCount: 1247,
-        followingCount: 89,
-        articlesCount: 12,
-        verified: false,
-      };
-      
-      localStorage.setItem('edify-user', JSON.stringify(mockUser));
-      dispatch({ type: 'LOGIN_SUCCESS', payload: mockUser });
-    }, 1000);
+    try {
+      const response = await payloadApi.login(credentials.email, credentials.password);
+      dispatch({ type: 'LOGIN_SUCCESS', payload: response.user });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
+    }
   };
 
-  const logout = () => {
-    localStorage.removeItem('edify-user');
-    dispatch({ type: 'LOGOUT' });
+  const register = async (userData: RegisterData) => {
+    dispatch({ type: 'AUTH_START' });
+    
+    try {
+      const response = await payloadApi.register(userData);
+      dispatch({ type: 'REGISTER_SUCCESS', payload: response.user });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Registration failed';
+      dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await payloadApi.logout();
+    } catch (error) {
+      console.warn('Logout request failed:', error);
+    } finally {
+      dispatch({ type: 'LOGOUT' });
+    }
   };
 
   const updateUser = (updates: Partial<User>) => {
     dispatch({ type: 'UPDATE_USER', payload: updates });
-    if (state.user) {
-      const updatedUser = { ...state.user, ...updates };
-      localStorage.setItem('edify-user', JSON.stringify(updatedUser));
-    }
   };
 
-  return (
-    <AuthContext.Provider value={{ state, login, logout, updateUser }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const clearError = () => {
+    dispatch({ type: 'CLEAR_ERROR' });
+  };
+
+  const value = {
+    state,
+    login,
+    register,
+    logout,
+    updateUser,
+    clearError,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
