@@ -1,5 +1,5 @@
 import express from 'express';
-import payload from 'payload';
+// import payload from 'payload';
 import { resolve } from 'path';
 import { config as dotenvConfig } from 'dotenv';
 import cors from 'cors';
@@ -14,7 +14,7 @@ dotenvConfig();
 
 // Create Winston logger
 const logger = createLogger({
-  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  level: process.env['NODE_ENV'] === 'production' ? 'info' : 'debug',
   format: format.combine(
     format.timestamp(),
     format.errors({ stack: true }),
@@ -28,7 +28,7 @@ const logger = createLogger({
 });
 
 // Add console transport for development
-if (process.env.NODE_ENV !== 'production') {
+if (process.env['NODE_ENV'] !== 'production') {
   logger.add(new transports.Console({
     format: format.combine(
       format.colorize(),
@@ -54,8 +54,8 @@ app.use(helmet({
 // CORS configuration
 app.use(cors({
   origin: [
-    process.env.FRONTEND_URL || 'http://localhost:5173',
-    process.env.ADMIN_URL || 'http://localhost:3000',
+    process.env['FRONTEND_URL'] || 'http://localhost:5173',
+    process.env['ADMIN_URL'] || 'http://localhost:3000',
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -65,7 +65,7 @@ app.use(cors({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // limit each IP to 100 requests per windowMs in production
+  max: process.env['NODE_ENV'] === 'production' ? 100 : 1000, // limit each IP to 100 requests per windowMs in production
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -92,21 +92,20 @@ app.get('/health', (req, res) => {
     status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development',
+    environment: process.env['NODE_ENV'] || 'development',
   });
 });
 
 // Initialize PayloadCMS
 const start = async () => {
   try {
-    await payload.init({
-      secret: process.env.PAYLOAD_SECRET || 'your-secret-key',
-      express: app,
-      config: resolve(__dirname, 'payload.config.ts'),
-      onInit: () => {
-        logger.info('PayloadCMS initialized successfully');
-      },
-    });
+    // await payload.init({
+    //   secret: process.env['PAYLOAD_SECRET'] || 'your-secret-key',
+    //   express: app,
+    //   onInit: () => {
+    //     logger.info('PayloadCMS initialized successfully');
+    //   },
+    // });
 
     // Serve static files
     app.use('/media', express.static(resolve(__dirname, '../media')));
@@ -130,8 +129,8 @@ const start = async () => {
       }
 
       res.status(err.status || 500).json({
-        error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
-        ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }),
+        error: process.env['NODE_ENV'] === 'production' ? 'Internal server error' : err.message,
+        ...(process.env['NODE_ENV'] !== 'production' && { stack: err.stack }),
       });
     });
 
@@ -140,14 +139,14 @@ const start = async () => {
       res.status(404).json({ error: 'Route not found' });
     });
 
-    const PORT = process.env.PORT || 3000;
-    const HOST = process.env.HOST || '0.0.0.0';
+    const PORT = parseInt(process.env['PORT'] || '3000', 10);
+    const HOST = process.env['HOST'] || '0.0.0.0';
 
     app.listen(PORT, HOST, () => {
       logger.info(`🚀 Server running on http://${HOST}:${PORT}`);
       logger.info(`📚 PayloadCMS Admin: http://${HOST}:${PORT}/admin`);
       logger.info(`🔍 Health Check: http://${HOST}:${PORT}/health`);
-      logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`🌍 Environment: ${process.env['NODE_ENV'] || 'development'}`);
     });
 
   } catch (error) {
