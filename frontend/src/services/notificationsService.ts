@@ -13,81 +13,136 @@ export interface NotificationItem {
 
 export const notificationsService = {
   async list(): Promise<NotificationItem[]> {
-    const { data: session } = await supabase.auth.getUser();
-    const userId = session.user?.id;
-    if (!userId) return [];
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('id,user_id,type,title,message,read,action_url,created_at')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return (data || []).map((n: any) => ({
-      id: n.id,
-      user_id: n.user_id,
-      type: n.type,
-      title: n.title,
-      message: n.message,
-      read: !!n.read,
-      link: n.action_url,
-      created_at: n.created_at,
-    }));
+    try {
+      const { data: session } = await supabase.auth.getUser();
+      const userId = session.user?.id;
+      if (!userId) {
+        console.warn('No user ID for notifications');
+        return [];
+      }
+      
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('id,user_id,type,title,message,read,action_url,created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching notifications:', error);
+        return [];
+      }
+      
+      return (data || []).map((n: any) => ({
+        id: n.id,
+        user_id: n.user_id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        read: !!n.read,
+        link: n.action_url,
+        created_at: n.created_at,
+      }));
+    } catch (error) {
+      console.error('Exception fetching notifications:', error);
+      return [];
+    }
   },
 
   async markAsRead(notificationId: string): Promise<void> {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read: true })
-      .eq('id', notificationId);
-    if (error) throw error;
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', notificationId);
+      
+      if (error) {
+        console.error('Error marking notification as read:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Exception marking notification as read:', error);
+      throw error;
+    }
   },
 
   async markAllAsRead(): Promise<void> {
-    const { data: session } = await supabase.auth.getUser();
-    const userId = session.user?.id;
-    if (!userId) return;
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read: true })
-      .eq('user_id', userId)
-      .eq('read', false);
-    if (error) throw error;
+    try {
+      const { data: session } = await supabase.auth.getUser();
+      const userId = session.user?.id;
+      if (!userId) {
+        console.warn('No user ID for marking all notifications as read');
+        return;
+      }
+      
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('user_id', userId)
+        .eq('read', false);
+      
+      if (error) {
+        console.error('Error marking all notifications as read:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Exception marking all notifications as read:', error);
+      throw error;
+    }
   },
 
   async unreadCount(): Promise<number> {
-    const { data: session } = await supabase.auth.getUser();
-    const userId = session.user?.id;
-    if (!userId) return 0;
-    const { count, error } = await supabase
-      .from('notifications')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('read', false);
-    if (error) throw error;
-    return count || 0;
+    try {
+      const { data: session } = await supabase.auth.getUser();
+      const userId = session.user?.id;
+      if (!userId) {
+        console.warn('No user ID for unread count');
+        return 0;
+      }
+      
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('read', false);
+      
+      if (error) {
+        console.error('Error fetching unread count:', error);
+        return 0;
+      }
+      
+      return count || 0;
+    } catch (error) {
+      console.error('Exception fetching unread count:', error);
+      return 0;
+    }
   },
 
   subscribe(callback: (notification: NotificationItem) => void): () => void {
-    const channel = supabase
-      .channel('notifications-ch')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
-        const n = payload.new as any;
-        callback({
-          id: n.id,
-          user_id: n.user_id,
-          type: n.type,
-          title: n.title,
-          message: n.message,
-          read: !!n.read,
-          link: n.action_url,
-          created_at: n.created_at,
-        });
-      })
-      .subscribe();
+    try {
+      const channel = supabase
+        .channel('notifications-ch')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
+          const n = payload.new as any;
+          callback({
+            id: n.id,
+            user_id: n.user_id,
+            type: n.type,
+            title: n.title,
+            message: n.message,
+            read: !!n.read,
+            link: n.action_url,
+            created_at: n.created_at,
+          });
+        })
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch (error) {
+      console.error('Exception setting up notification subscription:', error);
+      return () => {}; // Return empty unsubscribe function
+    }
   },
 };
 

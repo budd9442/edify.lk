@@ -76,66 +76,91 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const init = async () => {
-      const { data } = await supabase.auth.getUser();
-      const authUser = data.user;
-      if (authUser) {
-        // Fetch role from profiles
-        let role: any = 'user';
-        try {
-          const { data: prof } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', authUser.id)
-            .single();
-          role = (prof as any)?.role || 'user';
-        } catch (e) {
-          role = 'user';
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) {
+          console.warn('Auth initialization error:', error.message);
+          return;
         }
-        const mappedUser: User = {
-          id: authUser.id,
-          createdAt: authUser.created_at ?? new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          name: (authUser.user_metadata?.name as string) || 'User',
-          email: authUser.email || '',
-          avatar: authUser.user_metadata?.avatar_url
-            ? {
-                id: 'avatar',
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                filename: 'avatar',
-                alt: 'avatar',
-                mimeType: 'image/png',
-                filesize: 0,
-                url: authUser.user_metadata?.avatar_url as string,
-              }
-            : undefined,
-          role: role as any,
-          verified: !!authUser.email_confirmed_at,
-          stats: { followersCount: 0, followingCount: 0, articlesCount: 0 },
-        };
-        dispatch({ type: 'LOGIN_SUCCESS', payload: mappedUser });
+        
+        const authUser = data.user;
+        if (authUser) {
+          // Fetch role from profiles
+          let role: any = 'user';
+          try {
+            const { data: prof, error: profError } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', authUser.id)
+              .single();
+            
+            if (profError && profError.code !== 'PGRST116') {
+              console.warn('Profile fetch error:', profError.message);
+            } else {
+              role = (prof as any)?.role || 'user';
+            }
+          } catch (e) {
+            console.warn('Profile fetch exception:', e);
+            role = 'user';
+          }
+          
+          const mappedUser: User = {
+            id: authUser.id,
+            createdAt: authUser.created_at ?? new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            name: (authUser.user_metadata?.name as string) || authUser.email?.split('@')[0] || 'User',
+            email: authUser.email || '',
+            avatar: authUser.user_metadata?.avatar_url
+              ? {
+                  id: 'avatar',
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  filename: 'avatar',
+                  alt: 'avatar',
+                  mimeType: 'image/png',
+                  filesize: 0,
+                  url: authUser.user_metadata?.avatar_url as string,
+                }
+              : undefined,
+            role: role as any,
+            verified: !!authUser.email_confirmed_at,
+            stats: { followersCount: 0, followingCount: 0, articlesCount: 0 },
+          };
+          dispatch({ type: 'LOGIN_SUCCESS', payload: mappedUser });
+        }
+      } catch (error) {
+        console.warn('Auth initialization failed:', error);
       }
 
-      const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.id);
+        
         const sUser = session?.user;
         if (sUser) {
           // Fetch role from profiles
           let roleNow: any = 'user';
           try {
-            const { data: prof } = await supabase
+            const { data: prof, error: profError } = await supabase
               .from('profiles')
               .select('role')
               .eq('id', sUser.id)
               .single();
-            roleNow = (prof as any)?.role || 'user';
+            
+            if (profError && profError.code !== 'PGRST116') {
+              console.warn('Profile fetch error in auth change:', profError.message);
+            } else {
+              roleNow = (prof as any)?.role || 'user';
+            }
           } catch (e) {
+            console.warn('Profile fetch exception in auth change:', e);
             roleNow = 'user';
           }
+          
           const mapped: User = {
             id: sUser.id,
             createdAt: sUser.created_at ?? new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            name: (sUser.user_metadata?.name as string) || 'User',
+            name: (sUser.user_metadata?.name as string) || sUser.email?.split('@')[0] || 'User',
             email: sUser.email || '',
             avatar: sUser.user_metadata?.avatar_url
               ? {
@@ -175,22 +200,62 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         email: credentials.email,
         password: credentials.password,
       });
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Login error:', error);
+        throw error;
+      }
+      
       const authUser = data.user;
-      if (!authUser) throw new Error('No user returned');
+      if (!authUser) {
+        throw new Error('No user returned from authentication');
+      }
+      
+      // Fetch role from profiles
+      let role: any = 'user';
+      try {
+        const { data: prof, error: profError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', authUser.id)
+          .single();
+        
+        if (profError && profError.code !== 'PGRST116') {
+          console.warn('Profile fetch error during login:', profError.message);
+        } else {
+          role = (prof as any)?.role || 'user';
+        }
+      } catch (e) {
+        console.warn('Profile fetch exception during login:', e);
+        role = 'user';
+      }
+      
       const mappedUser: User = {
         id: authUser.id,
         createdAt: authUser.created_at ?? new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        name: (authUser.user_metadata?.name as string) || 'User',
+        name: (authUser.user_metadata?.name as string) || authUser.email?.split('@')[0] || 'User',
         email: authUser.email || '',
-        role: 'user',
+        avatar: authUser.user_metadata?.avatar_url
+          ? {
+              id: 'avatar',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              filename: 'avatar',
+              alt: 'avatar',
+              mimeType: 'image/png',
+              filesize: 0,
+              url: authUser.user_metadata?.avatar_url as string,
+            }
+          : undefined,
+        role: role as any,
         verified: !!authUser.email_confirmed_at,
         stats: { followersCount: 0, followingCount: 0, articlesCount: 0 },
       };
       dispatch({ type: 'LOGIN_SUCCESS', payload: mappedUser });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      console.error('Login failed:', errorMessage);
       dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
     }
   };
@@ -204,25 +269,53 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         password: userData.password,
         options: { data: { name: userData.name } },
       });
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Registration error:', error);
+        throw error;
+      }
+      
       const sUser = data.user;
-      if (!sUser) throw new Error('Registration did not return a user');
+      if (!sUser) {
+        throw new Error('Registration did not return a user');
+      }
+      
       // Create profile row for the new user
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: sUser.id,
-          name: userData.name,
-          bio: userData.bio || '',
-          role: 'user',
-        }, { onConflict: 'id' });
-      if (profileError) throw profileError;
+      try {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: sUser.id,
+            name: userData.name,
+            bio: userData.bio || '',
+            role: 'user',
+          }, { onConflict: 'id' });
+        
+        if (profileError) {
+          console.warn('Profile creation error (non-fatal):', profileError.message);
+        }
+      } catch (profileErr) {
+        console.warn('Profile creation exception (non-fatal):', profileErr);
+      }
+      
       const mapped: User = {
         id: sUser.id,
         createdAt: sUser.created_at ?? new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         name: (sUser.user_metadata?.name as string) || userData.name,
         email: sUser.email || userData.email,
+        avatar: sUser.user_metadata?.avatar_url
+          ? {
+              id: 'avatar',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              filename: 'avatar',
+              alt: 'avatar',
+              mimeType: 'image/png',
+              filesize: 0,
+              url: sUser.user_metadata?.avatar_url as string,
+            }
+          : undefined,
         role: 'user',
         verified: !!sUser.email_confirmed_at,
         stats: { followersCount: 0, followingCount: 0, articlesCount: 0 },
@@ -230,6 +323,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       dispatch({ type: 'REGISTER_SUCCESS', payload: mapped });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Registration failed';
+      console.error('Registration failed:', errorMessage);
       dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
     }
   };
