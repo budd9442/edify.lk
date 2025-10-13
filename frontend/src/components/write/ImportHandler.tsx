@@ -2,10 +2,9 @@ import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Upload, FileText, Download, AlertCircle, CheckCircle } from 'lucide-react';
 import { draftService } from '../../services/draftService';
-import { StrapiBlock } from '../../mock-data/strapiBlocks';
 
 interface ImportHandlerProps {
-  onImportComplete: (content: StrapiBlock[], title: string) => void;
+  onImportComplete: (contentHtml: string, title: string) => void;
   onClose: () => void;
 }
 
@@ -70,7 +69,7 @@ const ImportHandler: React.FC<ImportHandlerProps> = ({ onImportComplete, onClose
     
     try {
       const result = await draftService.importFromDocument(file);
-      onImportComplete(result.content, result.title);
+      onImportComplete(result.contentHtml, result.title);
     } catch (err) {
       setError('Failed to import document. Please try again.');
     } finally {

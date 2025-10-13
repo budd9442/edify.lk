@@ -68,6 +68,11 @@ const Header: React.FC = () => {
             <Link to="/explore" className="text-gray-300 hover:text-white transition-colors focus:outline-none">
               Explore
             </Link>
+              {state.isAuthenticated && (state.user?.role === 'editor' || state.user?.role === 'admin') && (
+                <Link to="/editor" className="text-primary-400 hover:text-primary-300 transition-colors focus:outline-none">
+                  Editor
+                </Link>
+              )}
           </nav>
 
           {/* Search Bar */}
@@ -231,6 +236,15 @@ const Header: React.FC = () => {
                     <PenTool className="inline w-4 h-4 mr-2" />
                     Write
                   </Link>
+                  {(state.user?.role === 'editor' || state.user?.role === 'admin') && (
+                    <Link
+                      to="/editor"
+                      className="block text-primary-400 hover:text-primary-300 transition-colors"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Editor
+                    </Link>
+                  )}
                   <Link
                     to="/profile"
                     className="block text-gray-300 hover:text-white transition-colors"

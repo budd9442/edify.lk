@@ -17,7 +17,9 @@ import {
 import { Article } from '../mock-data/articles';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
-import { api } from '../services/api';
+import { articlesService } from '../services/articlesService';
+import supabase from '../services/supabaseClient';
+import { commentsService } from '../services/commentsService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import QuizCard from '../components/quiz/QuizCard';
 
@@ -35,8 +37,39 @@ const ArticlePage: React.FC = () => {
       if (!id) return;
       
       try {
-        const fetchedArticle = await api.getArticle(id);
-        setArticle(fetchedArticle);
+        const data = await articlesService.getById(id);
+        if (!data) {
+          setArticle(null);
+        } else {
+          // fetch author profile
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id,name,avatar_url,bio,followers_count,articles_count')
+            .eq('id', (data as any).authorId)
+            .single();
+          setArticle({
+            id: data.id,
+            title: data.title,
+            excerpt: data.excerpt,
+            content: data.contentHtml,
+            author: {
+              id: (data as any).authorId,
+              name: profile?.name || 'Unknown',
+              avatar: profile?.avatar_url || '/logo.png',
+              bio: profile?.bio || '',
+              followersCount: profile?.followers_count ?? 0,
+              articlesCount: profile?.articles_count ?? 0,
+            },
+            publishedAt: data.publishedAt || new Date().toISOString(),
+            readingTime: 5,
+            likes: data.likes,
+            comments: [],
+            tags: data.tags,
+            featured: data.featured,
+            status: 'published',
+            coverImage: data.coverImage || '/logo.png',
+          });
+        }
       } catch (error) {
         console.error('Failed to fetch article:', error);
       } finally {
@@ -65,15 +98,20 @@ const ArticlePage: React.FC = () => {
 
     setCommentLoading(true);
     try {
-      const newComment = {
-        id: Date.now().toString(),
+      const created = await commentsService.create({
+        articleId: article.id,
+        userId: authState.user.id,
         content: comment,
+      });
+      const newComment = {
+        id: created.id,
+        content: created.content,
         author: {
           id: authState.user.id,
           name: authState.user.name,
           avatar: authState.user.avatar,
         },
-        createdAt: new Date().toISOString(),
+        createdAt: created.created_at,
         likes: 0,
       };
 

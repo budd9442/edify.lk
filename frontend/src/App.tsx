@@ -12,6 +12,7 @@ import SearchPage from './pages/SearchPage';
 import FeedPage from './pages/FeedPage';
 import ExplorePage from './pages/ExplorePage';
 import WriteDashboard from './pages/WriteDashboard';
+import EditorDashboard from './pages/EditorDashboard';
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
                 <Route path="/feed" element={<FeedPage />} />
                 <Route path="/explore" element={<ExplorePage />} />
                 <Route path="/write" element={<WriteDashboard />} />
+                <Route path="/editor" element={<EditorDashboard />} />
               </Routes>
             </div>
           </Router>

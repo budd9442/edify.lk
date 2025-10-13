@@ -4,7 +4,9 @@ import ArticleCard from '../components/ArticleCard';
 import Sidebar from '../components/Sidebar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useApp } from '../contexts/AppContext';
-import { api } from '../services/api';
+import { articlesService } from '../services/articlesService';
+import supabase from '../services/supabaseClient';
+import type { Article } from '../mock-data/articles';
 
 const HomePage: React.FC = () => {
   const { state, dispatch } = useApp();
@@ -13,8 +15,39 @@ const HomePage: React.FC = () => {
     const fetchArticles = async () => {
       dispatch({ type: 'SET_LOADING', payload: true });
       try {
-        const articles = await api.getArticles();
-        dispatch({ type: 'SET_ARTICLES', payload: articles });
+        const items = await articlesService.listAll();
+        const authorIds = Array.from(new Set(items.map(i => i.authorId)));
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id,name,avatar_url,bio,followers_count,articles_count')
+          .in('id', authorIds);
+        const idToProfile = new Map((profiles || []).map((p: any) => [p.id, p]));
+        const mapped: Article[] = items.map(item => {
+          const p: any = idToProfile.get(item.authorId);
+          return {
+            id: item.id,
+            title: item.title,
+            excerpt: item.excerpt,
+            content: '',
+            author: {
+              id: item.authorId,
+              name: p?.name || 'Unknown',
+              avatar: p?.avatar_url || '/logo.png',
+              bio: p?.bio || '',
+              followersCount: p?.followers_count ?? 0,
+              articlesCount: p?.articles_count ?? 0,
+            },
+            publishedAt: item.publishedAt || new Date().toISOString(),
+            readingTime: 5,
+            likes: item.likes,
+            comments: [],
+            tags: item.tags,
+            featured: item.featured,
+            status: 'published',
+            coverImage: item.coverImage || '/logo.png',
+          };
+        });
+        dispatch({ type: 'SET_ARTICLES', payload: mapped });
       } catch (error) {
         console.error('Failed to fetch articles:', error);
       } finally {

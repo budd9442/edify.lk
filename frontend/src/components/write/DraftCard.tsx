@@ -126,7 +126,16 @@ const DraftCard: React.FC<DraftCardProps> = ({
       {/* Content Preview */}
       <div className="mb-4">
         <p className="text-gray-400 text-sm line-clamp-2">
-          {draft.content[0]?.children?.[0]?.text || 'No content yet...'}
+          {(() => {
+            const text = (draft.contentHtml || '')
+              .replace(/<style[\s\S]*?<\/style>/gi, '')
+              .replace(/<script[\s\S]*?<\/script>/gi, '')
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/&nbsp;/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+            return text || 'No content yet...';
+          })()}
         </p>
       </div>
 

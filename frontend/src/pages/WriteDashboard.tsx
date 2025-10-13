@@ -1,12 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   PenTool, 
   Upload, 
   FileText, 
-  Plus, 
-  Target, 
-  Award,
   TrendingUp,
   Users,
   Eye,
@@ -14,13 +11,13 @@ import {
   Send
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { Draft, StrapiBlock, ProfileProgress, profileTasks } from '../mock-data/strapiBlocks';
+import { Draft } from '../mock-data/strapiBlocks';
 import { draftService } from '../services/draftService';
-import { StrapiBlockUtils } from '../services/strapiBlockUtils';
-import BlockEditor from '../components/write/BlockEditor';
-import BlockRenderer from '../components/write/BlockRenderer';
+import QuillEditor from '../components/write/QuillEditor';
+// BlockRenderer is not used in HTML flow
 import ImportHandler from '../components/write/ImportHandler';
-import DraftCard from '../components/write/DraftCard';
+// Removed DraftCard in favor of horizontal list rows
+import { formatDistanceToNow } from 'date-fns';
 
 const WriteDashboard: React.FC = () => {
   const { state: authState } = useAuth();
@@ -30,40 +27,25 @@ const WriteDashboard: React.FC = () => {
   const [currentDraft, setCurrentDraft] = useState<Partial<Draft> | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [autoSavedAt, setAutoSavedAt] = useState<string | null>(null);
+  const saveTimerRef = useRef<number | null>(null);
 
   // Mock profile progress
-  const [profileProgress] = useState<ProfileProgress>({
-    userId: '1',
-    completedTasks: ['profile_picture_added', 'bio_written', 'first_article_published'],
-    badges: [
-      {
-        id: 'badge-1',
-        name: 'First Steps',
-        description: 'Completed profile setup',
-        icon: '🎯',
-        earnedAt: '2024-01-10T12:00:00Z',
-        rarity: 'common'
-      },
-      {
-        id: 'badge-2',
-        name: 'Author',
-        description: 'Published first article',
-        icon: '✍️',
-        earnedAt: '2024-01-12T15:30:00Z',
-        rarity: 'rare'
-      }
-    ],
-    totalScore: 75
-  });
+  // Removed profile progress state
 
   useEffect(() => {
     loadDrafts();
-  }, []);
+  }, [authState.isAuthenticated, authState.user?.id]);
 
   const loadDrafts = async () => {
     setLoading(true);
     try {
-      const data = await draftService.getDrafts('1');
+      if (!authState.isAuthenticated || !authState.user?.id) {
+        setDrafts([]);
+        return;
+      }
+      const data = await draftService.getDrafts(authState.user.id);
       setDrafts(data);
     } catch (error) {
       console.error('Failed to load drafts:', error);
@@ -75,17 +57,17 @@ const WriteDashboard: React.FC = () => {
   const handleStartNew = () => {
     setCurrentDraft({
       title: '',
-      content: [{ type: 'paragraph', children: [{ text: '' }] }],
+      contentHtml: '',
       tags: [],
       status: 'draft'
     });
     setActiveView('editor');
   };
 
-  const handleImportComplete = (content: StrapiBlock[], title: string) => {
+  const handleImportComplete = (contentHtml: string, title: string) => {
     setCurrentDraft({
       title,
-      content,
+      contentHtml: contentHtml || '',
       tags: [],
       status: 'draft'
     });
@@ -124,16 +106,28 @@ const WriteDashboard: React.FC = () => {
   };
 
   const handleSaveDraft = async () => {
-    if (!currentDraft || !currentDraft.title || !currentDraft.content) return;
+    if (!currentDraft || currentDraft.contentHtml === undefined) return;
+    const hasTitle = !!(currentDraft.title && currentDraft.title.trim().length > 0);
+    const hasContent = !!(currentDraft.contentHtml && currentDraft.contentHtml.trim().length > 0);
+    if (!hasTitle && !hasContent) return;
+    if (saving) return;
 
+    if (!authState.isAuthenticated || !authState.user?.id) {
+      setSaveError('Please sign in to save drafts.');
+      return;
+    }
     setSaving(true);
+    setSaveError(null);
     try {
+      const wasNew = !currentDraft.id;
       const savedDraft = await draftService.saveDraft({
-        title: currentDraft.title,
-        content: currentDraft.content,
+        id: currentDraft.id,
+        title: currentDraft.title!,
+        contentHtml: currentDraft.contentHtml || '',
         coverImage: currentDraft.coverImage,
         tags: currentDraft.tags || [],
-        status: 'draft'
+        status: 'draft',
+        userId: authState.user?.id
       });
 
       setDrafts(prev => {
@@ -146,12 +140,40 @@ const WriteDashboard: React.FC = () => {
       });
 
       setCurrentDraft(savedDraft);
+      if (wasNew) {
+        // Refresh list so the newly created draft appears immediately
+        loadDrafts();
+      }
+      setAutoSavedAt(new Date().toISOString());
     } catch (error) {
       console.error('Failed to save draft:', error);
+      const msg = error instanceof Error ? error.message : 'Failed to save draft';
+      setSaveError(msg);
     } finally {
       setSaving(false);
     }
   };
+
+  // Debounced auto-save when title, tags, or contentHtml change
+  useEffect(() => {
+    if (!currentDraft) return;
+    if (currentDraft.status === 'submitted') return;
+    if (!currentDraft.title && !(currentDraft.contentHtml && currentDraft.contentHtml.trim())) return;
+    if (saving) return;
+
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current);
+    }
+    saveTimerRef.current = window.setTimeout(() => {
+      handleSaveDraft();
+    }, 30000);
+
+    return () => {
+      if (saveTimerRef.current) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, [currentDraft?.id, currentDraft?.title, currentDraft?.contentHtml, (currentDraft?.tags || []).join(','), saving]);
 
   const handleSubmitForReview = async () => {
     if (!currentDraft?.id) {
@@ -164,15 +186,13 @@ const WriteDashboard: React.FC = () => {
       setDrafts(prev => prev.map(d => 
         d.id === currentDraft.id ? { ...d, status: 'submitted' as const } : d
       ));
-      setActiveView('options');
+      setCurrentDraft(prev => prev ? { ...prev, status: 'submitted' as const } : prev);
     } catch (error) {
       console.error('Failed to submit for review:', error);
     }
   };
 
-  const completedTasksCount = profileProgress.completedTasks.length;
-  const totalTasks = profileTasks.length;
-  const progressPercentage = (completedTasksCount / totalTasks) * 100;
+  // Removed profile progress and badges
 
   if (!authState.isAuthenticated) {
     return (
@@ -270,17 +290,80 @@ const WriteDashboard: React.FC = () => {
                         ))}
                       </div>
                     ) : drafts.length > 0 ? (
-                      <div className="grid md:grid-cols-2 gap-6">
-                        {drafts.map((draft) => (
-                          <DraftCard
-                            key={draft.id}
-                            draft={draft}
-                            onEdit={handleEditDraft}
-                            onDelete={handleDeleteDraft}
-                            onSubmit={handleSubmitDraft}
-                            onPreview={handlePreviewDraft}
-                          />
-                        ))}
+                      <div className="space-y-2">
+                        {drafts.map((draft) => {
+                          const textPreview = (draft.contentHtml || '')
+                            .replace(/<style[\s\S]*?<\/style>/gi, '')
+                            .replace(/<script[\s\S]*?<\/script>/gi, '')
+                            .replace(/<[^>]+>/g, ' ')
+                            .replace(/&nbsp;/g, ' ')
+                            .replace(/\s+/g, ' ')
+                            .trim();
+                          const isDraft = draft.status === 'draft';
+                          return (
+                            <div key={draft.id} className={"flex items-center gap-4 p-4 bg-dark-900 hover:bg-dark-800 rounded-lg border border-dark-800"}>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-4">
+                                  <h3 className="text-white font-medium truncate">{draft.title || 'Untitled Draft'}</h3>
+                                  <span className="text-xs text-gray-400 whitespace-nowrap">
+                                    {formatDistanceToNow(new Date(draft.updatedAt), { addSuffix: true })}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-400 line-clamp-1 mt-1">{textPreview || 'No content yet...'}</p>
+                                <div className="mt-2 flex items-center gap-2">
+                                  <span className={`px-2 py-0.5 text-xs rounded-full border ${
+                                    draft.status === 'published'
+                                      ? 'text-green-400 bg-green-900/20 border-green-500/50'
+                                      : draft.status === 'submitted'
+                                      ? 'text-yellow-400 bg-yellow-900/20 border-yellow-500/50'
+                                      : 'text-gray-400 bg-gray-900/20 border-gray-500/50'
+                                  }`}>
+                                    {draft.status === 'published' ? 'Published' : draft.status === 'submitted' ? 'Under Review' : 'Draft'}
+                                  </span>
+                                  {draft.tags.slice(0, 3).map((tag, i) => (
+                                    <span key={i} className="px-2 py-0.5 text-xs bg-dark-800 text-gray-300 rounded-full">
+                                      {tag}
+                                    </span>
+                                  ))}
+                                  {draft.tags.length > 3 && (
+                                    <span className="px-2 py-0.5 text-xs bg-dark-800 text-gray-400 rounded-full">+{draft.tags.length - 3} more</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {isDraft && (
+                                  <button
+                                    onClick={() => handleEditDraft(draft)}
+                                    className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
+                                  >
+                                    Edit
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handlePreviewDraft(draft)}
+                                  className="px-3 py-1.5 bg-dark-800 text-gray-300 rounded-lg hover:bg-dark-700 text-sm"
+                                >
+                                  Preview
+                                </button>
+                                {isDraft && (
+                                  <button
+                                    onClick={() => handleSubmitDraft(draft.id)}
+                                    className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                                  >
+                                    Submit
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteDraft(draft.id)}
+                                  className="px-2 py-1 text-gray-400 hover:text-red-400"
+                                  aria-label="Delete draft"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="text-center py-12 bg-dark-900 border border-dark-800 rounded-lg">
@@ -302,86 +385,6 @@ const WriteDashboard: React.FC = () => {
 
                 {/* Sidebar */}
                 <div className="space-y-6">
-                  {/* Profile Completion */}
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="bg-dark-900 border border-dark-800 rounded-xl p-6"
-                  >
-                    <div className="flex items-center space-x-2 mb-4">
-                      <Target className="w-5 h-5 text-primary-500" />
-                      <h3 className="text-lg font-semibold text-white">Profile Progress</h3>
-                    </div>
-                    
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-400">Completion</span>
-                        <span className="text-sm font-medium text-white">{Math.round(progressPercentage)}%</span>
-                      </div>
-                      <div className="w-full bg-dark-800 rounded-full h-2">
-                        <motion.div
-                          className="bg-primary-600 h-2 rounded-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${progressPercentage}%` }}
-                          transition={{ duration: 1, delay: 0.5 }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      {profileTasks.slice(0, 5).map((task) => {
-                        const isCompleted = profileProgress.completedTasks.includes(task.id);
-                        return (
-                          <div key={task.id} className="flex items-center space-x-3">
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                              isCompleted ? 'bg-green-500' : 'bg-dark-700'
-                            }`}>
-                              {isCompleted && <span className="text-white text-xs">✓</span>}
-                            </div>
-                            <div className="flex-1">
-                              <p className={`text-sm ${isCompleted ? 'text-gray-400 line-through' : 'text-white'}`}>
-                                {task.title}
-                              </p>
-                              <p className="text-xs text-gray-500">{task.points} points</p>
-                            </div>
-                            <span className="text-lg">{task.icon}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-
-                  {/* Badges */}
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="bg-dark-900 border border-dark-800 rounded-xl p-6"
-                  >
-                    <div className="flex items-center space-x-2 mb-4">
-                      <Award className="w-5 h-5 text-yellow-500" />
-                      <h3 className="text-lg font-semibold text-white">Earned Badges</h3>
-                    </div>
-                    
-                    {profileProgress.badges.length > 0 ? (
-                      <div className="space-y-3">
-                        {profileProgress.badges.map((badge) => (
-                          <div key={badge.id} className="flex items-center space-x-3">
-                            <span className="text-2xl">{badge.icon}</span>
-                            <div>
-                              <p className="text-sm font-medium text-white">{badge.name}</p>
-                              <p className="text-xs text-gray-400">{badge.description}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-gray-400 text-sm">
-                        Complete tasks to earn badges!
-                      </p>
-                    )}
-                  </motion.div>
-
                   {/* Quick Stats */}
                   <motion.div
                     initial={{ opacity: 0, x: 20 }}
@@ -404,7 +407,7 @@ const WriteDashboard: React.FC = () => {
                           <span className="text-sm text-gray-400">Published</span>
                         </div>
                         <span className="text-sm font-medium text-white">
-                          {authState.user?.articlesCount || 0}
+                          {Number((authState.user as any)?.articlesCount) || 0}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -413,9 +416,17 @@ const WriteDashboard: React.FC = () => {
                           <span className="text-sm text-gray-400">Followers</span>
                         </div>
                         <span className="text-sm font-medium text-white">
-                          {authState.user?.followersCount || 0}
+                          {Number((authState.user as any)?.followersCount) || 0}
                         </span>
                       </div>
+                    </div>
+                    <div className="mt-6">
+                      <a
+                        href="/feed"
+                        className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors"
+                      >
+                        View Published
+                      </a>
                     </div>
                   </motion.div>
                 </div>
@@ -449,20 +460,29 @@ const WriteDashboard: React.FC = () => {
                     <Eye className="w-4 h-4" />
                     <span>Preview</span>
                   </button>
-                  <button
-                    onClick={handleSaveDraft}
-                    disabled={saving}
-                    className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
-                  >
-                    <Save className="w-4 h-4" />
-                    <span>{saving ? 'Saving...' : 'Save Draft'}</span>
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={handleSaveDraft}
+                      disabled={saving}
+                      className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>{saving ? 'Saving...' : 'Save Draft'}</span>
+                    </button>
+                    {autoSavedAt && (
+                      <span className="text-xs text-gray-400">Auto-saved {new Date(autoSavedAt).toLocaleTimeString()}</span>
+                    )}
+                  </div>
+                  {saveError && (
+                    <div className="text-xs text-red-400 mt-1">{saveError}</div>
+                  )}
                   <button
                     onClick={handleSubmitForReview}
-                    className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    disabled={currentDraft.status === 'submitted'}
+                    className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
                   >
                     <Send className="w-4 h-4" />
-                    <span>Submit for Review</span>
+                    <span>{currentDraft.status === 'submitted' ? 'Submitted' : 'Submit for Review'}</span>
                   </button>
                 </div>
               </div>
@@ -494,12 +514,17 @@ const WriteDashboard: React.FC = () => {
                   />
                 </div>
 
-                {/* Content Editor */}
-                <BlockEditor
-                  content={currentDraft.content || []}
-                  onChange={(content) => setCurrentDraft(prev => ({ ...prev, content }))}
-                  placeholder="Start writing your article..."
-                />
+                {/* Content Editor (Quill stores HTML) */}
+                <div className="space-y-4">
+                  <QuillEditor
+                    value={currentDraft.contentHtml || ''}
+                    onChange={(html) => {
+                      setCurrentDraft(prev => ({ ...prev!, contentHtml: html }));
+                    }}
+                    placeholder="Start writing your article..."
+                    readOnly={currentDraft.status === 'submitted'}
+                  />
+                </div>
               </div>
             </motion.div>
           )}
@@ -552,7 +577,7 @@ const WriteDashboard: React.FC = () => {
                   </div>
                 )}
 
-                <BlockRenderer blocks={currentDraft.content || []} />
+                <div className="prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: currentDraft.contentHtml || '' }} />
               </div>
             </motion.div>
           )}

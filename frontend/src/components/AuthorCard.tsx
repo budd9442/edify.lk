@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Check } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
+import { profilesService } from '../services/profilesService';
 
 interface Author {
   id: string;
@@ -27,11 +28,23 @@ const AuthorCard: React.FC<AuthorCardProps> = ({
   const { state, dispatch } = useApp();
   const isFollowing = state.followedUsers.includes(author.id);
 
-  const handleFollow = () => {
+  const handleFollow = async () => {
     if (isFollowing) {
       dispatch({ type: 'UNFOLLOW_USER', payload: author.id });
+      try {
+        await profilesService.unfollow(author.id);
+      } catch (e) {
+        // rollback
+        dispatch({ type: 'FOLLOW_USER', payload: author.id });
+      }
     } else {
       dispatch({ type: 'FOLLOW_USER', payload: author.id });
+      try {
+        await profilesService.follow(author.id);
+      } catch (e) {
+        // rollback
+        dispatch({ type: 'UNFOLLOW_USER', payload: author.id });
+      }
     }
   };
 

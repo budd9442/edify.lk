@@ -1,11 +1,68 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Users, Plus } from 'lucide-react';
-import { mockUsers } from '../mock-data/articles';
 import { useApp } from '../contexts/AppContext';
+import supabase from '../services/supabaseClient';
 
 const Sidebar: React.FC = () => {
   const { state, dispatch } = useApp();
+  const [trendingTopics, setTrendingTopics] = useState<Array<{ name: string; count: number }>>([]);
+  const [topAuthors, setTopAuthors] = useState<Array<{ id: string; name: string; avatar: string; followersCount: number }>>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      // Load published articles minimal fields
+      const { data: articles } = await supabase
+        .from('articles')
+        .select('author_id,tags')
+        .eq('status', 'published')
+        .limit(300);
+
+      const tagCounts = new Map<string, number>();
+      const authorCounts = new Map<string, number>();
+
+      (articles || []).forEach((row: any) => {
+        (row.tags || []).forEach((t: string) => {
+          if (t) tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
+        });
+        if (row.author_id) {
+          authorCounts.set(row.author_id, (authorCounts.get(row.author_id) || 0) + 1);
+        }
+      });
+
+      const topics = Array.from(tagCounts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+      setTrendingTopics(topics);
+
+      const authorIds = Array.from(authorCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([id]) => id);
+
+      if (authorIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id,name,avatar_url,followers_count')
+          .in('id', authorIds);
+        const idToProfile = new Map((profiles || []).map((p: any) => [p.id, p]));
+        const ordered = authorIds
+          .map((id) => idToProfile.get(id))
+          .filter(Boolean)
+          .map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            avatar: p.avatar_url || '/logo.png',
+            followersCount: p.followers_count ?? 0,
+          }));
+        setTopAuthors(ordered);
+      } else {
+        setTopAuthors([]);
+      }
+    };
+    load();
+  }, []);
 
   const handleFollow = (userId: string) => {
     const isFollowing = state.followedUsers.includes(userId);
@@ -29,14 +86,17 @@ const Sidebar: React.FC = () => {
           <h3 className="text-lg font-semibold text-white">Trending Topics</h3>
         </div>
         <div className="space-y-3">
-          {['Artificial Intelligence', 'Remote Work', 'Sustainability', 'Blockchain', 'Mental Health'].map((topic, index) => (
-            <div key={topic} className="flex items-center justify-between">
+          {trendingTopics.map((t, index) => (
+            <div key={t.name} className="flex items-center justify-between">
               <span className="text-gray-300 hover:text-white cursor-pointer transition-colors">
-                {topic}
+                {t.name}
               </span>
               <span className="text-sm text-gray-500">#{index + 1}</span>
             </div>
           ))}
+          {trendingTopics.length === 0 && (
+            <p className="text-gray-500 text-sm">No trending topics yet</p>
+          )}
         </div>
       </motion.div>
 
@@ -52,7 +112,7 @@ const Sidebar: React.FC = () => {
           <h3 className="text-lg font-semibold text-white">Top Authors</h3>
         </div>
         <div className="space-y-4">
-          {mockUsers.slice(0, 3).map((user) => {
+          {topAuthors.map((user) => {
             const isFollowing = state.followedUsers.includes(user.id);
             return (
               <div key={user.id} className="flex items-center justify-between">
@@ -87,6 +147,9 @@ const Sidebar: React.FC = () => {
               </div>
             );
           })}
+          {topAuthors.length === 0 && (
+            <p className="text-gray-500 text-sm">No authors yet</p>
+          )}
         </div>
       </motion.div>
 

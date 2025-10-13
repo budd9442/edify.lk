@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { Bell, Heart, MessageCircle, UserPlus, CheckCircle, XCircle, Award, AtSign, BookMarked as MarkAsRead, Trash2 } from 'lucide-react';
-import { Notification } from '../../types/payload';
-import payloadApi from '../../services/payloadApi';
+import { NotificationItem, notificationsService } from '../../services/notificationsService';
 
 interface NotificationDropdownProps {
   onClose: () => void;
@@ -12,12 +11,16 @@ interface NotificationDropdownProps {
 const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   onClose
 }) => {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadNotifications();
+    const unsubscribe = notificationsService.subscribe((n) => {
+      setNotifications(prev => [n, ...prev]);
+    });
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
@@ -34,7 +37,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   const loadNotifications = async () => {
     setLoading(true);
     try {
-      const data = await payloadApi.getNotifications();
+      const data = await notificationsService.list();
       setNotifications(data);
     } catch (error) {
       console.error('Failed to load notifications:', error);
@@ -45,7 +48,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      await payloadApi.markNotificationsAsRead([notificationId]);
+      await notificationsService.markAsRead(notificationId);
       setNotifications(prev => 
         prev.map(notif => 
           notif.id === notificationId ? { ...notif, read: true } : notif
@@ -58,16 +61,14 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 
   const handleMarkAllAsRead = async () => {
     try {
-      const unreadNotifications = notifications.filter(n => !n.read);
-      const unreadIds = unreadNotifications.map(n => n.id);
-      await payloadApi.markNotificationsAsRead(unreadIds);
+      await notificationsService.markAllAsRead();
       setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
     }
   };
 
-  const getNotificationIcon = (type: Notification['type']) => {
+  const getNotificationIcon = (type: NotificationItem['type']) => {
     switch (type) {
       case 'like':
         return <Heart className="w-4 h-4 text-red-400" />;
@@ -88,7 +89,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
     }
   };
 
-  const getNotificationText = (notification: Notification) => {
+  const getNotificationText = (notification: NotificationItem) => {
     switch (notification.type) {
       case 'like':
         return 'liked your article';
@@ -161,8 +162,8 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                   if (!notification.read) {
                     handleMarkAsRead(notification.id);
                   }
-                  if (notification.actionUrl) {
-                    window.location.href = notification.actionUrl;
+                  if (notification.link) {
+                    window.location.href = notification.link;
                   }
                   onClose();
                 }}
@@ -177,7 +178,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                         {notification.title}
                       </p>
                       <span className="text-xs text-gray-400">
-                        {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                       </span>
                     </div>
                     <p className="text-sm text-gray-300 mt-1">

@@ -21,7 +21,7 @@ export interface StrapiBlock {
 export interface Draft {
   id: string;
   title: string;
-  content: StrapiBlock[];
+  contentHtml: string;
   coverImage?: string;
   tags: string[];
   status: 'draft' | 'submitted' | 'published';
@@ -59,60 +59,14 @@ export interface Notification {
 }
 
 // Sample Strapi Blocks content
-export const sampleStrapiBlocks: StrapiBlock[] = [
-  {
-    type: 'heading',
-    level: 1,
-    children: [{ text: 'Welcome to the Future of Content Creation' }]
-  },
-  {
-    type: 'paragraph',
-    children: [
-      { text: 'This is a ' },
-      { text: 'bold', bold: true },
-      { text: ' statement about the power of ' },
-      { text: 'structured content', italic: true },
-      { text: ' in modern publishing platforms.' }
-    ]
-  },
-  {
-    type: 'quote',
-    children: [
-      { text: 'The best way to predict the future is to create it.' }
-    ]
-  },
-  {
-    type: 'list',
-    format: 'unordered',
-    children: [
-      {
-        type: 'list-item',
-        children: [{ text: 'Rich text editing with structured data' }]
-      },
-      {
-        type: 'list-item',
-        children: [{ text: 'Seamless Strapi integration' }]
-      },
-      {
-        type: 'list-item',
-        children: [{ text: 'Premium user experience' }]
-      }
-    ]
-  },
-  {
-    type: 'code',
-    language: 'javascript',
-    children: [
-      { text: 'const content = {\n  type: "paragraph",\n  children: [{ text: "Hello World!" }]\n};' }
-    ]
-  }
-];
+// Deprecated sample blocks left for reference; not used in the HTML-based flow
+export const sampleStrapiBlocks: StrapiBlock[] = [];
 
 export const mockDrafts: Draft[] = [
   {
     id: 'draft-1',
     title: 'The Evolution of Web Development',
-    content: sampleStrapiBlocks,
+    contentHtml: '<h1>Welcome to the Future of Content Creation</h1><p>This is a <strong>bold</strong> statement about the power of <em>structured content</em> in modern publishing platforms.</p><blockquote>The best way to predict the future is to create it.</blockquote><ul><li>Rich text editing with structured data</li><li>Seamless Strapi integration</li><li>Premium user experience</li></ul><pre><code>const content = {\n  type: "paragraph",\n  children: [{ text: "Hello World!" }]\n};</code></pre>',
     coverImage: 'https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=800&h=400&dpr=1',
     tags: ['Web Development', 'Technology', 'Programming'],
     status: 'draft',
@@ -124,12 +78,7 @@ export const mockDrafts: Draft[] = [
   {
     id: 'draft-2',
     title: 'Building Sustainable Digital Products',
-    content: [
-      {
-        type: 'paragraph',
-        children: [{ text: 'Sustainability in digital product development...' }]
-      }
-    ],
+    contentHtml: '<p>Sustainability in digital product development...</p>',
     tags: ['Sustainability', 'Product Design'],
     status: 'submitted',
     createdAt: '2024-01-08T10:15:00Z',

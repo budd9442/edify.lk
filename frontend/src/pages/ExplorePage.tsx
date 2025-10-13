@@ -12,11 +12,12 @@ import {
   List
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
+import supabase from '../services/supabaseClient';
 import ArticleCard from '../components/ArticleCard';
 import AuthorCard from '../components/AuthorCard';
 import TagPill from '../components/TagPill';
 import LoaderSkeleton from '../components/LoaderSkeleton';
-import { mockUsers } from '../mock-data/articles';
+// Derive authors from loaded articles; fallback fields handled in AuthorCard
 
 const ExplorePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'trending' | 'tags' | 'authors' | 'featured'>('trending');
@@ -24,11 +25,67 @@ const ExplorePage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [loading, setLoading] = useState(true);
   const { state } = useApp();
+  const [topAuthors, setTopAuthors] = useState<Array<{ id: string; name: string; avatar: string; bio: string; followersCount: number; articlesCount: number; verified?: boolean }>>([]);
+  const [allTags, setAllTags] = useState<Array<{ name: string; count: number }>>([]);
 
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(timer);
+    const load = async () => {
+      setLoading(true);
+      try {
+        // Fetch minimal article data
+        const { data: articles } = await supabase
+          .from('articles')
+          .select('author_id,tags')
+          .eq('status', 'published')
+          .limit(500);
+
+        const authorCounts = new Map<string, number>();
+        const tagCounts = new Map<string, number>();
+
+        (articles || []).forEach((row: any) => {
+          if (row.author_id) {
+            authorCounts.set(row.author_id, (authorCounts.get(row.author_id) || 0) + 1);
+          }
+          (row.tags || []).forEach((t: string) => {
+            if (t) tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
+          });
+        });
+
+        // Top authors (by article count)
+        const sortedAuthorIds = Array.from(authorCounts.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 6)
+          .map(([id]) => id);
+
+        let authorsDetailed: any[] = [];
+        if (sortedAuthorIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id,name,avatar_url,bio,followers_count,articles_count')
+            .in('id', sortedAuthorIds);
+          const idToProfile = new Map((profiles || []).map((p: any) => [p.id, p]));
+          authorsDetailed = sortedAuthorIds.map((id) => idToProfile.get(id)).filter(Boolean);
+        }
+
+        setTopAuthors(authorsDetailed.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          avatar: p.avatar_url || '/logo.png',
+          bio: p.bio || '',
+          followersCount: p.followers_count ?? 0,
+          articlesCount: p.articles_count ?? (authorCounts.get(p.id) || 0),
+        })));
+
+        // Trending tags
+        const tagsArr = Array.from(tagCounts.entries())
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count);
+        setAllTags(tagsArr);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, [activeTab]);
 
   const trendingArticles = [...state.articles]
@@ -37,14 +94,7 @@ const ExplorePage: React.FC = () => {
 
   const featuredArticles = state.articles.filter(article => article.featured);
 
-  const allTags = Array.from(new Set(state.articles.flatMap(article => article.tags)))
-    .map(tag => ({
-      name: tag,
-      count: state.articles.filter(article => article.tags.includes(tag)).length
-    }))
-    .sort((a, b) => b.count - a.count);
-
-  const topAuthors = mockUsers.slice(0, 6);
+  // allTags and topAuthors now loaded from Supabase
 
   const filteredArticles = selectedTag 
     ? state.articles.filter(article => article.tags.includes(selectedTag))
