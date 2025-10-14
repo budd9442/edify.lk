@@ -1,0 +1,78 @@
+name: Deploy to dev
+
+on:
+  push:
+    branches: [ dev ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run linting
+      run: npm run lint
+      
+    - name: Run type check
+      run: npm run type-check
+      
+    - name: Build application
+      run: npm run build
+      env:
+        VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+        VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+        
+    - name: Deploy to VPS
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          # Create new release directory
+          RELEASE_DIR="/var/www/edify.budd.systems/releases/$(date +%Y%m%d_%H%M%S)"
+          mkdir -p $RELEASE_DIR
+          
+          # Copy files from GitHub Actions
+          # (We'll use rsync in the next step)
+          
+    - name: Upload build files
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        source: "dist/*"
+        target: "/var/www/edify.budd.systems/releases/$(date +%Y%m%d_%H%M%S)"
+        
+    - name: Update symlinks and restart
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          # Get latest release
+          LATEST_RELEASE=$(ls -t /var/www/edify.budd.systems/releases/ | head -n1)
+          
+          # Update symlink
+          ln -sfn /var/www/edify.budd.systems/releases/$LATEST_RELEASE /var/www/edify.budd.systems/current
+          
+          # Restart Nginx
+          sudo systemctl reload nginx
+          
+          # Health check
+          curl -f http://localhost || exit 1
