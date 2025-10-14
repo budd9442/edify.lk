@@ -9,5 +9,13 @@ export default defineConfig({
   },
   server: {
     allowedHosts: ['edify.budd.systems', 'localhost']
+  },
+  publicDir: 'public',
+  build: {
+    rollupOptions: {
+      input: {
+        main: './index.html'
+      }
+    }
   }
 });

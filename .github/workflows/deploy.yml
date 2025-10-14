@@ -29,6 +29,16 @@ jobs:
         VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
         
+    - name: Upload and deploy
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        source: "dist/*"
+        target: "/tmp/deploy/"
+        strip_components: 0
+        
     - name: Deploy to VPS
       uses: appleboy/ssh-action@v1.0.0
       with:
@@ -36,21 +46,16 @@ jobs:
         username: ${{ secrets.VPS_USER }}
         key: ${{ secrets.VPS_SSH_KEY }}
         script: |
-          # Create new release directory
-          RELEASE_DIR="/var/www/edify.budd.systems/releases/$(date +%Y%m%d_%H%M%S)"
+          # Create new release directory with timestamp
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          RELEASE_DIR="/var/www/edify.budd.systems/releases/$TIMESTAMP"
           mkdir -p $RELEASE_DIR
           
-          # Copy files from GitHub Actions
-          # (We'll use rsync in the next step)
+          # Move files from temp to release directory
+          mv /tmp/deploy/* $RELEASE_DIR/
           
-    - name: Upload build files
-      uses: appleboy/scp-action@v0.1.4
-      with:
-        host: ${{ secrets.VPS_HOST }}
-        username: ${{ secrets.VPS_USER }}
-        key: ${{ secrets.VPS_SSH_KEY }}
-        source: "dist/*"
-        target: "/var/www/edify.budd.systems/releases/$(date +%Y%m%d_%H%M%S)"
+          # Clean up temp directory
+          rm -rf /tmp/deploy
         
     - name: Update symlinks and restart
       uses: appleboy/ssh-action@v1.0.0
@@ -65,8 +70,12 @@ jobs:
           # Update symlink
           ln -sfn /var/www/edify.budd.systems/releases/$LATEST_RELEASE /var/www/edify.budd.systems/current
           
+          # Set proper permissions
+          chown -R www-data:www-data /var/www/edify.budd.systems/current/
+          chmod -R 755 /var/www/edify.budd.systems/current/
+          
           # Restart Nginx
-          sudo systemctl reload nginx
+          systemctl reload nginx
           
           # Health check
-          curl -f http://localhost || exit 1
+          curl -f https://edify.budd.systems || exit 1
