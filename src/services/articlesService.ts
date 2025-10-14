@@ -1,4 +1,5 @@
 import supabase from './supabaseClient';
+import { safeQuery } from './supabaseUtils';
 
 export interface ArticleListItem {
   id: string;
@@ -18,15 +19,21 @@ export interface ArticleDetail extends ArticleListItem {
 
 export const articlesService = {
   async listFeatured(): Promise<ArticleListItem[]> {
-    const { data, error } = await supabase
-      .from('articles')
-      .select('id,title,excerpt,cover_image_url,featured,published_at,likes,tags,author_id')
-      .eq('status', 'published')
-      .eq('featured', true)
-      .order('published_at', { ascending: false })
-      .limit(12);
+    const { data, error } = await safeQuery('articles/listFeatured', () =>
+      supabase
+        .from('articles')
+        .select('id,title,excerpt,cover_image_url,featured,published_at,likes,tags,author_id')
+        .eq('status', 'published')
+        .eq('featured', true)
+        .order('published_at', { ascending: false })
+        .limit(12)
+        .then((res: any) => {
+          if (res.error) throw res.error;
+          return res.data;
+        })
+    );
     if (error) throw error;
-    return (data || []).map((row: any) => ({
+    return ((data as any) || []).map((row: any) => ({
       id: row.id,
       title: row.title,
       excerpt: row.excerpt,
@@ -40,14 +47,20 @@ export const articlesService = {
   },
 
   async listAll(): Promise<ArticleListItem[]> {
-    const { data, error } = await supabase
-      .from('articles')
-      .select('id,title,excerpt,cover_image_url,featured,published_at,likes,tags,author_id')
-      .eq('status', 'published')
-      .order('published_at', { ascending: false })
-      .limit(50);
+    const { data, error } = await safeQuery('articles/listAll', () =>
+      supabase
+        .from('articles')
+        .select('id,title,excerpt,cover_image_url,featured,published_at,likes,tags,author_id')
+        .eq('status', 'published')
+        .order('published_at', { ascending: false })
+        .limit(50)
+        .then((res: any) => {
+          if (res.error) throw res.error;
+          return res.data;
+        })
+    );
     if (error) throw error;
-    return (data || []).map((row: any) => ({
+    return ((data as any) || []).map((row: any) => ({
       id: row.id,
       title: row.title,
       excerpt: row.excerpt,
@@ -61,26 +74,33 @@ export const articlesService = {
   },
 
   async getById(id: string): Promise<ArticleDetail | null> {
-    const { data, error } = await supabase
-      .from('articles')
-      .select('id,title,excerpt,content_html,cover_image_url,featured,published_at,likes,tags,author_id')
-      .eq('id', id)
-      .single();
+    const { data, error } = await safeQuery('articles/getById', () =>
+      supabase
+        .from('articles')
+        .select('id,title,excerpt,content_html,cover_image_url,featured,published_at,likes,tags,author_id')
+        .eq('id', id)
+        .single()
+        .then((res: any) => {
+          if (res.error) throw res.error;
+          return res.data;
+        })
+    );
     if (error) {
-      if (error.code === 'PGRST116') return null; // row not found
+      if ((error as any).code === 'PGRST116') return null;
       throw error;
     }
+    const row: any = data as any;
     return {
-      id: data.id,
-      title: data.title,
-      excerpt: data.excerpt,
-      contentHtml: data.content_html || '',
-      coverImage: data.cover_image_url || undefined,
-      featured: !!data.featured,
-      publishedAt: data.published_at || undefined,
-      likes: data.likes ?? 0,
-      tags: data.tags ?? [],
-      authorId: data.author_id,
+      id: row.id,
+      title: row.title,
+      excerpt: row.excerpt,
+      contentHtml: row.content_html || '',
+      coverImage: row.cover_image_url || undefined,
+      featured: !!row.featured,
+      publishedAt: row.published_at || undefined,
+      likes: row.likes ?? 0,
+      tags: row.tags ?? [],
+      authorId: row.author_id,
     };
   },
 };

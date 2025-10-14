@@ -63,6 +63,7 @@ const HomePage: React.FC = () => {
       } catch (error) {
         console.error('Failed to fetch articles:', error);
         dispatch({ type: 'SET_ARTICLES', payload: [] });
+        dispatch({ type: 'SET_TOAST', payload: { type: 'error', message: 'Failed to load articles' } });
       } finally {
         dispatch({ type: 'SET_LOADING', payload: false });
       }

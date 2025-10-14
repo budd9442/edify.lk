@@ -22,6 +22,7 @@ type QuizAction =
   | { type: 'PREVIOUS_QUESTION' }
   | { type: 'SHOW_RESULTS' }
   | { type: 'RESET_QUIZ' }
+  | { type: 'CLEAR_QUIZ' }
   | { type: 'SET_LEADERBOARD'; payload: LeaderboardEntry[] }
   | { type: 'SET_SCORE'; payload: number }
   | { type: 'SUBMIT_COMPLETE' };
@@ -84,6 +85,10 @@ const quizReducer = (state: QuizState, action: QuizAction): QuizState => {
         ...initialState,
         currentQuiz: state.currentQuiz,
         leaderboard: state.leaderboard,
+      };
+    case 'CLEAR_QUIZ':
+      return {
+        ...initialState,
       };
     case 'SET_LEADERBOARD':
       return { ...state, leaderboard: action.payload };

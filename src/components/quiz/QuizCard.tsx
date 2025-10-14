@@ -39,6 +39,9 @@ const QuizCard: React.FC<QuizCardProps> = ({ articleId }) => {
               dispatch({ type: 'SUBMIT_COMPLETE' });
             }
           }
+        } else {
+          // Clear quiz state when no quiz exists for this article
+          dispatch({ type: 'CLEAR_QUIZ' });
         }
       } catch (error) {
         console.error('Failed to load quiz:', error);
@@ -48,6 +51,10 @@ const QuizCard: React.FC<QuizCardProps> = ({ articleId }) => {
     };
 
     loadQuiz();
+    // Clear state immediately when article changes to avoid showing previous quiz
+    return () => {
+      dispatch({ type: 'CLEAR_QUIZ' });
+    };
   }, [articleId, dispatch, authState.user]);
 
   const handleStartQuiz = () => {

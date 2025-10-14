@@ -13,17 +13,25 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { Draft } from '../mock-data/strapiBlocks';
 import { draftService } from '../services/draftService';
+import { organizeContentWithAI } from '../services/aiService';
 import QuillEditor from '../components/write/QuillEditor';
+import QuizAuthoring from '../components/write/QuizAuthoring';
 import ImageUpload from '../components/write/ImageUpload';
 // BlockRenderer is not used in HTML flow
 import ImportHandler from '../components/write/ImportHandler';
 // Removed DraftCard in favor of horizontal list rows
 import { formatDistanceToNow } from 'date-fns';
+import { useLocation } from 'react-router-dom';
+import { useApp } from '../contexts/AppContext';
 
 const WriteDashboard: React.FC = () => {
   const { state: authState } = useAuth();
+  const { dispatch } = useApp();
+  const location = useLocation();
+  const loadInFlightRef = useRef(false);
   const [activeView, setActiveView] = useState<'options' | 'editor' | 'preview'>('options');
   const [showImportModal, setShowImportModal] = useState(false);
+  const [organizingWithAI, setOrganizingWithAI] = useState(false);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [currentDraft, setCurrentDraft] = useState<Partial<Draft> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -39,7 +47,28 @@ const WriteDashboard: React.FC = () => {
     loadDrafts();
   }, [authState.isAuthenticated, authState.user?.id]);
 
+  // Revalidate on route focus/popstate and window focus
+  useEffect(() => {
+    const onFocus = () => {
+      if (location.pathname === '/write') {
+        loadDrafts();
+      }
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    // React Router updates location.key on back/forward
+    if (location.pathname === '/write') {
+      loadDrafts();
+    }
+  }, [location.key, location.pathname]);
+
   const loadDrafts = async () => {
+    if (loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
+    console.log('[WriteDashboard] Loading drafts...');
     setLoading(true);
     try {
       if (!authState.isAuthenticated || !authState.user?.id) {
@@ -50,7 +79,10 @@ const WriteDashboard: React.FC = () => {
       setDrafts(data);
     } catch (error) {
       console.error('Failed to load drafts:', error);
+      dispatch({ type: 'SET_TOAST', payload: { type: 'error', message: 'Failed to load drafts' } });
     } finally {
+      loadInFlightRef.current = false;
+      console.log('[WriteDashboard] Loading drafts complete');
       setLoading(false);
     }
   };
@@ -74,6 +106,36 @@ const WriteDashboard: React.FC = () => {
     });
     setShowImportModal(false);
     setActiveView('editor');
+  };
+
+  const handleOrganizeWithAI = async () => {
+    if (!currentDraft?.contentHtml) return;
+    
+    setOrganizingWithAI(true);
+    try {
+      const result = await organizeContentWithAI(currentDraft.contentHtml);
+      
+      // Update content with optimized HTML
+      const updatedDraft = {
+        ...currentDraft,
+        contentHtml: result.optimizedHtml,
+      };
+      
+      // Add suggested tags if none are present and AI suggested some
+      if ((!currentDraft.tags || currentDraft.tags.length === 0) && result.suggestedTags) {
+        updatedDraft.tags = result.suggestedTags;
+        dispatch({ type: 'SET_TOAST', payload: { message: 'Content organized with AI and tags added!', type: 'success' } });
+      } else {
+        dispatch({ type: 'SET_TOAST', payload: { message: 'Content organized with AI!', type: 'success' } });
+      }
+      
+      setCurrentDraft(updatedDraft);
+    } catch (error) {
+      console.error('AI organization failed:', error);
+      dispatch({ type: 'SET_TOAST', payload: { message: 'Failed to organize with AI. Please try again.', type: 'error' } });
+    } finally {
+      setOrganizingWithAI(false);
+    }
   };
 
   const handleEditDraft = (draft: Draft) => {
@@ -128,7 +190,9 @@ const WriteDashboard: React.FC = () => {
         coverImage: currentDraft.coverImage,
         tags: currentDraft.tags || [],
         status: 'draft',
-        userId: authState.user?.id
+        userId: authState.user?.id,
+        // include quiz questions so they persist
+        quizQuestions: (currentDraft as any).quizQuestions || []
       });
 
       setDrafts(prev => {
@@ -174,7 +238,15 @@ const WriteDashboard: React.FC = () => {
         window.clearTimeout(saveTimerRef.current);
       }
     };
-  }, [currentDraft?.id, currentDraft?.title, currentDraft?.contentHtml, (currentDraft?.tags || []).join(','), saving]);
+  }, [
+    currentDraft?.id,
+    currentDraft?.title,
+    currentDraft?.contentHtml,
+    (currentDraft?.tags || []).join(','),
+    // trigger autosave when quiz questions change
+    JSON.stringify((currentDraft as any)?.quizQuestions || []),
+    saving,
+  ]);
 
   const handleSubmitForReview = async () => {
     if (!currentDraft?.id) {
@@ -461,6 +533,25 @@ const WriteDashboard: React.FC = () => {
                     <Eye className="w-4 h-4" />
                     <span>Preview</span>
                   </button>
+                  <button
+                    onClick={handleOrganizeWithAI}
+                    disabled={organizingWithAI || !currentDraft?.contentHtml}
+                    className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {organizingWithAI ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Organizing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        <span>Organize with AI</span>
+                      </>
+                    )}
+                  </button>
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={handleSaveDraft}
@@ -539,6 +630,15 @@ const WriteDashboard: React.FC = () => {
                     placeholder="Start writing your article..."
                     readOnly={currentDraft.status === 'submitted'}
                   />
+                  {/* Quiz authoring below the rich text editor */}
+                  <QuizAuthoring
+                    articleHtml={currentDraft.contentHtml || ''}
+                    maxQuestions={10}
+                    initialQuestions={(currentDraft as any).quizQuestions || []}
+                    onChange={(qs) => {
+                      setCurrentDraft(prev => ({ ...(prev as any), quizQuestions: qs } as any));
+                    }}
+                  />
                 </div>
               </div>
             </motion.div>
@@ -563,6 +663,25 @@ const WriteDashboard: React.FC = () => {
                   <h1 className="text-3xl font-bold text-white">Preview</h1>
                 </div>
                 <div className="flex items-center space-x-4">
+                  <button
+                    onClick={handleOrganizeWithAI}
+                    disabled={organizingWithAI || !currentDraft?.contentHtml}
+                    className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {organizingWithAI ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Organizing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        <span>Organize with AI</span>
+                      </>
+                    )}
+                  </button>
                   <button
                     onClick={() => setActiveView('editor')}
                     className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"

@@ -7,6 +7,7 @@ interface AppState {
   likedArticles: string[];
   notifications: any[];
   loading: boolean;
+  toasts: { id: string; message: string; type: 'info' | 'error' | 'success' }[];
 }
 
 type AppAction =
@@ -16,7 +17,9 @@ type AppAction =
   | { type: 'FOLLOW_USER'; payload: string }
   | { type: 'UNFOLLOW_USER'; payload: string }
   | { type: 'ADD_COMMENT'; payload: { articleId: string; comment: Comment } }
-  | { type: 'SET_LOADING'; payload: boolean };
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_TOAST'; payload: { id?: string; message: string; type?: 'info' | 'error' | 'success' } }
+  | { type: 'DISMISS_TOAST'; payload: { id: string } };
 
 const initialState: AppState = {
   articles: [],
@@ -24,6 +27,7 @@ const initialState: AppState = {
   likedArticles: [],
   notifications: [],
   loading: false,
+  toasts: [],
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
@@ -71,6 +75,13 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       };
     case 'SET_LOADING':
       return { ...state, loading: action.payload };
+    case 'SET_TOAST': {
+      const id = action.payload.id || Math.random().toString(36).slice(2);
+      const toast = { id, message: action.payload.message, type: action.payload.type || 'info' };
+      return { ...state, toasts: [...state.toasts, toast] };
+    }
+    case 'DISMISS_TOAST':
+      return { ...state, toasts: state.toasts.filter(t => t.id !== action.payload.id) };
     default:
       return state;
   }

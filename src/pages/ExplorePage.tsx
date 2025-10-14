@@ -7,33 +7,75 @@ import {
   Star, 
   Hash, 
   Users, 
-  Filter,
   Grid,
   List
 } from 'lucide-react';
-import { useApp } from '../contexts/AppContext';
 import supabase from '../services/supabaseClient';
+import { articlesService } from '../services/articlesService';
 import ArticleCard from '../components/ArticleCard';
 import AuthorCard from '../components/AuthorCard';
 import TagPill from '../components/TagPill';
 import LoaderSkeleton from '../components/LoaderSkeleton';
-// Derive authors from loaded articles; fallback fields handled in AuthorCard
+import type { Article } from '../mock-data/articles';
 
 const ExplorePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'trending' | 'tags' | 'authors' | 'featured'>('trending');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [loading, setLoading] = useState(true);
-  const { state } = useApp();
   const [topAuthors, setTopAuthors] = useState<Array<{ id: string; name: string; avatar: string; bio: string; followersCount: number; articlesCount: number; verified?: boolean }>>([]);
   const [allTags, setAllTags] = useState<Array<{ name: string; count: number }>>([]);
+  const [articles, setArticles] = useState<Article[]>([]);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        // Fetch minimal article data
-        const { data: articles } = await supabase
+        // Load articles for trending and featured sections
+        const items = await articlesService.listAll();
+        
+        if (items && items.length > 0) {
+          const authorIds = Array.from(new Set(items.map(i => i.authorId)));
+          const { data: profiles, error: profileError } = await supabase
+            .from('profiles')
+            .select('id,name,avatar_url,bio,followers_count,articles_count')
+            .in('id', authorIds);
+          
+          if (profileError) {
+            console.warn('Failed to fetch profiles:', profileError);
+          }
+
+          const idToProfile = new Map((profiles || []).map((p: any) => [p.id, p]));
+          const mapped: Article[] = items.map(item => {
+            const p: any = idToProfile.get(item.authorId);
+            return {
+              id: item.id,
+              title: item.title,
+              excerpt: item.excerpt,
+              content: '', // Empty content for explore page
+              author: {
+                id: item.authorId,
+                name: p?.name || 'Anonymous',
+                avatar: p?.avatar_url || '/logo.png',
+                bio: p?.bio || '',
+                followersCount: p?.followers_count ?? 0,
+                articlesCount: p?.articles_count ?? 0,
+              },
+              publishedAt: item.publishedAt || new Date().toISOString(),
+              readingTime: 5,
+              likes: item.likes,
+              comments: [],
+              tags: item.tags,
+              featured: item.featured,
+              status: 'published',
+              coverImage: item.coverImage || '/logo.png',
+            };
+          });
+          setArticles(mapped);
+        }
+
+        // Fetch minimal article data for tags and authors
+        const { data: articlesData } = await supabase
           .from('articles')
           .select('author_id,tags')
           .eq('status', 'published')
@@ -42,7 +84,7 @@ const ExplorePage: React.FC = () => {
         const authorCounts = new Map<string, number>();
         const tagCounts = new Map<string, number>();
 
-        (articles || []).forEach((row: any) => {
+        (articlesData || []).forEach((row: any) => {
           if (row.author_id) {
             authorCounts.set(row.author_id, (authorCounts.get(row.author_id) || 0) + 1);
           }
@@ -88,17 +130,17 @@ const ExplorePage: React.FC = () => {
     load();
   }, [activeTab]);
 
-  const trendingArticles = [...state.articles]
+  const trendingArticles = [...articles]
     .sort((a, b) => b.likes - a.likes)
     .slice(0, 6);
 
-  const featuredArticles = state.articles.filter(article => article.featured);
+  const featuredArticles = articles.filter(article => article.featured);
 
   // allTags and topAuthors now loaded from Supabase
 
   const filteredArticles = selectedTag 
-    ? state.articles.filter(article => article.tags.includes(selectedTag))
-    : state.articles;
+    ? articles.filter(article => article.tags.includes(selectedTag))
+    : articles;
 
   const tabs = [
     { id: 'trending', label: 'Trending', icon: TrendingUp },

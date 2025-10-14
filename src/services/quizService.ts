@@ -1,15 +1,19 @@
 import { Quiz, QuizAttempt, LeaderboardEntry } from '../mock-data/quizData';
 import supabase from './supabaseClient';
+import { safeQuery } from './supabaseUtils';
 
 class QuizService {
   async getQuizByArticleId(articleId: string): Promise<Quiz | null> {
     console.log('Fetching quiz for article:', articleId);
     
-    const { data, error } = await supabase
-      .from('quizzes')
-      .select('id, article_id, title, questions_json')
-      .eq('article_id', articleId)
-      .single();
+    const { data, error } = await safeQuery('quizzes/getByArticle', () =>
+      supabase
+        .from('quizzes')
+        .select('id, article_id, title, questions_json')
+        .eq('article_id', articleId)
+        .single()
+        .then((res: any) => { if (res.error) throw res.error; return res.data; })
+    );
     
     if (error) {
       console.log('Quiz fetch error:', error);
@@ -27,7 +31,7 @@ class QuizService {
       }
       throw error;
     }
-    const questions = (data.questions_json || []).map((q: any) => ({
+    const questions = ((data as any).questions_json || []).map((q: any) => ({
       question: q.question,
       type: 'multiple-choice',
       options: q.options,
@@ -36,8 +40,8 @@ class QuizService {
       points: q.points ?? 1,
     }));
     const quiz: Quiz = {
-      id: data.id,
-      title: data.title,
+      id: (data as any).id,
+      title: (data as any).title,
       description: '',
       author: {
         id: 'system',
@@ -55,7 +59,7 @@ class QuizService {
       stats: { attempts: 0, averageScore: 0, completionRate: 0 },
       tags: [],
     };
-    (quiz as any).articleId = data.article_id;
+    (quiz as any).articleId = (data as any).article_id;
     return quiz;
   }
 
@@ -64,12 +68,15 @@ class QuizService {
     
     try {
       // First check if user already has an attempt for this quiz
-      const { data: existingAttempt, error: checkError } = await supabase
-        .from('quiz_attempts')
-        .select('id, created_at')
-        .eq('quiz_id', attempt.quizId)
-        .eq('user_id', attempt.userId)
-        .single();
+      const { data: existingAttempt, error: checkError } = await safeQuery('quiz_attempts/checkExisting', () =>
+        supabase
+          .from('quiz_attempts')
+          .select('id, created_at')
+          .eq('quiz_id', attempt.quizId)
+          .eq('user_id', attempt.userId)
+          .single()
+          .then((res: any) => { if (res.error) throw res.error; return res.data; })
+      );
       
       if (existingAttempt) {
         console.log('User already has an attempt for this quiz, returning existing:', existingAttempt.id);
@@ -98,11 +105,14 @@ class QuizService {
       if (attempt.timeSpent) insertData.time_spent = attempt.timeSpent;
       if (attempt.articleId) insertData.article_id = attempt.articleId;
       
-      const { data, error } = await supabase
-        .from('quiz_attempts')
-        .insert([insertData])
-        .select('id, created_at')
-        .single();
+      const { data, error } = await safeQuery('quiz_attempts/insert', () =>
+        supabase
+          .from('quiz_attempts')
+          .insert([insertData])
+          .select('id, created_at')
+          .single()
+          .then((res: any) => { if (res.error) throw res.error; return res.data; })
+      );
       
       if (error) {
         console.error('Failed to submit quiz attempt:', error);
@@ -110,12 +120,15 @@ class QuizService {
         // If it's a duplicate constraint error, try to fetch existing attempt
         if (error.code === '23505' && error.message.includes('unique constraint')) {
           console.log('Duplicate constraint detected, fetching existing attempt...');
-          const { data: existingData } = await supabase
-            .from('quiz_attempts')
-            .select('id, created_at')
-            .eq('quiz_id', attempt.quizId)
-            .eq('user_id', attempt.userId)
-            .single();
+          const { data: existingData } = await safeQuery('quiz_attempts/getExistingAfterDuplicate', () =>
+            supabase
+              .from('quiz_attempts')
+              .select('id, created_at')
+              .eq('quiz_id', attempt.quizId)
+              .eq('user_id', attempt.userId)
+              .single()
+              .then((res: any) => { if (res.error) throw res.error; return res.data; })
+          );
           
           if (existingData) {
             console.log('Found existing attempt:', existingData.id);
@@ -130,15 +143,18 @@ class QuizService {
         // If it's a column error, try with even fewer fields
         if (error.message.includes('column') || error.message.includes('schema')) {
           console.log('Retrying with minimal fields...');
-          const { data: minimalData, error: minimalError } = await supabase
-            .from('quiz_attempts')
-            .insert([{
-              quiz_id: attempt.quizId,
-              user_id: attempt.userId,
-              score: attempt.score,
-            }])
-            .select('id, created_at')
-            .single();
+          const { data: minimalData, error: minimalError } = await safeQuery('quiz_attempts/insertMinimal', () =>
+            supabase
+              .from('quiz_attempts')
+              .insert([{
+                quiz_id: attempt.quizId,
+                user_id: attempt.userId,
+                score: attempt.score,
+              }])
+              .select('id, created_at')
+              .single()
+              .then((res: any) => { if (res.error) throw res.error; return res.data; })
+          );
           
           if (minimalError) {
             throw minimalError;
@@ -176,11 +192,14 @@ class QuizService {
     
     try {
       // First get the quiz ID for this article
-      const { data: quiz } = await supabase
-        .from('quizzes')
-        .select('id')
-        .eq('article_id', articleId)
-        .single();
+      const { data: quiz } = await safeQuery('quizzes/getIdForArticle', () =>
+        supabase
+          .from('quizzes')
+          .select('id')
+          .eq('article_id', articleId)
+          .single()
+          .then((res: any) => { if (res.error) throw res.error; return res.data; })
+      );
       
       if (!quiz) {
         console.log('No quiz found for article');
@@ -188,12 +207,15 @@ class QuizService {
       }
       
       // Check for existing attempt
-      const { data: attempt, error } = await supabase
-        .from('quiz_attempts')
-        .select('id, score, total_questions, time_spent, created_at')
-        .eq('quiz_id', quiz.id)
-        .eq('user_id', userId)
-        .single();
+      const { data: attempt, error } = await safeQuery('quiz_attempts/getOne', () =>
+        supabase
+          .from('quiz_attempts')
+          .select('id, score, total_questions, time_spent, created_at')
+          .eq('quiz_id', (quiz as any).id)
+          .eq('user_id', userId)
+          .single()
+          .then((res: any) => { if (res.error) throw res.error; return res.data; })
+      );
       
       if (error) {
         if (error.code === 'PGRST116' || error.message?.includes('No rows found')) {
@@ -215,11 +237,14 @@ class QuizService {
   async getLeaderboard(articleId: string, limit: number = 10): Promise<LeaderboardEntry[]> {
     try {
       // First get the quiz ID for this article
-      const { data: quiz } = await supabase
-        .from('quizzes')
-        .select('id')
-        .eq('article_id', articleId)
-        .single();
+      const { data: quiz } = await safeQuery('quizzes/getIdForArticle', () =>
+        supabase
+          .from('quizzes')
+          .select('id')
+          .eq('article_id', articleId)
+          .single()
+          .then((res: any) => { if (res.error) throw res.error; return res.data; })
+      );
       
       if (!quiz) {
         console.log('No quiz found for article');
@@ -227,13 +252,16 @@ class QuizService {
       }
       
       // Get quiz attempts first
-      const { data: attempts, error } = await supabase
-        .from('quiz_attempts')
-        .select('id, user_id, score, total_questions, time_spent, created_at')
-        .eq('quiz_id', quiz.id)
-        .order('score', { ascending: false })
-        .order('time_spent', { ascending: true })
-        .limit(limit);
+      const { data: attempts, error } = await safeQuery('quiz_attempts/listForLeaderboard', () =>
+        supabase
+          .from('quiz_attempts')
+          .select('id, user_id, score, total_questions, time_spent, created_at')
+          .eq('quiz_id', (quiz as any).id)
+          .order('score', { ascending: false })
+          .order('time_spent', { ascending: true })
+          .limit(limit)
+          .then((res: any) => { if (res.error) throw res.error; return res.data; })
+      );
       
       if (error) {
         console.error('Failed to fetch quiz attempts:', error);
@@ -251,10 +279,13 @@ class QuizService {
       const userIds = perfectAttempts.map((attempt: any) => attempt.user_id);
       
       // Fetch user profiles
-      const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, name, avatar_url')
-        .in('id', userIds);
+      const { data: profiles, error: profileError } = await safeQuery('profiles/inForLeaderboard', () =>
+        supabase
+          .from('profiles')
+          .select('id, name, avatar_url')
+          .in('id', userIds)
+          .then((res: any) => { if (res.error) throw res.error; return res.data; })
+      );
       
       if (profileError) {
         console.error('Failed to fetch user profiles:', profileError);
@@ -304,13 +335,16 @@ class QuizService {
   }
 
   async getUserAttempts(userId: string): Promise<QuizAttempt[]> {
-    const { data, error } = await supabase
-      .from('quiz_attempts')
-      .select('id, quiz_id, user_id, article_id, score, total_questions, time_spent, created_at')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    const { data, error } = await safeQuery('quiz_attempts/listByUser', () =>
+      supabase
+        .from('quiz_attempts')
+        .select('id, quiz_id, user_id, article_id, score, total_questions, time_spent, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .then((res: any) => { if (res.error) throw res.error; return res.data; })
+    );
     if (error) throw error;
-    return (data || []).map((r: any) => ({
+    return ((data as any) || []).map((r: any) => ({
       id: r.id,
       quizId: r.quiz_id,
       userId: r.user_id,

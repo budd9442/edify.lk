@@ -311,6 +311,13 @@ with check (exists (
   where a.id = article_id and a.author_id = auth.uid()
 ));
 
+-- DRAFTS: add quiz_questions_json to store generated/edited quiz data at draft time
+alter table if exists public.drafts
+  add column if not exists quiz_questions_json jsonb not null default '[]'::jsonb;
+
+-- Optional index for queries filtering/sorting by quiz existence/size (lightweight)
+-- create index if not exists idx_drafts_quiz_questions on public.drafts ((jsonb_array_length(quiz_questions_json)));
+
 -- QUIZ ATTEMPTS
 create table if not exists public.quiz_attempts (
   id uuid primary key default gen_random_uuid(),

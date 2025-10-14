@@ -1,4 +1,5 @@
 import supabase from './supabaseClient';
+import { safeQuery } from './supabaseUtils';
 
 export interface ProfileLite {
   id: string;
@@ -22,26 +23,39 @@ export interface ProfileUpdateData {
 export const profilesService = {
   async ensureProfileExists(userId: string, fallbackName?: string): Promise<void> {
     // Check if profile exists and has a name
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('id, name')
-      .eq('id', userId)
-      .single();
+    const { data: existingProfileResult } = await safeQuery('profiles/getOne', () =>
+      supabase
+        .from('profiles')
+        .select('id, name')
+        .eq('id', userId)
+        .single()
+        .then((res: any) => {
+          if (res.error) throw res.error;
+          return res.data;
+        })
+    );
+    const existingProfile: any = existingProfileResult as any;
     
     if (!existingProfile || !existingProfile.name || existingProfile.name.trim() === '') {
       console.log('Profile missing or has empty name, creating/updating...');
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: userId,
-          name: fallbackName || 'User',
-          role: 'user',
-          bio: '',
-        }, { onConflict: 'id' });
+      const { error } = await safeQuery('profiles/upsert', () =>
+        supabase
+          .from('profiles')
+          .upsert({
+            id: userId,
+            name: fallbackName || 'User',
+            bio: '',
+          }, { onConflict: 'id' })
+          .then((res: any) => {
+            if (res.error) throw res.error;
+            return res.data;
+          })
+      );
       
       if (error) {
-        console.error('Failed to ensure profile exists:', error);
-        throw error;
+        // Soft-fail to avoid blocking UI; rely on auth metadata
+        console.warn('Failed to ensure profile exists (non-blocking):', error);
+        return;
       }
       console.log('Profile ensured successfully');
     }
@@ -78,10 +92,16 @@ export const profilesService = {
       };
       console.log('Upsert data:', upsertData);
       
-      const { data: result, error: profileError } = await supabase
+    const { data: result, error: profileError } = await safeQuery('profiles/update', () =>
+      supabase
         .from('profiles')
         .upsert(upsertData, { onConflict: 'id' })
-        .select();
+        .select()
+        .then((res: any) => {
+          if (res.error) throw res.error;
+          return res.data;
+        })
+    );
       
       if (profileError) {
         console.error('Profile update error:', profileError);
@@ -90,11 +110,17 @@ export const profilesService = {
       console.log('Profiles table updated successfully, result:', result);
       
       // Verify the update by reading back the data
-      const { data: verifyData, error: verifyError } = await supabase
-        .from('profiles')
-        .select('id, name, avatar_url, bio')
-        .eq('id', userId)
-        .single();
+      const { data: verifyData, error: verifyError } = await safeQuery('profiles/verify', () =>
+        supabase
+          .from('profiles')
+          .select('id, name, avatar_url, bio')
+          .eq('id', userId)
+          .single()
+          .then((res: any) => {
+            if (res.error) throw res.error;
+            return res.data;
+          })
+      );
       
       if (verifyError) {
         console.error('Verify read error:', verifyError);
@@ -110,9 +136,15 @@ export const profilesService = {
     const { data: session } = await supabase.auth.getUser();
     const followerId = session.user?.id;
     if (!followerId) throw new Error('Not authenticated');
-    const { error } = await supabase
-      .from('follows')
-      .insert([{ follower_id: followerId, followee_id: followeeId }]);
+    const { error } = await safeQuery('profiles/follow', () =>
+      supabase
+        .from('follows')
+        .insert([{ follower_id: followerId, followee_id: followeeId }])
+        .then((res: any) => {
+          if (res.error) throw res.error;
+          return res.data;
+        })
+    );
     if (error && error.code !== '23505') throw error; // ignore duplicate
   },
 
@@ -120,11 +152,17 @@ export const profilesService = {
     const { data: session } = await supabase.auth.getUser();
     const followerId = session.user?.id;
     if (!followerId) throw new Error('Not authenticated');
-    const { error } = await supabase
-      .from('follows')
-      .delete()
-      .eq('follower_id', followerId)
-      .eq('followee_id', followeeId);
+    const { error } = await safeQuery('profiles/unfollow', () =>
+      supabase
+        .from('follows')
+        .delete()
+        .eq('follower_id', followerId)
+        .eq('followee_id', followeeId)
+        .then((res: any) => {
+          if (res.error) throw res.error;
+          return res.data;
+        })
+    );
     if (error) throw error;
   },
 };

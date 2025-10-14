@@ -1,5 +1,7 @@
-import { Draft } from '../mock-data/strapiBlocks';
+import { marked } from 'marked';
+import mammoth from 'mammoth';
 import supabase from './supabaseClient';
+import { withTimeout, safeQuery } from './supabaseUtils';
 
 class DraftService {
   private extractMetricsFromHtml(html: string) {
@@ -23,16 +25,22 @@ class DraftService {
       await supabase.auth.getUser();
     }
 
-    const { data, error } = await supabase
-      .from('drafts')
-      .select('id,title,content_html,cover_image_url,tags,status,created_at,updated_at')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false });
+    const { data, error } = await safeQuery('drafts/list', () =>
+      supabase
+        .from('drafts')
+        .select('id,title,content_html,cover_image_url,tags,status,created_at,updated_at,quiz_questions_json')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .then((res: any) => {
+          if (res.error) throw res.error;
+          return res.data;
+        })
+    );
     if (error) throw error;
-    return (data || []).map((row: any) => {
+    return ((data as any) || []).map((row: any) => {
       const html = row.content_html || '';
       const metrics = this.extractMetricsFromHtml(html);
-      return {
+      const draftObj = {
         id: row.id,
         title: row.title,
         contentHtml: html,
@@ -44,36 +52,47 @@ class DraftService {
         wordCount: metrics.wordCount,
         readingTime: metrics.readingTime,
       } as Draft;
+      // Attach quiz questions to returned draft object (non-typed extension)
+      (draftObj as any).quizQuestions = row.quiz_questions_json || [];
+      return draftObj;
     });
   }
 
   async getDraft(id: string): Promise<Draft | null> {
-    const { data, error } = await supabase
-      .from('drafts')
-      .select('id,title,content_html,cover_image_url,tags,status,created_at,updated_at')
-      .eq('id', id)
-      .single();
+    const { data, error } = await safeQuery('drafts/get', () =>
+      supabase
+        .from('drafts')
+        .select('id,title,content_html,cover_image_url,tags,status,created_at,updated_at,quiz_questions_json')
+        .eq('id', id)
+        .single()
+        .then((res: any) => {
+          if (res.error) throw res.error;
+          return res.data;
+        })
+    );
     if (error) {
       if ((error as any).code === 'PGRST116') return null;
       throw error;
     }
-    const html = data.content_html || '';
+    const html = (data as any).content_html || '';
     const metrics = this.extractMetricsFromHtml(html);
-    return {
-      id: data.id,
-      title: data.title,
+    const draft: Draft = {
+      id: (data as any).id,
+      title: (data as any).title,
       contentHtml: html,
-      coverImage: data.cover_image_url || undefined,
-      tags: data.tags || [],
-      status: data.status || 'draft',
-      createdAt: data.created_at || new Date().toISOString(),
-      updatedAt: data.updated_at || new Date().toISOString(),
+      coverImage: (data as any).cover_image_url || undefined,
+      tags: (data as any).tags || [],
+      status: (data as any).status || 'draft',
+      createdAt: (data as any).created_at || new Date().toISOString(),
+      updatedAt: (data as any).updated_at || new Date().toISOString(),
       wordCount: metrics.wordCount,
       readingTime: metrics.readingTime,
     } as Draft;
+    (draft as any).quizQuestions = (data as any).quiz_questions_json || [];
+    return draft;
   }
 
-  async saveDraft(draft: Omit<Draft, 'id' | 'createdAt' | 'updatedAt' | 'wordCount' | 'readingTime'> & { id?: string; userId?: string }): Promise<Draft> {
+  async saveDraft(draft: Omit<Draft, 'id' | 'createdAt' | 'updatedAt' | 'wordCount' | 'readingTime'> & { id?: string; userId?: string } & { quizQuestions?: any[] }): Promise<Draft> {
     const html = draft.contentHtml || '';
     const payload: any = {
       title: draft.title,
@@ -81,31 +100,45 @@ class DraftService {
       cover_image_url: draft.coverImage || null,
       tags: draft.tags || [],
       status: draft.status || 'draft',
+      // Optional: persist quiz questions if column exists
+      quiz_questions_json: (draft as any).quizQuestions ?? undefined,
     };
     let saved: any;
     if (draft.id) {
-      const { data, error } = await supabase
+    const { data, error } = await safeQuery('drafts/update', () =>
+      supabase
         .from('drafts')
         .update({ ...payload, updated_at: new Date().toISOString() })
         .eq('id', draft.id)
         .select()
-        .single();
+        .single()
+        .then((res: any) => {
+          if (res.error) throw res.error;
+          return res.data;
+        })
+    );
       if (error) throw error;
       saved = data;
     } else {
       if (!draft.userId) {
         throw new Error('Missing userId for new draft');
       }
-      const { data, error } = await supabase
-        .from('drafts')
-        .insert([{ ...payload, user_id: draft.userId }])
-        .select()
-        .single();
+      const { data, error } = await safeQuery('drafts/insert', () =>
+        supabase
+          .from('drafts')
+          .insert([{ ...payload, user_id: draft.userId }])
+          .select()
+          .single()
+          .then((res: any) => {
+            if (res.error) throw res.error;
+            return res.data;
+          })
+      );
       if (error) throw error;
       saved = data;
     }
     const metrics = this.extractMetricsFromHtml(saved.content_html || '');
-    return {
+    const result: Draft = {
       id: saved.id,
       title: saved.title,
       contentHtml: saved.content_html || '',
@@ -117,6 +150,8 @@ class DraftService {
       wordCount: metrics.wordCount,
       readingTime: metrics.readingTime,
     } as Draft;
+    (result as any).quizQuestions = saved.quiz_questions_json || (draft as any).quizQuestions || [];
+    return result;
   }
 
   async deleteDraft(id: string): Promise<boolean> {
@@ -216,6 +251,32 @@ class DraftService {
 
     console.log('Article inserted successfully');
 
+    // If the draft has quiz questions, attempt to create a quiz for this article
+    try {
+      const quizQuestions = (draft as any).quiz_questions_json || [];
+      if (Array.isArray(quizQuestions) && quizQuestions.length > 0) {
+        const normalized = (quizQuestions as any[]).slice(0, 10).map((q) => ({
+          question: String(q.question || ''),
+          options: Array.isArray(q.options) ? q.options.slice(0, 4) : [],
+          correctAnswer: Number.isInteger(q.correctAnswer) ? q.correctAnswer : 0,
+          explanation: q.explanation ? String(q.explanation) : undefined,
+          points: 1,
+        }));
+
+        const { error: quizError } = await supabase
+          .from('quizzes')
+          .insert([{ article_id: articleData.id, title: 'Article Quiz', questions_json: normalized }]);
+
+        if (quizError) {
+          console.warn('Quiz creation failed (non-fatal):', quizError);
+        } else {
+          console.log('Quiz created for article');
+        }
+      }
+    } catch (qerr) {
+      console.warn('Quiz creation step failed (non-fatal):', qerr);
+    }
+
     // Update draft status to published
     const { error: updateError } = await supabase
       .from('drafts')
@@ -253,15 +314,75 @@ class DraftService {
 
   async importFromDocument(file: File): Promise<{ contentHtml: string; title: string }> {
     const fileName = file.name.replace(/\.[^/.]+$/, '');
-    const text = await file.text();
-    // Basic markdown/plain conversion: paragraphs on blank lines, <br> on single newlines
-    const paragraphs = text
-      .split(/\n\s*\n/)
-      .map(p => p.replace(/\n/g, '<br>'))
-      .map(p => `<p>${p}</p>`) 
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    
+    try {
+      let contentHtml: string;
+      
+      switch (fileExtension) {
+        case '.docx':
+          // Parse Word document using mammoth
+          const mammothResult = await mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() });
+          contentHtml = mammothResult.value;
+          
+          // Clean up mammoth's HTML output
+          contentHtml = this.cleanWordHtml(contentHtml);
+          break;
+          
+        case '.md':
+          // Parse Markdown using marked
+          const markdownText = await file.text();
+          contentHtml = await Promise.resolve(marked(markdownText));
+          break;
+          
+        case '.txt':
+          // Parse plain text
+          const textContent = await file.text();
+          contentHtml = this.convertTextToHtml(textContent);
+          break;
+          
+        case '.doc':
+          // For .doc files, try to read as text (basic support)
+          const docText = await file.text();
+          contentHtml = this.convertTextToHtml(docText);
+          break;
+          
+        default:
+          throw new Error(`Unsupported file format: ${fileExtension}`);
+      }
+      
+      return { 
+        contentHtml: contentHtml || `<p>${fileName}</p>`, 
+        title: fileName 
+      };
+      
+    } catch (error) {
+      console.error('Document import error:', error);
+      throw new Error(`Failed to import document: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private cleanWordHtml(html: string): string {
+    // Remove Word-specific styling and clean up the HTML
+    return html
+      .replace(/<o:p\s*\/?>/g, '') // Remove Word's o:p tags
+      .replace(/<w:[^>]*>/g, '') // Remove Word's w: tags
+      .replace(/class="[^"]*"/g, '') // Remove classes
+      .replace(/style="[^"]*"/g, '') // Remove inline styles
+      .replace(/<p><\/p>/g, '') // Remove empty paragraphs
+      .replace(/<p>\s*<\/p>/g, '') // Remove whitespace-only paragraphs
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
+  }
+
+  private convertTextToHtml(text: string): string {
+    // Convert plain text to HTML with proper paragraph breaks
+    return text
+      .split(/\n\s*\n/) // Split on double newlines
+      .map(paragraph => paragraph.trim())
+      .filter(paragraph => paragraph.length > 0)
+      .map(paragraph => `<p>${paragraph.replace(/\n/g, '<br>')}</p>`)
       .join('');
-    const contentHtml = paragraphs || `<p>${fileName}</p>`;
-    return { contentHtml, title: fileName };
   }
 }
 
