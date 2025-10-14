@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, RotateCcw, Check, X, Award, Clock } from 'lucide-react';
 import { useQuiz } from '../../contexts/QuizContext';
@@ -14,6 +14,7 @@ const QuizResults: React.FC<QuizResultsProps> = ({ onRetake }) => {
   const { state: authState } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [showBadge, setShowBadge] = useState(false);
+  const submissionRef = useRef(false);
 
   const isPerfectScore = state.score === state.currentQuiz?.questions.length;
   const percentage = state.currentQuiz ? Math.round((state.score / state.currentQuiz.questions.length) * 100) : 0;
@@ -21,11 +22,23 @@ const QuizResults: React.FC<QuizResultsProps> = ({ onRetake }) => {
 
   useEffect(() => {
     const submitResults = async () => {
-      if (!state.currentQuiz || !authState.user || state.hasSubmitted) return;
+      // Use ref to prevent multiple submissions even in Strict Mode
+      if (!state.currentQuiz || !authState.user || state.hasSubmitted || submitting || submissionRef.current) {
+        console.log('Skipping submission - already submitted, submitting, or ref blocked');
+        return;
+      }
 
+      console.log('Starting quiz submission...');
+      submissionRef.current = true; // Block future submissions
       setSubmitting(true);
+      
       try {
-        const attempt = await quizService.submitQuizAttempt({
+        // Add timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Submission timeout')), 10000)
+        );
+        
+        const submissionPromise = quizService.submitQuizAttempt({
           userId: authState.user.id,
           userName: authState.user.name,
           userAvatar: authState.user.avatar,
@@ -36,6 +49,8 @@ const QuizResults: React.FC<QuizResultsProps> = ({ onRetake }) => {
           timeSpent
         });
 
+        const attempt = await Promise.race([submissionPromise, timeoutPromise]);
+        console.log('Quiz attempt submitted successfully:', attempt.id);
         dispatch({ type: 'SUBMIT_COMPLETE' });
 
         // Show badge for perfect score
@@ -47,13 +62,19 @@ const QuizResults: React.FC<QuizResultsProps> = ({ onRetake }) => {
         }
       } catch (error) {
         console.error('Failed to submit quiz results:', error);
+        // Mark as submitted to prevent retry loops, regardless of error type
+        console.log('Marking quiz as submitted to prevent retry loops');
+        dispatch({ type: 'SUBMIT_COMPLETE' });
       } finally {
         setSubmitting(false);
       }
     };
 
-    submitResults();
-  }, [state.score, state.currentQuiz, authState.user, state.hasSubmitted, isPerfectScore, timeSpent, dispatch]);
+    // Only submit if we haven't attempted yet and have all required data
+    if (state.currentQuiz && authState.user && !state.hasSubmitted && !submissionRef.current) {
+      submitResults();
+    }
+  }, []); // Empty dependency array to run only once on mount
 
   if (!state.currentQuiz) return null;
 
@@ -194,13 +215,10 @@ const QuizResults: React.FC<QuizResultsProps> = ({ onRetake }) => {
         transition={{ delay: 1.5 }}
         className="flex items-center justify-center space-x-4"
       >
-        <button
-          onClick={onRetake}
-          className="flex items-center space-x-2 bg-dark-800 text-gray-300 px-6 py-3 rounded-lg hover:bg-dark-700 transition-colors"
-        >
+        <div className="flex items-center space-x-2 bg-gray-600 text-gray-300 px-6 py-3 rounded-lg cursor-not-allowed opacity-50">
           <RotateCcw className="w-4 h-4" />
-          <span>Retake Quiz</span>
-        </button>
+          <span>Quiz Completed</span>
+        </div>
         
         {submitting && (
           <div className="flex items-center space-x-2 text-gray-400">

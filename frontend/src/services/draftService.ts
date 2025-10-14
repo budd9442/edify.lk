@@ -138,7 +138,7 @@ class DraftService {
     const { data, error } = await supabase
       .from('drafts')
       .select('id,title,content_html,cover_image_url,tags,status,created_at,updated_at,user_id')
-      .eq('status', 'submitted')
+      .in('status', ['submitted', 'published', 'rejected'])
       .order('updated_at', { ascending: false });
     if (error) throw error;
     return (data || []).map((row: any) => {
@@ -160,12 +160,86 @@ class DraftService {
   }
 
   async approveDraft(id: string): Promise<boolean> {
-    const { error } = await supabase
+    console.log('Approving draft:', id);
+    
+    // Get the draft first
+    const { data: draft, error: fetchError } = await supabase
+      .from('drafts')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError) {
+      console.error('Failed to fetch draft:', fetchError);
+      throw fetchError;
+    }
+    if (!draft) throw new Error('Draft not found');
+
+    console.log('Draft found:', draft.title);
+
+    // Generate slug from title
+    const slug = draft.title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim('-');
+
+    // Create article from draft
+    const articleData = {
+      id: crypto.randomUUID(),
+      title: draft.title,
+      slug: slug,
+      excerpt: this.extractExcerpt(draft.content_html || ''),
+      content_html: draft.content_html,
+      cover_image_url: draft.cover_image_url,
+      tags: draft.tags || [],
+      author_id: draft.user_id,
+      status: 'published',
+      featured: false,
+      likes: 0,
+      published_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('Inserting article:', articleData.title);
+
+    const { error: articleError } = await supabase
+      .from('articles')
+      .insert([articleData]);
+
+    if (articleError) {
+      console.error('Failed to insert article:', articleError);
+      throw articleError;
+    }
+
+    console.log('Article inserted successfully');
+
+    // Update draft status to published
+    const { error: updateError } = await supabase
       .from('drafts')
       .update({ status: 'published', updated_at: new Date().toISOString() })
       .eq('id', id);
-    if (error) throw error;
+    
+    if (updateError) {
+      console.error('Failed to update draft status:', updateError);
+      throw updateError;
+    }
+
+    console.log('Draft status updated to published');
     return true;
+  }
+
+  private extractExcerpt(html: string): string {
+    const text = html
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return text.length > 200 ? text.substring(0, 200) + '...' : text;
   }
 
   async rejectDraft(id: string, reason?: string): Promise<boolean> {

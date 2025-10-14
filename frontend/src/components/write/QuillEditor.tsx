@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import Quill from 'quill';
-import 'quill/dist/quill.snow.css';
+import 'quill/dist/quill.bubble.css';
+import { storageService } from '../../services/storageService';
 
 interface QuillEditorProps {
   value: string;
@@ -17,7 +18,7 @@ const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange, placeholder,
   useEffect(() => {
     if (editorRef.current && !quillRef.current) {
       quillRef.current = new Quill(editorRef.current, {
-        theme: 'snow',
+        theme: 'bubble',
         placeholder,
         modules: {
           toolbar: [
@@ -30,6 +31,29 @@ const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange, placeholder,
             ['clean'],
           ],
         },
+      });
+
+      // Custom image handler
+      const toolbar = quillRef.current.getModule('toolbar') as any;
+      toolbar.addHandler('image', () => {
+        const input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute('accept', 'image/*');
+        input.click();
+
+        input.onchange = async () => {
+          const file = input.files?.[0];
+          if (!file) return;
+
+          try {
+            const result = await storageService.uploadImage(file, 'content');
+            const range = quillRef.current?.getSelection();
+            quillRef.current?.insertEmbed(range?.index || 0, 'image', result.url);
+          } catch (error) {
+            console.error('Image upload failed:', error);
+            alert(error instanceof Error ? error.message : 'Image upload failed');
+          }
+        };
       });
 
       quillRef.current.on('text-change', () => {
@@ -64,7 +88,7 @@ const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange, placeholder,
   }, [readOnly]);
 
   return (
-    <div className="bg-dark-800 border border-dark-700 rounded-lg">
+    <div className="bg-transparent">
       <div ref={editorRef} className="min-h-[240px]" />
     </div>
   );

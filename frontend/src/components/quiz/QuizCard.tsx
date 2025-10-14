@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Trophy, Clock, RotateCcw } from 'lucide-react';
+import { Brain, Trophy, Clock, CheckCircle } from 'lucide-react';
 import { useQuiz } from '../../contexts/QuizContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { quizService } from '../../services/quizService';
@@ -15,6 +15,8 @@ interface QuizCardProps {
 const QuizCard: React.FC<QuizCardProps> = ({ articleId }) => {
   const { state, dispatch } = useQuiz();
   const { state: authState } = useAuth();
+  const [hasExistingAttempt, setHasExistingAttempt] = useState(false);
+  const [existingAttempt, setExistingAttempt] = useState<any>(null);
 
   useEffect(() => {
     const loadQuiz = async () => {
@@ -25,6 +27,18 @@ const QuizCard: React.FC<QuizCardProps> = ({ articleId }) => {
           dispatch({ type: 'SET_QUIZ', payload: quiz });
           const leaderboard = await quizService.getLeaderboard(articleId);
           dispatch({ type: 'SET_LEADERBOARD', payload: leaderboard });
+          
+          // Check if user has already attempted this quiz
+          if (authState.user) {
+            const attempt = await quizService.getUserAttempt(articleId, authState.user.id);
+            if (attempt) {
+              setHasExistingAttempt(true);
+              setExistingAttempt(attempt);
+              // Automatically show results for completed quiz
+              dispatch({ type: 'SET_SCORE', payload: attempt.score });
+              dispatch({ type: 'SUBMIT_COMPLETE' });
+            }
+          }
         }
       } catch (error) {
         console.error('Failed to load quiz:', error);
@@ -34,15 +48,21 @@ const QuizCard: React.FC<QuizCardProps> = ({ articleId }) => {
     };
 
     loadQuiz();
-  }, [articleId, dispatch]);
+  }, [articleId, dispatch, authState.user]);
 
   const handleStartQuiz = () => {
-    dispatch({ type: 'START_QUIZ' });
+    if (hasExistingAttempt) {
+      // If user has already attempted, show results instead
+      dispatch({ type: 'SET_SCORE', payload: existingAttempt.score });
+      dispatch({ type: 'SUBMIT_COMPLETE' });
+    } else {
+      dispatch({ type: 'START_QUIZ' });
+    }
   };
 
   const handleRetakeQuiz = () => {
-    dispatch({ type: 'RESET_QUIZ' });
-    dispatch({ type: 'START_QUIZ' });
+    // Disabled - users cannot retake quizzes
+    console.log('Quiz retaking is disabled');
   };
 
   if (state.loading) {
@@ -97,32 +117,43 @@ const QuizCard: React.FC<QuizCardProps> = ({ articleId }) => {
                   >
                     <div className="mb-6">
                       <div className="w-16 h-16 bg-primary-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Brain className="w-8 h-8 text-primary-400" />
+                        {hasExistingAttempt ? (
+                          <CheckCircle className="w-8 h-8 text-green-400" />
+                        ) : (
+                          <Brain className="w-8 h-8 text-primary-400" />
+                        )}
                       </div>
                       <h4 className="text-lg font-semibold text-white mb-2">
-                        Ready to test your knowledge?
+                        {hasExistingAttempt ? 'Quiz Completed!' : 'Ready to test your knowledge?'}
                       </h4>
-                      <p className="text-gray-400 mb-4">
-                        {state.currentQuiz.questions.length} questions • Multiple choice
-                      </p>
-                      <div className="flex items-center justify-center space-x-4 text-sm text-gray-500">
-                        <div className="flex items-center space-x-1">
-                          <Clock className="w-4 h-4" />
-                          <span>~2 minutes</span>
+      <p className="text-gray-400 mb-4">
+        {hasExistingAttempt 
+          ? `You scored ${existingAttempt?.score || 0}/${existingAttempt?.total_questions || state.currentQuiz.questions.length} • ${Math.floor((existingAttempt?.time_spent || 0) / 60)}:${String((existingAttempt?.time_spent || 0) % 60).padStart(2, '0')}`
+          : `${state.currentQuiz.questions.length} questions • Multiple choice`
+        }
+      </p>
+                      {!hasExistingAttempt && (
+                        <div className="flex items-center justify-center space-x-4 text-sm text-gray-500">
+                          <div className="flex items-center space-x-1">
+                            <Clock className="w-4 h-4" />
+                            <span>~2 minutes</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Trophy className="w-4 h-4" />
+                            <span>Get 100% for leaderboard</span>
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-1">
-                          <Trophy className="w-4 h-4" />
-                          <span>Get 100% for leaderboard</span>
-                        </div>
-                      </div>
+                      )}
                     </div>
-                    <button
-                      onClick={handleStartQuiz}
-                      disabled={!authState.isAuthenticated}
-                      className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {authState.isAuthenticated ? 'Start Quiz' : 'Sign in to take quiz'}
-                    </button>
+                    {!hasExistingAttempt && (
+                      <button
+                        onClick={handleStartQuiz}
+                        disabled={!authState.isAuthenticated}
+                        className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {authState.isAuthenticated ? 'Start Quiz' : 'Sign in to take quiz'}
+                      </button>
+                    )}
                   </motion.div>
                 ) : state.showResults ? (
                   <QuizResults onRetake={handleRetakeQuiz} />
@@ -136,7 +167,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ articleId }) => {
 
         {/* Leaderboard Widget */}
         <div className="lg:w-80">
-          <LeaderboardWidget articleId={articleId} />
+          <LeaderboardWidget articleId={articleId} limit={3} />
         </div>
       </div>
     </div>

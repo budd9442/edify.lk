@@ -63,7 +63,7 @@ const Header: React.FC = () => {
               Home
             </Link>
             <Link to="/feed" className="text-gray-300 hover:text-white transition-colors focus:outline-none">
-              My Feed
+              Feed
             </Link>
             <Link to="/explore" className="text-gray-300 hover:text-white transition-colors focus:outline-none">
               Explore
@@ -119,25 +119,25 @@ const Header: React.FC = () => {
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
                     className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors focus:outline-none"
                   >
-                    <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
+                    <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center overflow-hidden">
                       {state.user?.avatar ? (
                         <img
                           src={state.user.avatar.url}
                           alt={state.user.name}
-                          className="w-8 h-8 rounded-full object-cover"
+                          className="w-full h-full object-cover"
                         />
                       ) : (
                         <User className="w-4 h-4 text-white" />
                       )}
                     </div>
-                    <span className="hidden md:block">{state.user?.name}</span>
+                    <span className="hidden md:block">{state.user?.name?.split(' ')[0]}</span>
                   </button>
 
                   {isProfileOpen && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="absolute right-0 mt-2 w-48 bg-dark-900 border border-dark-800 rounded-lg shadow-lg py-2 z-50"
+                      className="absolute right-0 mt-2 w-48 bg-dark-900 border border-dark-800 rounded-lg shadow-lg py-2 z-[9999]"
                     >
                       <Link
                         to="/profile"
@@ -157,7 +157,8 @@ const Header: React.FC = () => {
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="w-full flex items-center space-x-3 px-4 py-2 text-gray-300 hover:text-white hover:bg-dark-800 transition-colors"
+                        className="w-full flex items-center space-x-3 px-4 py-2 text-gray-300 hover:text-white hover:bg-dark-800 transition-colors text-left"
+                        type="button"
                       >
                         <LogOut className="w-4 h-4" />
                         <span>Logout</span>
@@ -216,7 +217,7 @@ const Header: React.FC = () => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 <Rss className="inline w-4 h-4 mr-2" />
-                My Feed
+                Feed
               </Link>
               <Link
                 to="/explore"

@@ -16,11 +16,23 @@ const HomePage: React.FC = () => {
       dispatch({ type: 'SET_LOADING', payload: true });
       try {
         const items = await articlesService.listAll();
+        
+        // Handle empty articles gracefully
+        if (!items || items.length === 0) {
+          dispatch({ type: 'SET_ARTICLES', payload: [] });
+          return;
+        }
+
         const authorIds = Array.from(new Set(items.map(i => i.authorId)));
-        const { data: profiles } = await supabase
+        const { data: profiles, error: profileError } = await supabase
           .from('profiles')
           .select('id,name,avatar_url,bio,followers_count,articles_count')
           .in('id', authorIds);
+        
+        if (profileError) {
+          console.warn('Failed to fetch profiles:', profileError);
+        }
+
         const idToProfile = new Map((profiles || []).map((p: any) => [p.id, p]));
         const mapped: Article[] = items.map(item => {
           const p: any = idToProfile.get(item.authorId);
@@ -31,7 +43,7 @@ const HomePage: React.FC = () => {
             content: '',
             author: {
               id: item.authorId,
-              name: p?.name || 'Unknown',
+              name: p?.name || 'Anonymous',
               avatar: p?.avatar_url || '/logo.png',
               bio: p?.bio || '',
               followersCount: p?.followers_count ?? 0,
@@ -50,6 +62,7 @@ const HomePage: React.FC = () => {
         dispatch({ type: 'SET_ARTICLES', payload: mapped });
       } catch (error) {
         console.error('Failed to fetch articles:', error);
+        dispatch({ type: 'SET_ARTICLES', payload: [] });
       } finally {
         dispatch({ type: 'SET_LOADING', payload: false });
       }
@@ -106,11 +119,17 @@ const HomePage: React.FC = () => {
             {/* Recent Articles */}
             <section>
               <h2 className="text-2xl font-bold text-white mb-6">Recent Articles</h2>
-              <div className="space-y-6">
-                {regularArticles.map((article) => (
-                  <ArticleCard key={article.id} article={article} />
-                ))}
-              </div>
+              {regularArticles.length > 0 ? (
+                <div className="space-y-6">
+                  {regularArticles.map((article) => (
+                    <ArticleCard key={article.id} article={article} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-400">No articles found. Be the first to publish!</p>
+                </div>
+              )}
             </section>
           </main>
 

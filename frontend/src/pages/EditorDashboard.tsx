@@ -8,6 +8,7 @@ const EditorDashboard: React.FC = () => {
   const { state: authState } = useAuth();
   const [loading, setLoading] = useState(false);
   const [drafts, setDrafts] = useState<any[]>([]);
+  const [filter, setFilter] = useState<'all' | 'submitted' | 'published' | 'rejected'>('all');
   const [error, setError] = useState<string | null>(null);
 
   const isEditor = authState.user?.role === 'editor' || authState.user?.role === 'admin';
@@ -33,7 +34,10 @@ const EditorDashboard: React.FC = () => {
   const approve = async (id: string) => {
     try {
       await draftService.approveDraft(id);
-      setDrafts(prev => prev.filter(d => d.id !== id));
+      // Update the draft status instead of removing it
+      setDrafts(prev => prev.map(d => 
+        d.id === id ? { ...d, status: 'published', updatedAt: new Date().toISOString() } : d
+      ));
     } catch (e) {
       setError('Failed to approve draft');
     }
@@ -42,7 +46,10 @@ const EditorDashboard: React.FC = () => {
   const reject = async (id: string) => {
     try {
       await draftService.rejectDraft(id);
-      setDrafts(prev => prev.filter(d => d.id !== id));
+      // Update the draft status instead of removing it
+      setDrafts(prev => prev.map(d => 
+        d.id === id ? { ...d, status: 'rejected', updatedAt: new Date().toISOString() } : d
+      ));
     } catch (e) {
       setError('Failed to reject draft');
     }
@@ -83,8 +90,22 @@ const EditorDashboard: React.FC = () => {
             ))}
           </div>
         ) : drafts.length > 0 ? (
-          <div className="space-y-2">
-            {drafts.map((d) => (
+          <>
+            <div className="mb-4 flex items-center gap-2">
+              {(['all','submitted','published','rejected'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-3 py-1.5 rounded-lg text-sm ${filter === f ? 'bg-primary-600 text-white' : 'bg-dark-800 text-gray-300 hover:bg-dark-700'}`}
+                >
+                  {f[0].toUpperCase() + f.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div className="space-y-2">
+              {drafts
+                .filter(d => filter === 'all' ? true : d.status === filter)
+                .map((d) => (
               <div key={d.id} className="flex items-center gap-4 p-4 bg-dark-900 rounded-lg border border-dark-800">
                 <div className="w-10 h-10 bg-primary-900/30 rounded-lg flex items-center justify-center">
                   <FileText className="w-5 h-5 text-primary-400" />
@@ -105,22 +126,31 @@ const EditorDashboard: React.FC = () => {
                   >
                     <Eye className="w-4 h-4" /> Preview
                   </a>
-                  <button
-                    onClick={() => approve(d.id)}
-                    className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-1"
-                  >
-                    <CheckCircle2 className="w-4 h-4" /> Approve
-                  </button>
-                  <button
-                    onClick={() => reject(d.id)}
-                    className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm flex items-center gap-1"
-                  >
-                    <XCircle className="w-4 h-4" /> Reject
-                  </button>
+                  {d.status === 'published' ? (
+                    <span className="px-3 py-1.5 bg-green-600/20 text-green-400 rounded-lg text-sm flex items-center gap-1">
+                      <CheckCircle2 className="w-4 h-4" /> Published
+                    </span>
+                  ) : d.status !== 'published' ? (
+                    <button
+                      onClick={() => approve(d.id)}
+                      className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-1"
+                    >
+                      <CheckCircle2 className="w-4 h-4" /> Approve
+                    </button>
+                  ) : null}
+                  {d.status !== 'rejected' && d.status !== 'published' && (
+                    <button
+                      onClick={() => reject(d.id)}
+                      className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm flex items-center gap-1"
+                    >
+                      <XCircle className="w-4 h-4" /> Reject
+                    </button>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         ) : (
           <div className="text-center py-12 bg-dark-900 border border-dark-800 rounded-lg">
             <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />

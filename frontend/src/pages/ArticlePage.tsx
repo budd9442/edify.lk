@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { 
-  Heart, 
+  Heart,
   MessageCircle, 
   Share2, 
   BookmarkPlus, 
@@ -47,6 +47,10 @@ const ArticlePage: React.FC = () => {
             .select('id,name,avatar_url,bio,followers_count,articles_count')
             .eq('id', (data as any).authorId)
             .single();
+          
+          // fetch comments with user profiles
+          const comments = await commentsService.listByArticle(data.id);
+          
           setArticle({
             id: data.id,
             title: data.title,
@@ -54,7 +58,7 @@ const ArticlePage: React.FC = () => {
             content: data.contentHtml,
             author: {
               id: (data as any).authorId,
-              name: profile?.name || 'Unknown',
+              name: profile?.name || 'Anonymous',
               avatar: profile?.avatar_url || '/logo.png',
               bio: profile?.bio || '',
               followersCount: profile?.followers_count ?? 0,
@@ -63,7 +67,7 @@ const ArticlePage: React.FC = () => {
             publishedAt: data.publishedAt || new Date().toISOString(),
             readingTime: 5,
             likes: data.likes,
-            comments: [],
+            comments: comments,
             tags: data.tags,
             featured: data.featured,
             status: 'published',
@@ -98,24 +102,18 @@ const ArticlePage: React.FC = () => {
 
     setCommentLoading(true);
     try {
-      const created = await commentsService.create({
+      await commentsService.create({
         articleId: article.id,
         userId: authState.user.id,
         content: comment,
       });
-      const newComment = {
-        id: created.id,
-        content: created.content,
-        author: {
-          id: authState.user.id,
-          name: authState.user.name,
-          avatar: authState.user.avatar,
-        },
-        createdAt: created.created_at,
-        likes: 0,
-      };
-
-      dispatch({ type: 'ADD_COMMENT', payload: { articleId: article.id, comment: newComment } });
+      
+      // Refresh comments from database to get the latest with proper user data
+      const updatedComments = await commentsService.listByArticle(article.id);
+      
+      // Update the article with fresh comments
+      setArticle(prev => prev ? { ...prev, comments: updatedComments } : null);
+      
       setComment('');
     } catch (error) {
       console.error('Failed to add comment:', error);
@@ -292,9 +290,9 @@ const ArticlePage: React.FC = () => {
               <form onSubmit={handleComment} className="mb-8">
                 <div className="flex space-x-4">
                   <img
-                    src={authState.user?.avatar}
-                    alt={authState.user?.name}
-                    className="w-10 h-10 rounded-full"
+                    src={authState.user?.avatar?.url || '/logo.png'}
+                    alt={authState.user?.name || 'User'}
+                    className="w-10 h-10 rounded-full object-cover"
                   />
                   <div className="flex-1">
                     <textarea
@@ -352,15 +350,6 @@ const ArticlePage: React.FC = () => {
                         </span>
                       </div>
                       <p className="text-gray-300">{comment.content}</p>
-                    </div>
-                    <div className="flex items-center space-x-4 mt-2">
-                      <button className="flex items-center space-x-1 text-gray-400 hover:text-red-400 transition-colors">
-                        <Heart className="w-4 h-4" />
-                        <span>{comment.likes}</span>
-                      </button>
-                      <button className="text-gray-400 hover:text-white transition-colors">
-                        Reply
-                      </button>
                     </div>
                   </div>
                 </motion.div>

@@ -14,6 +14,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Draft } from '../mock-data/strapiBlocks';
 import { draftService } from '../services/draftService';
 import QuillEditor from '../components/write/QuillEditor';
+import ImageUpload from '../components/write/ImageUpload';
 // BlockRenderer is not used in HTML flow
 import ImportHandler from '../components/write/ImportHandler';
 // Removed DraftCard in favor of horizontal list rows
@@ -497,6 +498,20 @@ const WriteDashboard: React.FC = () => {
                     onChange={(e) => setCurrentDraft(prev => ({ ...prev, title: e.target.value }))}
                     placeholder="Article title..."
                     className="w-full text-3xl font-bold bg-transparent border-none outline-none text-white placeholder-gray-500"
+                  />
+                </div>
+
+                {/* Cover Image */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Cover Image
+                  </label>
+                  <ImageUpload
+                    currentImage={currentDraft.coverImage}
+                    onImageChange={(url) => setCurrentDraft(prev => ({ ...prev, coverImage: url }))}
+                    onImageRemove={() => setCurrentDraft(prev => ({ ...prev, coverImage: undefined }))}
+                    placeholder="Upload cover image for your article"
+                    className="mb-4"
                   />
                 </div>
 

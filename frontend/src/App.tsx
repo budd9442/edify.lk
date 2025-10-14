@@ -13,13 +13,14 @@ import FeedPage from './pages/FeedPage';
 import ExplorePage from './pages/ExplorePage';
 import WriteDashboard from './pages/WriteDashboard';
 import EditorDashboard from './pages/EditorDashboard';
+import ProfilePage from './pages/ProfilePage';
 
 function App() {
   return (
     <AuthProvider>
       <AppProvider>
         <QuizProvider>
-          <Router>
+          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <div className="min-h-screen bg-dark-950">
               <Header />
               <Routes>
@@ -32,6 +33,8 @@ function App() {
                 <Route path="/explore" element={<ExplorePage />} />
                 <Route path="/write" element={<WriteDashboard />} />
                 <Route path="/editor" element={<EditorDashboard />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/profile/:userId" element={<ProfilePage />} />
               </Routes>
             </div>
           </Router>

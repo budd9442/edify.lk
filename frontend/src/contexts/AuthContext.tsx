@@ -79,25 +79,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { data } = await supabase.auth.getUser();
       const authUser = data.user;
       if (authUser) {
-        // Fetch role from profiles
-        let role: any = 'user';
+        // Try to fetch profile data from profiles table, fallback to auth metadata
+        let profileData: any = { 
+          role: 'user', 
+          name: authUser.user_metadata?.name || 'User',
+          bio: '',
+          avatar_url: null, // Start with null, let profiles table override
+          social_links: null
+        };
+        
         try {
-          const { data: prof } = await supabase
+          // First ensure profile exists with proper name
+          const { profilesService } = await import('../services/profilesService');
+          await profilesService.ensureProfileExists(authUser.id, authUser.user_metadata?.name || 'User');
+          
+          const { data: prof, error } = await supabase
             .from('profiles')
-            .select('role')
+            .select('role, name, bio, avatar_url, social_links')
             .eq('id', authUser.id)
-            .single();
-          role = (prof as any)?.role || 'user';
+            .maybeSingle(); // Use maybeSingle instead of single to avoid errors
+          
+          if (error) {
+            console.log('Profile fetch error:', error.message);
+            // Fallback to auth metadata if profiles table fails
+            profileData.avatar_url = authUser.user_metadata?.avatar_url;
+          } else if (prof) {
+            // Profiles table data takes precedence
+            profileData = { ...profileData, ...prof };
+            console.log('Loaded profile data:', profileData);
+          } else {
+            // No profile found, use auth metadata as fallback
+            profileData.avatar_url = authUser.user_metadata?.avatar_url;
+            console.log('No profile found, using auth metadata');
+          }
         } catch (e) {
-          role = 'user';
+          console.log('Profile fetch exception:', e);
+          // Fallback to auth metadata
+          profileData.avatar_url = authUser.user_metadata?.avatar_url;
         }
         const mappedUser: User = {
           id: authUser.id,
           createdAt: authUser.created_at ?? new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          name: (authUser.user_metadata?.name as string) || 'User',
+          name: profileData.name || (authUser.user_metadata?.name as string) || 'User',
           email: authUser.email || '',
-          avatar: authUser.user_metadata?.avatar_url
+          bio: profileData.bio,
+          avatar: profileData.avatar_url
             ? {
                 id: 'avatar',
                 createdAt: new Date().toISOString(),
@@ -106,10 +133,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 alt: 'avatar',
                 mimeType: 'image/png',
                 filesize: 0,
-                url: authUser.user_metadata?.avatar_url as string,
+                url: profileData.avatar_url,
               }
             : undefined,
-          role: role as any,
+          socialLinks: profileData.social_links,
+          role: profileData.role as any,
           verified: !!authUser.email_confirmed_at,
           stats: { followersCount: 0, followingCount: 0, articlesCount: 0 },
         };
@@ -119,25 +147,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
         const sUser = session?.user;
         if (sUser) {
-          // Fetch role from profiles
-          let roleNow: any = 'user';
+          // Try to fetch profile data from profiles table, fallback to auth metadata
+          let profileData: any = { 
+            role: 'user', 
+            name: sUser.user_metadata?.name || 'User',
+            bio: '',
+            avatar_url: null, // Start with null, let profiles table override
+            social_links: null
+          };
+          
           try {
-            const { data: prof } = await supabase
+            // First ensure profile exists with proper name
+            const { profilesService } = await import('../services/profilesService');
+            await profilesService.ensureProfileExists(sUser.id, sUser.user_metadata?.name || 'User');
+            
+            const { data: prof, error } = await supabase
               .from('profiles')
-              .select('role')
+              .select('role, name, bio, avatar_url, social_links')
               .eq('id', sUser.id)
-              .single();
-            roleNow = (prof as any)?.role || 'user';
+              .maybeSingle(); // Use maybeSingle instead of single to avoid errors
+            
+            if (error) {
+              console.log('Profile fetch error in auth state change:', error.message);
+              // Fallback to auth metadata if profiles table fails
+              profileData.avatar_url = sUser.user_metadata?.avatar_url;
+            } else if (prof) {
+              // Profiles table data takes precedence
+              profileData = { ...profileData, ...prof };
+              console.log('Loaded profile data in auth state change:', profileData);
+            } else {
+              // No profile found, use auth metadata as fallback
+              profileData.avatar_url = sUser.user_metadata?.avatar_url;
+              console.log('No profile found in auth state change, using auth metadata');
+            }
           } catch (e) {
-            roleNow = 'user';
+            console.log('Profile fetch exception in auth state change:', e);
+            // Fallback to auth metadata
+            profileData.avatar_url = sUser.user_metadata?.avatar_url;
           }
           const mapped: User = {
             id: sUser.id,
             createdAt: sUser.created_at ?? new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            name: (sUser.user_metadata?.name as string) || 'User',
+            name: profileData.name || (sUser.user_metadata?.name as string) || 'User',
             email: sUser.email || '',
-            avatar: sUser.user_metadata?.avatar_url
+            bio: profileData.bio,
+            avatar: profileData.avatar_url
               ? {
                   id: 'avatar',
                   createdAt: new Date().toISOString(),
@@ -146,10 +201,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                   alt: 'avatar',
                   mimeType: 'image/png',
                   filesize: 0,
-                  url: sUser.user_metadata?.avatar_url as string,
+                  url: profileData.avatar_url,
                 }
               : undefined,
-            role: roleNow as any,
+            socialLinks: profileData.social_links,
+            role: profileData.role as any,
             verified: !!sUser.email_confirmed_at,
             stats: { followersCount: 0, followingCount: 0, articlesCount: 0 },
           };

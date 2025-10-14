@@ -7,15 +7,16 @@ import { quizService } from '../../services/quizService';
 
 interface LeaderboardWidgetProps {
   articleId: string;
+  limit?: number;
 }
 
-const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ articleId }) => {
+const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ articleId, limit = 10 }) => {
   const { state, dispatch } = useQuiz();
 
   useEffect(() => {
     const loadLeaderboard = async () => {
       try {
-        const leaderboard = await quizService.getLeaderboard(articleId);
+        const leaderboard = await quizService.getLeaderboard(articleId, limit);
         dispatch({ type: 'SET_LEADERBOARD', payload: leaderboard });
       } catch (error) {
         console.error('Failed to load leaderboard:', error);
@@ -23,7 +24,7 @@ const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ articleId }) => {
     };
 
     loadLeaderboard();
-  }, [articleId, dispatch]);
+  }, [articleId, limit, dispatch]);
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
