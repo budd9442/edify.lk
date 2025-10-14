@@ -130,24 +130,34 @@ export async function organizeContentWithAI(html: string): Promise<{ optimizedHt
   }
 
   const prompt = [
-    'You are a helpful assistant that improves HTML content structure and readability.',
-    'Analyze the provided content and return ONLY valid JSON with HTML improvements and suggested tags.',
+    'You are a helpful assistant that improves HTML content structure and readability for Quill.js editor.',
+    'Analyze the provided content and return ONLY valid JSON with structural improvements and suggested tags.',
     'Return ONLY valid JSON matching this TypeScript type (no markdown, no code fences):',
     '{ "improvements": Array<{ selector: string; action: string; content?: string; description: string; }>; "suggestedTags": string[] }',
-    'Actions available:',
-    '- "add-spacing": Add <br><br> for better paragraph separation',
-    '- "improve-headings": Enhance heading structure and hierarchy',
-    '- "add-breaks": Add visual breaks between sections',
-    '- "format-lists": Improve list formatting and structure',
-    '- "enhance-text": Add emphasis, formatting, or structure to text',
+    '',
+    'Available Actions:',
+    '- "add-spacing": Add <br><br> for better paragraph separation (only if not already present)',
+    '- "improve-headings": Enhance heading structure with Quill header classes (ql-header ql-header-1, etc.)',
+    '- "add-breaks": Add visual breaks between sections using <hr class="ql-divider">',
+    '- "format-lists": Improve list formatting with Quill classes (ql-list, ql-list-item)',
+    '- "enhance-text": Add Quill-compatible formatting (ql-blockquote, ql-code, ql-bold, ql-italic)',
+    '',
     'Constraints:',
     '- selector: CSS selector (e.g., "p", "h1", "ul", ".content")',
     '- action: One of the available actions above',
-    '- content: New HTML content (only for enhance-text action)',
+    '- content: New HTML content with Quill classes (only for enhance-text action)',
     '- description: Brief explanation of the improvement',
-    '- Focus on HTML structure, spacing, and readability',
+    '- Focus on Quill.js-compatible formatting and structure',
     '- Do not change the actual text content, only structure and formatting',
-    '- suggestedTags: 3-5 relevant tags based on content (lowercase, no spaces, use hyphens)',
+    '- Avoid duplicate improvements (check if already applied)',
+    '- Use Quill classes: ql-header, ql-list, ql-blockquote, ql-code, ql-divider, ql-bold, ql-italic',
+    '- CRITICAL: Preserve ALL images, videos, and media elements exactly as they are',
+    '- CRITICAL: Keep all <img> tags with their src, alt, class, and style attributes intact',
+    '- CRITICAL: Preserve all <figure> and <figcaption> elements if present',
+    '',
+    'For suggestedTags:',
+    '- Generate 3-5 relevant tags based on content (lowercase, no spaces, use hyphens)',
+    '- Focus on main topics, themes, and categories',
     '',
     'Content to optimize:',
     plain.slice(0, 15000),
@@ -163,7 +173,7 @@ export async function organizeContentWithAI(html: string): Promise<{ optimizedHt
     ],
     generationConfig: {
       temperature: 0.2,
-      maxOutputTokens: 2000,
+      maxOutputTokens: 3000,
     },
   } as any;
 
@@ -198,8 +208,7 @@ export async function organizeContentWithAI(html: string): Promise<{ optimizedHt
 
   const improvements = Array.isArray(parsed?.improvements) ? parsed.improvements : [];
   const suggestedTags = Array.isArray(parsed?.suggestedTags) ? parsed.suggestedTags : [];
-  
-  // Apply the AI-generated improvements to the HTML
+
   const optimizedHtml = applyStructuralImprovements(html, improvements);
   
   return { 
@@ -210,11 +219,13 @@ export async function organizeContentWithAI(html: string): Promise<{ optimizedHt
 
 function applyStructuralImprovements(html: string, improvements: Array<{ selector: string; action: string; content?: string; description: string }>): string {
   try {
-    // Parse HTML
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     
     console.log('AI structural improvements received:', improvements);
+    
+    // Track applied improvements to prevent duplicates
+    const appliedImprovements = new Set<string>();
     
     // Apply each improvement
     improvements.forEach(improvement => {
@@ -224,52 +235,80 @@ function applyStructuralImprovements(html: string, improvements: Array<{ selecto
         
         elements.forEach(element => {
           const htmlElement = element as HTMLElement;
+          const elementId = `${improvement.selector}-${improvement.action}-${htmlElement.tagName}`;
+          
+          // Skip if already applied to this element type
+          if (appliedImprovements.has(elementId)) {
+            return;
+          }
           
           switch (improvement.action) {
             case 'add-spacing':
-              // Add spacing after paragraphs
+              // Only add spacing if not already present - comprehensive check
               if (htmlElement.tagName === 'P') {
-                htmlElement.innerHTML += '<br><br>';
-              }
-              break;
-              
-            case 'improve-headings':
-              // Ensure proper heading hierarchy
-              if (htmlElement.tagName.match(/^H[1-6]$/)) {
-                const level = parseInt(htmlElement.tagName.charAt(1));
-                if (level > 1) {
-                  htmlElement.innerHTML = `<strong>${htmlElement.innerHTML}</strong>`;
+                const innerHTML = htmlElement.innerHTML;
+                const hasSpacing = innerHTML.includes('<br><br>') || 
+                                 innerHTML.includes('<br><br><br>') ||
+                                 innerHTML.endsWith('<br><br>') ||
+                                 innerHTML.endsWith('<br><br><br>') ||
+                                 innerHTML.includes('ql-spacing') ||
+                                 htmlElement.classList.contains('ql-spacing');
+                
+                if (!hasSpacing) {
+                  htmlElement.innerHTML += '<br><br>';
+                  appliedImprovements.add(elementId);
                 }
               }
               break;
               
+            case 'improve-headings':
+              // Use Quill-compatible formatting
+              if (htmlElement.tagName.match(/^H[1-6]$/) && !htmlElement.classList.contains('ql-header')) {
+                const level = parseInt(htmlElement.tagName.charAt(1));
+                htmlElement.setAttribute('class', `ql-header ql-header-${level}`);
+                appliedImprovements.add(elementId);
+              }
+              break;
+              
             case 'add-breaks':
-              // Add visual breaks between sections
-              if (htmlElement.tagName === 'H1' || htmlElement.tagName === 'H2') {
+              // Add visual breaks between sections (only if not already present)
+              if ((htmlElement.tagName === 'H1' || htmlElement.tagName === 'H2') && 
+                  !htmlElement.nextElementSibling?.tagName?.includes('HR')) {
                 const hr = doc.createElement('hr');
-                hr.style.border = 'none';
-                hr.style.borderTop = '2px solid #374151';
-                hr.style.margin = '2rem 0';
+                hr.setAttribute('class', 'ql-divider');
                 htmlElement.parentNode?.insertBefore(hr, htmlElement.nextSibling);
+                appliedImprovements.add(elementId);
               }
               break;
               
             case 'format-lists':
-              // Improve list formatting
-              if (htmlElement.tagName === 'UL' || htmlElement.tagName === 'OL') {
+              // Improve list formatting with Quill classes
+              if ((htmlElement.tagName === 'UL' || htmlElement.tagName === 'OL') && 
+                  !htmlElement.classList.contains('ql-list')) {
+                htmlElement.setAttribute('class', 'ql-list');
                 const items = htmlElement.querySelectorAll('li');
                 items.forEach(li => {
-                  if (!li.innerHTML.includes('<br>')) {
-                    li.innerHTML += '<br>';
+                  if (!li.classList.contains('ql-list-item')) {
+                    li.setAttribute('class', 'ql-list-item');
+                    if (!li.innerHTML.includes('<br>')) {
+                      li.innerHTML += '<br>';
+                    }
                   }
                 });
+                appliedImprovements.add(elementId);
               }
               break;
               
             case 'enhance-text':
-              // Apply text enhancements
-              if (improvement.content) {
-                htmlElement.innerHTML = improvement.content;
+              // Apply Quill-compatible text enhancements
+              if (improvement.content && !htmlElement.classList.contains('ql-enhanced')) {
+                // Parse and apply Quill formatting
+                const tempDiv = doc.createElement('div');
+                tempDiv.innerHTML = improvement.content;
+                const quillFormatted = convertToQuillFormat(tempDiv);
+                htmlElement.innerHTML = quillFormatted;
+                htmlElement.classList.add('ql-enhanced');
+                appliedImprovements.add(elementId);
               }
               break;
           }
@@ -292,42 +331,102 @@ function applyStructuralImprovements(html: string, improvements: Array<{ selecto
   }
 }
 
+function convertToQuillFormat(element: HTMLElement): string {
+  // Convert common HTML elements to Quill-compatible classes
+  let html = element.innerHTML;
+  
+  // Convert headers to Quill header classes
+  html = html.replace(/<h([1-6])/g, '<h$1 class="ql-header ql-header-$1"');
+  
+  // Convert lists to Quill list classes
+  html = html.replace(/<ul/g, '<ul class="ql-list"');
+  html = html.replace(/<ol/g, '<ol class="ql-list"');
+  html = html.replace(/<li/g, '<li class="ql-list-item"');
+  
+  // Convert blockquotes to Quill blockquote
+  html = html.replace(/<blockquote/g, '<blockquote class="ql-blockquote"');
+  
+  // Convert code blocks
+  html = html.replace(/<pre/g, '<pre class="ql-code-block"');
+  html = html.replace(/<code/g, '<code class="ql-code"');
+  
+  return html;
+}
+
 function applyFallbackStructuralImprovements(doc: Document): void {
-  // Add spacing between paragraphs
+  // Add spacing between paragraphs (only if not already present)
   const paragraphs = doc.querySelectorAll('p');
   paragraphs.forEach(p => {
-    if (!p.innerHTML.includes('<br><br>')) {
+    const innerHTML = p.innerHTML;
+    const hasSpacing = innerHTML.includes('<br><br>') || 
+                      innerHTML.includes('<br><br><br>') ||
+                      innerHTML.endsWith('<br><br>') ||
+                      innerHTML.endsWith('<br><br><br>') ||
+                      innerHTML.includes('ql-spacing') ||
+                      p.classList.contains('ql-spacing');
+    if (!hasSpacing) {
       p.innerHTML += '<br><br>';
     }
   });
   
-  // Improve heading structure
+  // Improve heading structure with Quill classes
   const headings = doc.querySelectorAll('h1, h2, h3, h4, h5, h6');
   headings.forEach((heading, index) => {
-    if (index > 0) {
-      const hr = doc.createElement('hr');
-      hr.style.border = 'none';
-      hr.style.borderTop = '1px solid #374151';
-      hr.style.margin = '1.5rem 0';
-      heading.parentNode?.insertBefore(hr, heading);
+    if (!heading.classList.contains('ql-header')) {
+      const level = parseInt(heading.tagName.charAt(1));
+      heading.setAttribute('class', `ql-header ql-header-${level}`);
+      
+      // Add visual breaks between major sections (only if not already present)
+      if (index > 0 && (heading.tagName === 'H1' || heading.tagName === 'H2') && 
+          !heading.previousElementSibling?.tagName?.includes('HR')) {
+        const hr = doc.createElement('hr');
+        hr.setAttribute('class', 'ql-divider');
+        heading.parentNode?.insertBefore(hr, heading);
+      }
     }
   });
   
-  // Improve list formatting
+  // Improve list formatting with Quill classes
   const lists = doc.querySelectorAll('ul, ol');
   lists.forEach(list => {
-    const items = list.querySelectorAll('li');
-    items.forEach(li => {
-      if (!li.innerHTML.includes('<br>')) {
-        li.innerHTML += '<br>';
-      }
-    });
+    if (!list.classList.contains('ql-list')) {
+      list.setAttribute('class', 'ql-list');
+      const items = list.querySelectorAll('li');
+      items.forEach(li => {
+        if (!li.classList.contains('ql-list-item')) {
+          li.setAttribute('class', 'ql-list-item');
+          if (!li.innerHTML.includes('<br>')) {
+            li.innerHTML += '<br>';
+          }
+        }
+      });
+    }
   });
   
-  // Add spacing around blockquotes
+  // Add Quill classes to blockquotes
   const blockquotes = doc.querySelectorAll('blockquote');
   blockquotes.forEach(quote => {
-    quote.innerHTML = `<br>${quote.innerHTML}<br>`;
+    if (!quote.classList.contains('ql-blockquote')) {
+      quote.setAttribute('class', 'ql-blockquote');
+      if (!quote.innerHTML.startsWith('<br>')) {
+        quote.innerHTML = `<br>${quote.innerHTML}<br>`;
+      }
+    }
+  });
+  
+  // Add Quill classes to code blocks
+  const codeBlocks = doc.querySelectorAll('pre');
+  codeBlocks.forEach(pre => {
+    if (!pre.classList.contains('ql-code-block')) {
+      pre.setAttribute('class', 'ql-code-block');
+    }
+  });
+  
+  const inlineCode = doc.querySelectorAll('code');
+  inlineCode.forEach(code => {
+    if (!code.classList.contains('ql-code')) {
+      code.setAttribute('class', 'ql-code');
+    }
   });
 }
 
