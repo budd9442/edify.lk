@@ -21,17 +21,93 @@ const Header: React.FC = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
   const { state, logout } = useAuth();
   const navigate = useNavigate();
   const { state: appState, dispatch: appDispatch } = useApp();
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (state.isAuthenticated) {
-      // TODO: Load unread notifications count from PayloadCMS
-      // loadUnreadCount();
+    if (!state.isAuthenticated || !state.user?.id) {
+      setUnreadCount(0);
+      return;
     }
-  }, [state.isAuthenticated]);
+    let cancelled = false;
+    const loadUnread = async () => {
+      try {
+        const { data, error, count } = await supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', state.user!.id)
+          .eq('read', false);
+        if (!cancelled) setUnreadCount((count as number) || 0);
+      } catch {
+        if (!cancelled) setUnreadCount(0);
+      }
+    };
+    loadUnread();
+
+    // Optional: listen for global refresh events
+    const handler = () => loadUnread();
+    window.addEventListener('notifications:refresh', handler);
+    return () => { cancelled = true; window.removeEventListener('notifications:refresh', handler); };
+  }, [state.isAuthenticated, state.user?.id]);
+
+  // Realtime updates for notifications (insert/update/delete)
+  useEffect(() => {
+    if (!state.isAuthenticated || !state.user?.id) return;
+
+    // Subscribe to realtime changes on notifications for this user
+    const channel = supabase
+      .channel(`notifications:${state.user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${state.user.id}` },
+        (payload: any) => {
+          const n = payload.new as { read?: boolean };
+          if (n && n.read === false) {
+            setUnreadCount((c) => c + 1);
+          } else {
+            // If read is null/undefined, conservatively increment
+            setUnreadCount((c) => c + 1);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${state.user.id}` },
+        (payload: any) => {
+          const prev = payload.old as { read?: boolean };
+          const next = payload.new as { read?: boolean };
+          if (prev && next && prev.read === false && next.read === true) {
+            setUnreadCount((c) => Math.max(0, c - 1));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'notifications', filter: `user_id=eq.${state.user.id}` },
+        (payload: any) => {
+          const oldRow = payload.old as { read?: boolean };
+          if (oldRow && oldRow.read === false) {
+            setUnreadCount((c) => Math.max(0, c - 1));
+          }
+        }
+      )
+      .subscribe((status) => {
+        // Optionally log status
+      });
+
+    // Fallback poll every 30s in case realtime is not enabled
+    const poll = setInterval(() => {
+      window.dispatchEvent(new Event('notifications:refresh'));
+    }, 30000);
+
+    return () => {
+      try { supabase.removeChannel(channel); } catch {}
+      clearInterval(poll);
+    };
+  }, [state.isAuthenticated, state.user?.id]);
 
   // Close profile dropdown when clicking outside
   useEffect(() => {
@@ -148,11 +224,18 @@ const Header: React.FC = () => {
                     className="relative p-2 text-gray-300 hover:text-white transition-colors focus:outline-none"
                   >
                     <Bell className="w-5 h-5" />
+                    {unreadCount > 0 && (
+                      <span
+                        aria-label={`${unreadCount} unread notifications`}
+                        className="absolute -top-0.5 -right-0.5 inline-flex h-2.5 w-2.5 rounded-full bg-primary-500 ring-2 ring-dark-950"
+                      />
+                    )}
                   </button>
                   
                   {isNotificationOpen && (
                     <NotificationDropdown
                       onClose={() => setIsNotificationOpen(false)}
+                      // When dropdown opens, we could refresh unread in case items were marked read inside
                     />
                   )}
                 </div>

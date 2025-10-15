@@ -30,6 +30,7 @@ function buildPrompt(plainText: string, numQuestions: number): string {
     'Constraints:',
     '- Each question must have 4 options.',
     '- correctAnswer is the 0-based index into options.',
+    '- Each option must be a short phrase of at most 6 words.',
     '- Keep questions concise; explanations optional but helpful.',
     '- Do not include any text outside the JSON object.',
     '',
@@ -103,12 +104,18 @@ export async function generateQuizFromHtml(html: string, numQuestions: number = 
     .slice(0, 10)
     .map((q) => {
       const options: string[] = Array.isArray(q.options) ? q.options.slice(0, 4) : [];
-      const padded = options.length < 4 ? [...options, ...new Array(4 - options.length).fill('N/A')].slice(0, 4) : options;
+      const paddedRaw = options.length < 4 ? [...options, ...new Array(4 - options.length).fill('N/A')].slice(0, 4) : options;
+      // Enforce max 6 words per option
+      const padded = paddedRaw.map((opt) => {
+        const words = String(opt || '').trim().split(/\s+/);
+        const limited = words.slice(0, 6).join(' ');
+        return limited;
+      });
       let correctIndex = Number.isInteger(q.correctAnswer) ? q.correctAnswer : 0;
       if (correctIndex < 0 || correctIndex > 3) correctIndex = 0;
       return {
         question: String(q.question || '').trim().slice(0, 280),
-        options: padded.map((o) => String(o || '').trim() || 'N/A'),
+        options: padded.map((o) => (String(o || '').trim() || 'N/A')),
         correctAnswer: correctIndex,
         explanation: q.explanation ? String(q.explanation).trim().slice(0, 500) : undefined,
       } as GeneratedQuizQuestion;

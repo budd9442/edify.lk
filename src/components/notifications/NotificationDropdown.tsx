@@ -196,19 +196,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
       </div>
 
       {/* Footer */}
-      {notifications.length > 0 && (
-        <div className="border-t border-dark-800 mt-4 pt-4 px-4">
-          <button
-            onClick={() => {
-              // TODO: Navigate to notifications page
-              onClose();
-            }}
-            className="w-full text-center text-sm text-primary-400 hover:text-primary-300 transition-colors py-2"
-          >
-            View all notifications
-          </button>
-        </div>
-      )}
+      {/* Removed 'View all notifications' per request */}
     </div>
   );
 };
