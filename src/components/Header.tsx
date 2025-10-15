@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -13,22 +13,101 @@ import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
 import SearchBar from './SearchBar';
 import NotificationDropdown from './notifications/NotificationDropdown';
+import { ToastContainer } from './common/Toast';
+import supabase from '../services/supabaseClient';
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
   const { state, logout } = useAuth();
   const navigate = useNavigate();
   const { state: appState, dispatch: appDispatch } = useApp();
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (state.isAuthenticated) {
-      // TODO: Load unread notifications count from PayloadCMS
-      // loadUnreadCount();
+    if (!state.isAuthenticated || !state.user?.id) {
+      setUnreadCount(0);
+      return;
     }
-  }, [state.isAuthenticated]);
+    let cancelled = false;
+    const loadUnread = async () => {
+      try {
+        const { data, error, count } = await supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', state.user!.id)
+          .eq('read', false);
+        if (!cancelled) setUnreadCount((count as number) || 0);
+      } catch {
+        if (!cancelled) setUnreadCount(0);
+      }
+    };
+    loadUnread();
+
+    // Optional: listen for global refresh events
+    const handler = () => loadUnread();
+    window.addEventListener('notifications:refresh', handler);
+    return () => { cancelled = true; window.removeEventListener('notifications:refresh', handler); };
+  }, [state.isAuthenticated, state.user?.id]);
+
+  // Realtime updates for notifications (insert/update/delete)
+  useEffect(() => {
+    if (!state.isAuthenticated || !state.user?.id) return;
+
+    // Subscribe to realtime changes on notifications for this user
+    const channel = supabase
+      .channel(`notifications:${state.user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${state.user.id}` },
+        (payload: any) => {
+          const n = payload.new as { read?: boolean };
+          if (n && n.read === false) {
+            setUnreadCount((c) => c + 1);
+          } else {
+            // If read is null/undefined, conservatively increment
+            setUnreadCount((c) => c + 1);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${state.user.id}` },
+        (payload: any) => {
+          const prev = payload.old as { read?: boolean };
+          const next = payload.new as { read?: boolean };
+          if (prev && next && prev.read === false && next.read === true) {
+            setUnreadCount((c) => Math.max(0, c - 1));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'notifications', filter: `user_id=eq.${state.user.id}` },
+        (payload: any) => {
+          const oldRow = payload.old as { read?: boolean };
+          if (oldRow && oldRow.read === false) {
+            setUnreadCount((c) => Math.max(0, c - 1));
+          }
+        }
+      )
+      .subscribe((status) => {
+        // Optionally log status
+      });
+
+    // Fallback poll every 30s in case realtime is not enabled
+    const poll = setInterval(() => {
+      window.dispatchEvent(new Event('notifications:refresh'));
+    }, 30000);
+
+    return () => {
+      try { supabase.removeChannel(channel); } catch {}
+      clearInterval(poll);
+    };
+  }, [state.isAuthenticated, state.user?.id]);
 
   // Close profile dropdown when clicking outside
   useEffect(() => {
@@ -47,15 +126,43 @@ const Header: React.FC = () => {
     };
   }, [isProfileOpen]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
+    if (isLoggingOut) return; // Prevent multiple clicks
+    
+    setIsLoggingOut(true);
+    
+    // Set a timeout to prevent hanging
+    const timeoutId = setTimeout(() => {
+      console.warn('Logout timeout, forcing page reload');
+      window.location.href = '/';
+    }, 5000); // 5 second timeout
+    
     try {
+      // Try the context logout first
       await logout();
+      clearTimeout(timeoutId);
       navigate('/');
       setIsProfileOpen(false);
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('Context logout failed, trying direct Supabase logout:', error);
+      try {
+        // Fallback: direct Supabase logout
+        await supabase.auth.signOut();
+        clearTimeout(timeoutId);
+        navigate('/');
+        setIsProfileOpen(false);
+        // Force page reload to ensure clean state
+        window.location.href = '/';
+      } catch (fallbackError) {
+        console.error('Direct logout also failed:', fallbackError);
+        clearTimeout(timeoutId);
+        // Last resort: force reload to home page
+        window.location.href = '/';
+      }
+    } finally {
+      setIsLoggingOut(false);
     }
-  };
+  }, [logout, navigate, isLoggingOut]);
 
   return (
     <header className="bg-dark-950/80 backdrop-blur-md border-b border-dark-800 sticky top-0 z-50">
@@ -117,11 +224,18 @@ const Header: React.FC = () => {
                     className="relative p-2 text-gray-300 hover:text-white transition-colors focus:outline-none"
                   >
                     <Bell className="w-5 h-5" />
+                    {unreadCount > 0 && (
+                      <span
+                        aria-label={`${unreadCount} unread notifications`}
+                        className="absolute -top-0.5 -right-0.5 inline-flex h-2.5 w-2.5 rounded-full bg-primary-500 ring-2 ring-dark-950"
+                      />
+                    )}
                   </button>
                   
                   {isNotificationOpen && (
                     <NotificationDropdown
                       onClose={() => setIsNotificationOpen(false)}
+                      // When dropdown opens, we could refresh unread in case items were marked read inside
                     />
                   )}
                 </div>
@@ -161,12 +275,21 @@ const Header: React.FC = () => {
                         <span>Profile</span>
                       </Link>
                       <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center space-x-3 px-4 py-2 text-gray-300 hover:text-white hover:bg-dark-800 transition-colors text-left"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleLogout();
+                        }}
+                        disabled={isLoggingOut}
+                        className={`w-full flex items-center space-x-3 px-4 py-2 text-left transition-colors ${
+                          isLoggingOut 
+                            ? 'text-gray-500 cursor-not-allowed' 
+                            : 'text-gray-300 hover:text-white hover:bg-dark-800'
+                        }`}
                         type="button"
                       >
-                        <LogOut className="w-4 h-4" />
-                        <span>Logout</span>
+                        <LogOut className={`w-4 h-4 ${isLoggingOut ? 'animate-spin' : ''}`} />
+                        <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
                       </button>
                     </motion.div>
                   )}
@@ -199,18 +322,10 @@ const Header: React.FC = () => {
           </div>
         </div>
         {/* Toasts */}
-        {appState.toasts.length > 0 && (
-          <div className="fixed top-20 right-4 z-[10000] space-y-2">
-            {appState.toasts.map(t => (
-              <div key={t.id} className={`px-4 py-2 rounded-lg shadow border ${t.type === 'error' ? 'bg-red-900/30 border-red-800 text-red-200' : t.type === 'success' ? 'bg-green-900/30 border-green-800 text-green-200' : 'bg-dark-800 border-dark-700 text-gray-200'}`}>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm">{t.message}</span>
-                  <button className="text-xs opacity-70 hover:opacity-100" onClick={() => appDispatch({ type: 'DISMISS_TOAST', payload: { id: t.id } })}>Dismiss</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <ToastContainer 
+          toasts={appState.toasts}
+          onDismiss={(id) => appDispatch({ type: 'DISMISS_TOAST', payload: { id } })}
+        />
       </div>
     </header>
   );

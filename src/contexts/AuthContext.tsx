@@ -103,13 +103,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         profilesService.ensureProfileExists(uid, fallbackMeta?.name || 'User').catch(() => {});
       }
 
+      console.log('🔐 [AUTH DEBUG] Enriching profile for user:', uid);
       const { data: prof, error } = await supabase
         .from('profiles')
-        .select('role, name, bio, avatar_url, social_links')
+        .select('role, name, bio, avatar_url, social_links, followers_count, following_count')
         .eq('id', uid)
         .maybeSingle();
 
+      console.log('🔐 [AUTH DEBUG] Profile data:', { prof, error });
+
       if (error) {
+        console.error('🔐 [AUTH DEBUG] Profile fetch error:', error);
         // Fallback to auth metadata if profiles table fails
         if (fallbackMeta?.avatar_url) {
           dispatch({ type: 'UPDATE_USER', payload: {
@@ -121,17 +125,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }});
         }
       } else if (prof) {
+        console.log('🔐 [AUTH DEBUG] Updating user with profile data:', prof);
         dispatch({ type: 'UPDATE_USER', payload: {
           name: prof.name || fallbackMeta?.name || 'User',
           bio: prof.bio,
           role: prof.role as any,
           socialLinks: prof.social_links,
+          stats: { followersCount: prof.followers_count ?? 0, followingCount: prof.following_count ?? 0, articlesCount: 0 },
           avatar: prof.avatar_url ? {
             id: 'avatar', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), filename: 'avatar', alt: 'avatar', mimeType: 'image/png', filesize: 0, url: prof.avatar_url,
           } : undefined,
         }});
+      } else {
+        console.log('🔐 [AUTH DEBUG] No profile found for user:', uid);
       }
-    } catch (_e) {
+    } catch (error) {
+      console.error('🔐 [AUTH DEBUG] Profile enrichment error:', error);
       // non-fatal; keep minimal user
     } finally {
       isEnrichingRef.current[uid] = false;
@@ -140,28 +149,40 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const init = async () => {
-      // Seed from cached session to avoid flash
-      const { data: { session } } = await supabase.auth.getSession();
-      const cachedUser = session?.user;
-      if (cachedUser) {
-        const minimal = mapMinimalUser(cachedUser);
-        dispatch({ type: 'LOGIN_SUCCESS', payload: minimal });
-        // Enrich in background (non-blocking)
-        enrichUserFromProfile(cachedUser.id, { name: cachedUser.user_metadata?.name, avatar_url: cachedUser.user_metadata?.avatar_url });
-      } else {
-        // no session - set loading to false
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          console.log('🔐 [AUTH DEBUG] Found session via getSession');
+          const minimal = mapMinimalUser(session.user);
+          console.log('🔐 [AUTH DEBUG] Initial minimal user:', minimal);
+          dispatch({ type: 'LOGIN_SUCCESS', payload: minimal });
+          enrichUserFromProfile(session.user.id, { name: session.user.user_metadata?.name, avatar_url: session.user.user_metadata?.avatar_url });
+        } else {
+          console.log('🔐 [AUTH DEBUG] No session found, setting AUTH_READY');
+          dispatch({ type: 'AUTH_READY' });
+        }
+      } catch (error) {
+        console.error('🔐 [AUTH DEBUG] Error getting session:', error);
         dispatch({ type: 'AUTH_READY' });
       }
 
-      const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
-        const sUser = session?.user;
-        if (sUser) {
-          const minimal = mapMinimalUser(sUser);
-          dispatch({ type: 'LOGIN_SUCCESS', payload: minimal });
-          enrichUserFromProfile(sUser.id, { name: sUser.user_metadata?.name, avatar_url: sUser.user_metadata?.avatar_url });
-        } else {
+      // Set up auth state change listener
+      const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('Auth state change event:', event, 'Session:', !!session);
+        
+        // Only respond to SIGNED_OUT events to avoid unnecessary refreshes
+        if (event === 'SIGNED_OUT') {
           dispatch({ type: 'LOGOUT' });
         }
+        // Ignore SIGNED_IN events that happen after login (they're redundant)
+        // Only respond to SIGNED_IN if we don't already have a user
+        else if (event === 'SIGNED_IN' && !state.user && session?.user) {
+          console.log('🔐 [AUTH DEBUG] Handling SIGNED_IN event');
+          const minimal = mapMinimalUser(session.user);
+          dispatch({ type: 'LOGIN_SUCCESS', payload: minimal });
+          enrichUserFromProfile(session.user.id, { name: session.user.user_metadata?.name, avatar_url: session.user.user_metadata?.avatar_url });
+        }
+        // Ignore TOKEN_REFRESHED and INITIAL_SESSION events
       });
 
       return () => {
@@ -172,9 +193,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     init();
   }, []);
 
+  // Session monitoring - check session health every 5 minutes
+
   const login = async (credentials: LoginCredentials) => {
-    dispatch({ type: 'AUTH_START' });
-    
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: credentials.email,
@@ -194,15 +215,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         stats: { followersCount: 0, followingCount: 0, articlesCount: 0 },
       };
       dispatch({ type: 'LOGIN_SUCCESS', payload: mappedUser });
+      // Enrich user profile after login
+      enrichUserFromProfile(authUser.id, { name: authUser.user_metadata?.name, avatar_url: authUser.user_metadata?.avatar_url });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed';
       dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
+      throw error; // Re-throw so LoginPage can handle it
     }
   };
 
   const register = async (userData: RegisterData) => {
-    dispatch({ type: 'AUTH_START' });
-    
     try {
       const { data, error } = await supabase.auth.signUp({
         email: userData.email,
@@ -235,11 +257,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Registration failed';
       dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
+      throw error; // Re-throw so RegisterPage can handle it
     }
   };
 
   const logout = async () => {
     try {
+      // Clear session data first
       await supabase.auth.signOut();
     } catch (error) {
       console.warn('Logout request failed:', error);

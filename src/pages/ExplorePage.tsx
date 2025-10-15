@@ -64,7 +64,8 @@ const ExplorePage: React.FC = () => {
               publishedAt: item.publishedAt || new Date().toISOString(),
               readingTime: 5,
               likes: item.likes,
-              comments: [],
+              views: item.views,
+              comments: Array(item.comments).fill({}), // Create array with comment count length
               tags: item.tags,
               featured: item.featured,
               status: 'published',
@@ -101,12 +102,35 @@ const ExplorePage: React.FC = () => {
 
         let authorsDetailed: any[] = [];
         if (sortedAuthorIds.length > 0) {
+          // Compute accurate published article counts for these authors
+          const { data: authoredArticles } = await supabase
+            .from('articles')
+            .select('author_id')
+            .eq('status', 'published')
+            .in('author_id', sortedAuthorIds)
+            .limit(2000);
+          const publishedCountByAuthor = new Map<string, number>();
+          (authoredArticles || []).forEach((row: any) => {
+            if (!row.author_id) return;
+            publishedCountByAuthor.set(
+              row.author_id,
+              (publishedCountByAuthor.get(row.author_id) || 0) + 1
+            );
+          });
+
           const { data: profiles } = await supabase
             .from('profiles')
             .select('id,name,avatar_url,bio,followers_count,articles_count')
             .in('id', sortedAuthorIds);
           const idToProfile = new Map((profiles || []).map((p: any) => [p.id, p]));
-          authorsDetailed = sortedAuthorIds.map((id) => idToProfile.get(id)).filter(Boolean);
+          authorsDetailed = sortedAuthorIds.map((id) => {
+            const p = idToProfile.get(id);
+            if (!p) return null;
+            return {
+              ...p,
+              _publishedCount: publishedCountByAuthor.get(id) || 0,
+            };
+          }).filter(Boolean) as any[];
         }
 
         setTopAuthors(authorsDetailed.map((p: any) => ({
@@ -115,7 +139,7 @@ const ExplorePage: React.FC = () => {
           avatar: p.avatar_url || '/logo.png',
           bio: p.bio || '',
           followersCount: p.followers_count ?? 0,
-          articlesCount: p.articles_count ?? (authorCounts.get(p.id) || 0),
+          articlesCount: p._publishedCount ?? (authorCounts.get(p.id) || 0),
         })));
 
         // Trending tags

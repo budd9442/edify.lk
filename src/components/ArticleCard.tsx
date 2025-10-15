@@ -1,10 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Heart, MessageCircle, Clock, BookmarkPlus } from 'lucide-react';
+import { Heart, MessageCircle, Clock, BookmarkPlus, Eye } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Article } from '../mock-data/articles';
 import { useApp } from '../contexts/AppContext';
+import { useAuth } from '../contexts/AuthContext';
+import { likesService } from '../services/likesService';
+import { useToast } from '../hooks/useToast';
 
 interface ArticleCardProps {
   article: Article;
@@ -12,17 +15,37 @@ interface ArticleCardProps {
 }
 
 const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) => {
-  const { state, dispatch } = useApp();
+  const { state } = useApp();
+  const { state: authState } = useAuth();
+  const { showError } = useToast();
   const isLiked = state.likedArticles.includes(article.id);
+  const [localLikesCount, setLocalLikesCount] = React.useState(article.likes);
 
-  const handleLike = (e: React.MouseEvent) => {
+  // Update local likes count when article.likes changes
+  React.useEffect(() => {
+    setLocalLikesCount(article.likes);
+  }, [article.likes]);
+
+  const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (isLiked) {
-      dispatch({ type: 'UNLIKE_ARTICLE', payload: article.id });
-    } else {
-      dispatch({ type: 'LIKE_ARTICLE', payload: article.id });
+    if (!authState.user) {
+      showError('Please login to like articles');
+      return;
+    }
+    
+    try {
+      if (isLiked) {
+        await likesService.unlikeArticle(article.id, authState.user.id);
+        setLocalLikesCount(prev => Math.max(0, prev - 1));
+      } else {
+        await likesService.likeArticle(article.id, authState.user.id);
+        setLocalLikesCount(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
+      showError('Failed to update like');
     }
   };
 
@@ -67,6 +90,10 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
                     <span className="text-sm text-gray-400">{article.readingTime} min read</span>
                   </div>
                   <div className="flex items-center space-x-1">
+                    <Eye className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm text-gray-400">{article.views?.toLocaleString() || 0}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
                     <MessageCircle className="w-4 h-4 text-gray-400" />
                     <span className="text-sm text-gray-400">{article.comments.length}</span>
                   </div>
@@ -79,7 +106,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
                     }`}
                   >
                     <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-                    <span className="text-sm">{article.likes}</span>
+                    <span className="text-sm">{localLikesCount}</span>
                   </button>
                   <button className="text-gray-400 hover:text-primary-500 transition-colors">
                     <BookmarkPlus className="w-4 h-4" />
@@ -127,6 +154,10 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
                   <span className="text-sm text-gray-400">{article.readingTime} min read</span>
                 </div>
                 <div className="flex items-center space-x-1">
+                  <Eye className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm text-gray-400">{article.views?.toLocaleString() || 0}</span>
+                </div>
+                <div className="flex items-center space-x-1">
                   <MessageCircle className="w-4 h-4 text-gray-400" />
                   <span className="text-sm text-gray-400">{article.comments.length}</span>
                 </div>
@@ -139,7 +170,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
                   }`}
                 >
                   <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-                  <span className="text-sm">{article.likes}</span>
+                  <span className="text-sm">{localLikesCount}</span>
                 </button>
                 <button className="text-gray-400 hover:text-primary-500 transition-colors">
                   <BookmarkPlus className="w-4 h-4" />

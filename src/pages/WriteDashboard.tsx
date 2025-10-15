@@ -22,11 +22,11 @@ import ImportHandler from '../components/write/ImportHandler';
 // Removed DraftCard in favor of horizontal list rows
 import { formatDistanceToNow } from 'date-fns';
 import { useLocation } from 'react-router-dom';
-import { useApp } from '../contexts/AppContext';
+import { useToast } from '../hooks/useToast';
 
 const WriteDashboard: React.FC = () => {
   const { state: authState } = useAuth();
-  const { dispatch } = useApp();
+  const { showSuccess, showError } = useToast();
   const location = useLocation();
   const loadInFlightRef = useRef(false);
   const [activeView, setActiveView] = useState<'options' | 'editor' | 'preview'>('options');
@@ -79,7 +79,7 @@ const WriteDashboard: React.FC = () => {
       setDrafts(data);
     } catch (error) {
       console.error('Failed to load drafts:', error);
-      dispatch({ type: 'SET_TOAST', payload: { type: 'error', message: 'Failed to load drafts' } });
+      showError('Failed to load drafts');
     } finally {
       loadInFlightRef.current = false;
       console.log('[WriteDashboard] Loading drafts complete');
@@ -122,17 +122,17 @@ const WriteDashboard: React.FC = () => {
       };
       
       // Add suggested tags if none are present and AI suggested some
-      if ((!currentDraft.tags || currentDraft.tags.length === 0) && result.suggestedTags) {
-        updatedDraft.tags = result.suggestedTags;
-        dispatch({ type: 'SET_TOAST', payload: { message: 'Content organized with AI and tags added!', type: 'success' } });
-      } else {
-        dispatch({ type: 'SET_TOAST', payload: { message: 'Content organized with AI!', type: 'success' } });
-      }
+          if ((!currentDraft.tags || currentDraft.tags.length === 0) && result.suggestedTags) {
+            updatedDraft.tags = result.suggestedTags;
+            showSuccess('Content organized with AI and tags added!');
+          } else {
+            showSuccess('Content organized with AI!');
+          }
       
       setCurrentDraft(updatedDraft);
     } catch (error) {
       console.error('AI organization failed:', error);
-      dispatch({ type: 'SET_TOAST', payload: { message: 'Failed to organize with AI. Please try again.', type: 'error' } });
+      showError('Failed to organize with AI. Please try again.');
     } finally {
       setOrganizingWithAI(false);
     }

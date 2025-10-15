@@ -52,7 +52,8 @@ const HomePage: React.FC = () => {
             publishedAt: item.publishedAt || new Date().toISOString(),
             readingTime: 5,
             likes: item.likes,
-            comments: [],
+            views: item.views,
+            comments: Array(item.comments).fill({}), // Create array with comment count length
             tags: item.tags,
             featured: item.featured,
             status: 'published',

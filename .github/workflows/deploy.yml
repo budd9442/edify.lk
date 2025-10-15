@@ -29,47 +29,53 @@ jobs:
         VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
         
-    - name: Upload and deploy
+    - name: Add cache busting
+      run: |
+        # Add timestamp to index.html to prevent caching
+        TIMESTAMP=$(date +%s)
+        sed -i "s|<title>|<title><!-- Deployed: $TIMESTAMP -->|" dist/index.html
+        echo "Added deployment timestamp: $TIMESTAMP"
+        
+    # New: hard-clean target before uploading to avoid stale files
+    - name: Cleanup target directory
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          mkdir -p /var/www/edify.budd.systems/current
+          rm -rf /var/www/edify.budd.systems/current/*
+        
+    - name: Deploy to VPS
       uses: appleboy/scp-action@v0.1.4
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USER }}
         key: ${{ secrets.VPS_SSH_KEY }}
-        source: "dist/*"
+        source: "dist/"
         target: "/tmp/deploy/"
         strip_components: 0
+        overwrite: true
         
-    - name: Deploy to VPS
+    - name: Move files to correct location
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USER }}
         key: ${{ secrets.VPS_SSH_KEY }}
         script: |
-          # Create new release directory with timestamp
-          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-          RELEASE_DIR="/var/www/edify.budd.systems/releases/$TIMESTAMP"
-          mkdir -p $RELEASE_DIR
-          
-          # Move files from temp to release directory
-          mv /tmp/deploy/* $RELEASE_DIR/
-          
-          # Clean up temp directory
+          # Move files from temp to current directory
+          cp -r /tmp/deploy/dist/* /var/www/edify.budd.systems/current/
           rm -rf /tmp/deploy
         
-    - name: Update symlinks and restart
+    - name: Set permissions and restart
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USER }}
         key: ${{ secrets.VPS_SSH_KEY }}
         script: |
-          # Get latest release
-          LATEST_RELEASE=$(ls -t /var/www/edify.budd.systems/releases/ | head -n1)
-          
-          # Update symlink
-          ln -sfn /var/www/edify.budd.systems/releases/$LATEST_RELEASE /var/www/edify.budd.systems/current
-          
           # Set proper permissions
           chown -R www-data:www-data /var/www/edify.budd.systems/current/
           chmod -R 755 /var/www/edify.budd.systems/current/
@@ -78,4 +84,6 @@ jobs:
           systemctl reload nginx
           
           # Health check
-          curl -f https://edify.budd.systems || exit 1
+          curl -f "https://edify.budd.systems" || exit 1
+          
+          echo "Deployment completed successfully!"

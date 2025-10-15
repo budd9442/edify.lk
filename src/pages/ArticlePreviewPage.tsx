@@ -1,17 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { CheckCircle2, XCircle, ArrowLeft, Eye } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import QuizPreview from '../components/quiz/QuizPreview';
 import { draftService } from '../services/draftService';
+import { editorService } from '../services/editorService';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../hooks/useToast';
 
 const ArticlePreviewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { state: authState } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<any | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const isEditor = authState.user?.role === 'editor' || authState.user?.role === 'admin';
 
   useEffect(() => {
     const load = async () => {
@@ -33,6 +41,36 @@ const ArticlePreviewPage: React.FC = () => {
     load();
   }, [id]);
 
+  const handleApprove = async () => {
+    if (!id) return;
+    setActionLoading(true);
+    try {
+      await editorService.approveDraft(id);
+      showSuccess('Submission approved successfully!');
+      navigate('/editor');
+    } catch (error) {
+      console.error('Failed to approve submission:', error);
+      showError('Failed to approve submission');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!id) return;
+    setActionLoading(true);
+    try {
+      await editorService.rejectDraft(id);
+      showSuccess('Submission rejected');
+      navigate('/editor');
+    } catch (error) {
+      console.error('Failed to reject submission:', error);
+      showError('Failed to reject submission');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) return <LoadingSpinner />;
 
   if (error || !draft) {
@@ -52,8 +90,6 @@ const ArticlePreviewPage: React.FC = () => {
     );
   }
 
-  const isEditor = authState.user?.role === 'editor' || authState.user?.role === 'admin';
-
   if (!authState.isAuthenticated || !isEditor) {
     return (
       <div className="min-h-screen bg-dark-950 flex items-center justify-center">
@@ -64,6 +100,52 @@ const ArticlePreviewPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-dark-950">
+      {/* Editor Controls Header */}
+      <div className="bg-dark-900 border-b border-dark-800 sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Link
+                to="/editor"
+                className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to Editor</span>
+              </Link>
+              <div className="flex items-center space-x-2">
+                <Eye className="w-4 h-4 text-blue-400" />
+                <span className="text-sm text-gray-400">Preview Mode</span>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <span className="text-sm text-gray-400">
+                Status: <span className="text-yellow-400 font-medium">{draft.status}</span>
+              </span>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handleApprove}
+                  disabled={actionLoading}
+                  className="flex items-center space-x-2 px-4 py-2 bg-green-600/20 text-green-400 border border-green-600/50 rounded-lg hover:bg-green-600/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{actionLoading ? 'Processing...' : 'Approve'}</span>
+                </button>
+                
+                <button
+                  onClick={handleReject}
+                  disabled={actionLoading}
+                  className="flex items-center space-x-2 px-4 py-2 bg-red-600/20 text-red-400 border border-red-600/50 rounded-lg hover:bg-red-600/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <XCircle className="w-4 h-4" />
+                  <span>{actionLoading ? 'Processing...' : 'Reject'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Cover Hero */}
       {draft.coverImage && (
         <div className="relative h-80 overflow-hidden">

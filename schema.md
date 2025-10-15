@@ -13,6 +13,7 @@ create table if not exists public.profiles (
   bio text,
   role text not null default 'user', -- 'user' | 'author' | 'editor' | 'admin'
   followers_count integer not null default 0,
+  following_count integer not null default 0,
   articles_count integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -194,6 +195,7 @@ create table if not exists public.follows (
 );
 
 create index if not exists idx_follows_followee on public.follows (followee_id);
+create index if not exists idx_follows_follower on public.follows (follower_id);
 
 alter table public.follows enable row level security;
 
@@ -212,6 +214,30 @@ create policy "User can unfollow"
 on public.follows for delete
 to authenticated
 using (follower_id = auth.uid());
+
+-- Triggers to keep follower/following counts in profiles in sync
+create or replace function public.sync_follow_counts()
+returns trigger
+language plpgsql
+as $$
+begin
+  if (TG_OP = 'INSERT') then
+    -- increment follower count for followee
+    update public.profiles p set followers_count = p.followers_count + 1 where p.id = NEW.followee_id;
+    -- increment following count for follower
+    update public.profiles p set following_count = p.following_count + 1 where p.id = NEW.follower_id;
+  elsif (TG_OP = 'DELETE') then
+    update public.profiles p set followers_count = greatest(p.followers_count - 1, 0) where p.id = OLD.followee_id;
+    update public.profiles p set following_count = greatest(p.following_count - 1, 0) where p.id = OLD.follower_id;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists trg_sync_follow_counts on public.follows;
+create trigger trg_sync_follow_counts
+after insert or delete on public.follows
+for each row execute function public.sync_follow_counts();
 
 -- LIKES (optional; UI currently reads articles.likes)
 create table if not exists public.likes (
@@ -352,6 +378,90 @@ with check (user_id = auth.uid());
 -- from public.likes group by article_id;
 
 -- Seed a profile row on signup via SQL is not automatic; use a trigger (optional)
+
+-- ARTICLE VIEWS
+create table if not exists public.article_views (
+  id uuid primary key default gen_random_uuid(),
+  article_id uuid not null references public.articles(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
+  ip_address inet not null,
+  viewed_at timestamptz not null default now(),
+  view_date date not null default current_date
+);
+
+create unique index idx_article_views_unique_daily 
+  on public.article_views (article_id, coalesce(user_id::text, ''), ip_address, view_date);
+  
+create index idx_article_views_article on public.article_views (article_id);
+create index idx_article_views_user on public.article_views (user_id);
+
+alter table public.article_views enable row level security;
+
+create policy "Anyone can insert views"
+  on public.article_views for insert
+  to anon, authenticated
+  with check (true);
+
+create policy "Read views public"
+  on public.article_views for select
+  to anon, authenticated
+  using (true);
+
+-- Function to track article view
+create or replace function public.track_article_view(
+  p_article_id uuid,
+  p_user_id uuid,
+  p_ip_address inet
+)
+returns boolean
+language plpgsql
+security definer
+as $$
+declare
+  inserted_count integer;
+begin
+  insert into public.article_views (article_id, user_id, ip_address, view_date)
+  values (p_article_id, p_user_id, p_ip_address, current_date)
+  on conflict do nothing;
+  
+  -- Check if a row was actually inserted by counting affected rows
+  get diagnostics inserted_count = row_count;
+  
+  if inserted_count > 0 then
+    update public.articles
+    set views = views + 1
+    where id = p_article_id;
+    return true;
+  end if;
+  
+  return false;
+end;
+$$;
+
+-- Function to sync likes count from likes table
+create or replace function public.sync_article_likes()
+returns trigger
+language plpgsql
+as $$
+begin
+  if (TG_OP = 'INSERT') then
+    update public.articles
+    set likes = likes + 1
+    where id = NEW.article_id;
+  elsif (TG_OP = 'DELETE') then
+    update public.articles
+    set likes = likes - 1
+    where id = OLD.article_id;
+  end if;
+  return null;
+end;
+$$;
+
+-- Trigger to auto-sync likes
+drop trigger if exists trg_sync_article_likes on public.likes;
+create trigger trg_sync_article_likes
+after insert or delete on public.likes
+for each row execute function public.sync_article_likes();
 
 -- OPTIONAL: Create storage buckets via supabase UI (avatars, articles)
 -- Not SQL here; use Storage > Create bucket (public/private as needed)

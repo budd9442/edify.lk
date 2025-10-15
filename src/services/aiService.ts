@@ -30,6 +30,7 @@ function buildPrompt(plainText: string, numQuestions: number): string {
     'Constraints:',
     '- Each question must have 4 options.',
     '- correctAnswer is the 0-based index into options.',
+    '- Each option must be a short phrase of at most 6 words.',
     '- Keep questions concise; explanations optional but helpful.',
     '- Do not include any text outside the JSON object.',
     '',
@@ -103,12 +104,18 @@ export async function generateQuizFromHtml(html: string, numQuestions: number = 
     .slice(0, 10)
     .map((q) => {
       const options: string[] = Array.isArray(q.options) ? q.options.slice(0, 4) : [];
-      const padded = options.length < 4 ? [...options, ...new Array(4 - options.length).fill('N/A')].slice(0, 4) : options;
+      const paddedRaw = options.length < 4 ? [...options, ...new Array(4 - options.length).fill('N/A')].slice(0, 4) : options;
+      // Enforce max 6 words per option
+      const padded = paddedRaw.map((opt) => {
+        const words = String(opt || '').trim().split(/\s+/);
+        const limited = words.slice(0, 6).join(' ');
+        return limited;
+      });
       let correctIndex = Number.isInteger(q.correctAnswer) ? q.correctAnswer : 0;
       if (correctIndex < 0 || correctIndex > 3) correctIndex = 0;
       return {
         question: String(q.question || '').trim().slice(0, 280),
-        options: padded.map((o) => String(o || '').trim() || 'N/A'),
+        options: padded.map((o) => (String(o || '').trim() || 'N/A')),
         correctAnswer: correctIndex,
         explanation: q.explanation ? String(q.explanation).trim().slice(0, 500) : undefined,
       } as GeneratedQuizQuestion;
@@ -130,27 +137,47 @@ export async function organizeContentWithAI(html: string): Promise<{ optimizedHt
   }
 
   const prompt = [
-    'You are a helpful assistant that improves HTML content structure and readability.',
-    'Analyze the provided content and return ONLY valid JSON with HTML improvements and suggested tags.',
+    'You are a helpful assistant that rewrites HTML content with proper Quill.js formatting and structure.',
+    'Analyze the provided content and return ONLY valid JSON with the complete rewritten HTML and suggested tags.',
     'Return ONLY valid JSON matching this TypeScript type (no markdown, no code fences):',
-    '{ "improvements": Array<{ selector: string; action: string; content?: string; description: string; }>; "suggestedTags": string[] }',
-    'Actions available:',
-    '- "add-spacing": Add <br><br> for better paragraph separation',
-    '- "improve-headings": Enhance heading structure and hierarchy',
-    '- "add-breaks": Add visual breaks between sections',
-    '- "format-lists": Improve list formatting and structure',
-    '- "enhance-text": Add emphasis, formatting, or structure to text',
-    'Constraints:',
-    '- selector: CSS selector (e.g., "p", "h1", "ul", ".content")',
-    '- action: One of the available actions above',
-    '- content: New HTML content (only for enhance-text action)',
-    '- description: Brief explanation of the improvement',
-    '- Focus on HTML structure, spacing, and readability',
-    '- Do not change the actual text content, only structure and formatting',
-    '- suggestedTags: 3-5 relevant tags based on content (lowercase, no spaces, use hyphens)',
+    '{ "rewrittenHtml": string; "suggestedTags": string[] }',
     '',
-    'Content to optimize:',
-    plain.slice(0, 15000),
+    'Instructions for rewriting HTML:',
+    '- Rewrite the entire HTML content with improved structure and formatting',
+    '- Use proper Quill.js classes for all formatting',
+    '- Apply consistent spacing and typography',
+    '- Improve readability and visual hierarchy',
+    '- Do not change the actual text content, only structure and formatting',
+    '- CRITICAL: Preserve ALL images, videos, and media elements exactly as they are',
+    '- CRITICAL: Keep all <img> tags with their src, alt, class, and style attributes intact',
+    '- CRITICAL: Preserve all <figure> and <figcaption> elements if present',
+    '- CRITICAL: Maintain the original positioning of media elements within the content',
+    '',
+    'Quill.js Classes to Use:',
+    '- Headers: <h1 class="ql-header ql-header-1">, <h2 class="ql-header ql-header-2">, etc.',
+    '- Lists: <ul class="ql-list"><li class="ql-list-item">, <ol class="ql-list"><li class="ql-list-item">',
+    '- Blockquotes: <blockquote class="ql-blockquote">',
+    '- Code: <code class="ql-code">, <pre class="ql-code-block">',
+    '- Dividers: <hr class="ql-divider">',
+    '- Bold: <strong class="ql-bold">',
+    '- Italic: <em class="ql-italic">',
+    '- Paragraphs: <p> with proper spacing',
+    '',
+    'Formatting Rules:',
+    '- Add proper spacing between paragraphs (use <br><br> sparingly)',
+    '- Use consistent heading hierarchy (h1 > h2 > h3)',
+    '- Add visual breaks between major sections',
+    '- Format lists properly with good spacing',
+    '- Make blockquotes stand out',
+    '- Ensure code blocks are properly formatted',
+    '- Apply emphasis where appropriate',
+    '',
+    'For suggestedTags:',
+    '- Generate 3-5 relevant tags based on content (lowercase, no spaces, use hyphens)',
+    '- Focus on main topics, themes, and categories',
+    '',
+    'Content to rewrite (includes all HTML structure and media elements):',
+    html.slice(0, 20000), // Use full HTML instead of plain text
   ].join('\n');
 
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
@@ -163,7 +190,7 @@ export async function organizeContentWithAI(html: string): Promise<{ optimizedHt
     ],
     generationConfig: {
       temperature: 0.2,
-      maxOutputTokens: 2000,
+      maxOutputTokens: 3000,
     },
   } as any;
 
@@ -182,153 +209,49 @@ export async function organizeContentWithAI(html: string): Promise<{ optimizedHt
   const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
   if (!text) return { optimizedHtml: html };
 
-  // Extract JSON from response
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  const jsonRaw = jsonMatch ? jsonMatch[0] : text;
+  // Robust JSON extraction and parsing (handles fences, trailing commas, smart quotes, extra text)
+  const tryParsers: Array<(s: string) => string> = [
+    // as-is
+    (s) => s,
+    // strip code fences
+    (s) => s.replace(/```json|```/gi, ''),
+    // extract between first '{' and last '}'
+    (s) => {
+      const start = s.indexOf('{');
+      const end = s.lastIndexOf('}');
+      return start >= 0 && end > start ? s.slice(start, end + 1) : s;
+    },
+    // normalize smart quotes
+    (s) => s.replace(/[“”]/g, '"').replace(/[‘’]/g, "'"),
+    // remove trailing commas before } or ]
+    (s) => s.replace(/,\s*([}\]])/g, '$1'),
+  ];
 
-  let parsed: any;
-  try {
-    parsed = JSON.parse(jsonRaw);
-  } catch (e) {
-    const sanitized = jsonRaw
-      .replace(/```json|```/g, '')
-      .replace(/\n/g, '\n');
-    parsed = JSON.parse(sanitized);
+  let parsed: any = null;
+  let lastError: unknown = null;
+  for (const transform of tryParsers) {
+    const candidate = transform(text);
+    try {
+      parsed = JSON.parse(candidate);
+      break;
+    } catch (e) {
+      lastError = e;
+      continue;
+    }
+  }
+  if (!parsed) {
+    console.error('🧠 [AI DEBUG] Failed to parse AI JSON:', lastError);
+    return { optimizedHtml: html };
   }
 
-  const improvements = Array.isArray(parsed?.improvements) ? parsed.improvements : [];
+  const rewrittenHtml = parsed?.rewrittenHtml || html;
   const suggestedTags = Array.isArray(parsed?.suggestedTags) ? parsed.suggestedTags : [];
   
-  // Apply the AI-generated improvements to the HTML
-  const optimizedHtml = applyStructuralImprovements(html, improvements);
-  
   return { 
-    optimizedHtml, 
+    optimizedHtml: rewrittenHtml, 
     suggestedTags: suggestedTags.length > 0 ? suggestedTags : undefined 
   };
 }
 
-function applyStructuralImprovements(html: string, improvements: Array<{ selector: string; action: string; content?: string; description: string }>): string {
-  try {
-    // Parse HTML
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    
-    console.log('AI structural improvements received:', improvements);
-    
-    // Apply each improvement
-    improvements.forEach(improvement => {
-      try {
-        const elements = doc.querySelectorAll(improvement.selector);
-        console.log(`Applying ${improvement.action} to ${elements.length} elements:`, improvement.description);
-        
-        elements.forEach(element => {
-          const htmlElement = element as HTMLElement;
-          
-          switch (improvement.action) {
-            case 'add-spacing':
-              // Add spacing after paragraphs
-              if (htmlElement.tagName === 'P') {
-                htmlElement.innerHTML += '<br><br>';
-              }
-              break;
-              
-            case 'improve-headings':
-              // Ensure proper heading hierarchy
-              if (htmlElement.tagName.match(/^H[1-6]$/)) {
-                const level = parseInt(htmlElement.tagName.charAt(1));
-                if (level > 1) {
-                  htmlElement.innerHTML = `<strong>${htmlElement.innerHTML}</strong>`;
-                }
-              }
-              break;
-              
-            case 'add-breaks':
-              // Add visual breaks between sections
-              if (htmlElement.tagName === 'H1' || htmlElement.tagName === 'H2') {
-                const hr = doc.createElement('hr');
-                hr.style.border = 'none';
-                hr.style.borderTop = '2px solid #374151';
-                hr.style.margin = '2rem 0';
-                htmlElement.parentNode?.insertBefore(hr, htmlElement.nextSibling);
-              }
-              break;
-              
-            case 'format-lists':
-              // Improve list formatting
-              if (htmlElement.tagName === 'UL' || htmlElement.tagName === 'OL') {
-                const items = htmlElement.querySelectorAll('li');
-                items.forEach(li => {
-                  if (!li.innerHTML.includes('<br>')) {
-                    li.innerHTML += '<br>';
-                  }
-                });
-              }
-              break;
-              
-            case 'enhance-text':
-              // Apply text enhancements
-              if (improvement.content) {
-                htmlElement.innerHTML = improvement.content;
-              }
-              break;
-          }
-        });
-      } catch (e) {
-        console.warn('Failed to apply improvement:', improvement.selector, e);
-      }
-    });
-    
-    // If no improvements were applied, apply fallback structural improvements
-    if (improvements.length === 0) {
-      console.log('Applying fallback structural improvements');
-      applyFallbackStructuralImprovements(doc);
-    }
-    
-    return doc.body.innerHTML;
-  } catch (error) {
-    console.error('Failed to apply structural improvements:', error);
-    return html;
-  }
-}
-
-function applyFallbackStructuralImprovements(doc: Document): void {
-  // Add spacing between paragraphs
-  const paragraphs = doc.querySelectorAll('p');
-  paragraphs.forEach(p => {
-    if (!p.innerHTML.includes('<br><br>')) {
-      p.innerHTML += '<br><br>';
-    }
-  });
-  
-  // Improve heading structure
-  const headings = doc.querySelectorAll('h1, h2, h3, h4, h5, h6');
-  headings.forEach((heading, index) => {
-    if (index > 0) {
-      const hr = doc.createElement('hr');
-      hr.style.border = 'none';
-      hr.style.borderTop = '1px solid #374151';
-      hr.style.margin = '1.5rem 0';
-      heading.parentNode?.insertBefore(hr, heading);
-    }
-  });
-  
-  // Improve list formatting
-  const lists = doc.querySelectorAll('ul, ol');
-  lists.forEach(list => {
-    const items = list.querySelectorAll('li');
-    items.forEach(li => {
-      if (!li.innerHTML.includes('<br>')) {
-        li.innerHTML += '<br>';
-      }
-    });
-  });
-  
-  // Add spacing around blockquotes
-  const blockquotes = doc.querySelectorAll('blockquote');
-  blockquotes.forEach(quote => {
-    quote.innerHTML = `<br>${quote.innerHTML}<br>`;
-  });
-}
 
 

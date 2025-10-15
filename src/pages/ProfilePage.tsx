@@ -24,6 +24,7 @@ import {
 import AvatarUpload from '../components/AvatarUpload';
 import { storageService } from '../services/storageService';
 import { profilesService, ProfileUpdateData } from '../services/profilesService';
+import { FollowButton } from '../components/follow/FollowButton';
 
 const ProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId?: string }>();

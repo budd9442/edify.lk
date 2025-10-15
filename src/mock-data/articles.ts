@@ -14,6 +14,7 @@ export interface Article {
   publishedAt: string;
   readingTime: number;
   likes: number;
+  views: number;
   comments: Comment[];
   tags: string[];
   featured: boolean;
