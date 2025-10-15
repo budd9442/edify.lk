@@ -53,10 +53,21 @@ jobs:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USER }}
         key: ${{ secrets.VPS_SSH_KEY }}
-        source: "dist/*"
-        target: "/var/www/edify.budd.systems/current/"
+        source: "dist/"
+        target: "/tmp/deploy/"
         strip_components: 0
         overwrite: true
+        
+    - name: Move files to correct location
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          # Move files from temp to current directory
+          cp -r /tmp/deploy/dist/* /var/www/edify.budd.systems/current/
+          rm -rf /tmp/deploy
         
     - name: Set permissions and restart
       uses: appleboy/ssh-action@v1.0.0
