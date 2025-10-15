@@ -36,50 +36,32 @@ jobs:
         sed -i "s|<title>|<title><!-- Deployed: $TIMESTAMP -->|" dist/index.html
         echo "Added deployment timestamp: $TIMESTAMP"
         
-    - name: Upload and deploy
+    - name: Deploy to VPS
       uses: appleboy/scp-action@v0.1.4
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USER }}
         key: ${{ secrets.VPS_SSH_KEY }}
         source: "dist/*"
-        target: "/tmp/deploy/"
+        target: "/var/www/edify.budd.systems/current/"
         strip_components: 0
+        overwrite: true
         
-    - name: Deploy to VPS
+    - name: Set permissions and restart
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USER }}
         key: ${{ secrets.VPS_SSH_KEY }}
         script: |
-          # Create web directory if it doesn't exist
-          mkdir -p /var/www/edify.budd.systems
-          
-          # Remove old files
-          rm -rf /var/www/edify.budd.systems/*
-          
-          # Copy new files directly
-          cp -r /tmp/deploy/* /var/www/edify.budd.systems/
-          
-          # Verify files were deployed
-          echo "Files deployed:"
-          ls -la /var/www/edify.budd.systems/
-          
-          # Clean up temp directory
-          rm -rf /tmp/deploy
-          
           # Set proper permissions
-          chown -R www-data:www-data /var/www/edify.budd.systems/
-          chmod -R 755 /var/www/edify.budd.systems/
+          chown -R www-data:www-data /var/www/edify.budd.systems/current/
+          chmod -R 755 /var/www/edify.budd.systems/current/
           
           # Restart Nginx
           systemctl reload nginx
           
-          # Wait a moment for nginx to reload
-          sleep 2
-          
-          # Health check with cache busting
-          curl -f "https://edify.budd.systems/?v=$(date +%s)" || exit 1
+          # Health check
+          curl -f "https://edify.budd.systems" || exit 1
           
           echo "Deployment completed successfully!"
