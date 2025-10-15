@@ -13,6 +13,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
 import SearchBar from './SearchBar';
 import NotificationDropdown from './notifications/NotificationDropdown';
+import { ToastContainer } from './common/Toast';
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -199,18 +200,10 @@ const Header: React.FC = () => {
           </div>
         </div>
         {/* Toasts */}
-        {appState.toasts.length > 0 && (
-          <div className="fixed top-20 right-4 z-[10000] space-y-2">
-            {appState.toasts.map(t => (
-              <div key={t.id} className={`px-4 py-2 rounded-lg shadow border ${t.type === 'error' ? 'bg-red-900/30 border-red-800 text-red-200' : t.type === 'success' ? 'bg-green-900/30 border-green-800 text-green-200' : 'bg-dark-800 border-dark-700 text-gray-200'}`}>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm">{t.message}</span>
-                  <button className="text-xs opacity-70 hover:opacity-100" onClick={() => appDispatch({ type: 'DISMISS_TOAST', payload: { id: t.id } })}>Dismiss</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <ToastContainer 
+          toasts={appState.toasts}
+          onDismiss={(id) => appDispatch({ type: 'DISMISS_TOAST', payload: { id } })}
+        />
       </div>
     </header>
   );

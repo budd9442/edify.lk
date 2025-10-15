@@ -1,10 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Heart, MessageCircle, Clock, BookmarkPlus } from 'lucide-react';
+import { Heart, MessageCircle, Clock, BookmarkPlus, Eye } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Article } from '../mock-data/articles';
 import { useApp } from '../contexts/AppContext';
+import { useAuth } from '../contexts/AuthContext';
+import { likesService } from '../services/likesService';
+import { useToast } from '../hooks/useToast';
 
 interface ArticleCardProps {
   article: Article;
@@ -12,17 +15,29 @@ interface ArticleCardProps {
 }
 
 const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) => {
-  const { state, dispatch } = useApp();
+  const { state } = useApp();
+  const { state: authState } = useAuth();
+  const { showError } = useToast();
   const isLiked = state.likedArticles.includes(article.id);
 
-  const handleLike = (e: React.MouseEvent) => {
+  const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (isLiked) {
-      dispatch({ type: 'UNLIKE_ARTICLE', payload: article.id });
-    } else {
-      dispatch({ type: 'LIKE_ARTICLE', payload: article.id });
+    if (!authState.user) {
+      showError('Please login to like articles');
+      return;
+    }
+    
+    try {
+      if (isLiked) {
+        await likesService.unlikeArticle(article.id, authState.user.id);
+      } else {
+        await likesService.likeArticle(article.id, authState.user.id);
+      }
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
+      showError('Failed to update like');
     }
   };
 
@@ -65,6 +80,10 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
                   <div className="flex items-center space-x-1">
                     <Clock className="w-4 h-4 text-gray-400" />
                     <span className="text-sm text-gray-400">{article.readingTime} min read</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <Eye className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm text-gray-400">{article.views?.toLocaleString() || 0}</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <MessageCircle className="w-4 h-4 text-gray-400" />
@@ -125,6 +144,10 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
                 <div className="flex items-center space-x-1">
                   <Clock className="w-4 h-4 text-gray-400" />
                   <span className="text-sm text-gray-400">{article.readingTime} min read</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Eye className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm text-gray-400">{article.views?.toLocaleString() || 0}</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <MessageCircle className="w-4 h-4 text-gray-400" />

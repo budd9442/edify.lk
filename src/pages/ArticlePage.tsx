@@ -20,6 +20,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { articlesService } from '../services/articlesService';
 import supabase from '../services/supabaseClient';
 import { commentsService } from '../services/commentsService';
+import { viewsService } from '../services/viewsService';
+import { likesService } from '../services/likesService';
+import { useToast } from '../hooks/useToast';
 import LoadingSpinner from '../components/LoadingSpinner';
 import QuizCard from '../components/quiz/QuizCard';
 
@@ -29,8 +32,11 @@ const ArticlePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [comment, setComment] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
   const { state, dispatch } = useApp();
   const { state: authState } = useAuth();
+  const { showError, showSuccess } = useToast();
 
   useEffect(() => {
     const fetchArticle = async () => {
@@ -38,6 +44,7 @@ const ArticlePage: React.FC = () => {
       
       try {
         const data = await articlesService.getById(id);
+        console.log('📄 [ARTICLE DEBUG] Fetched article data:', { id: data?.id, views: data?.views, likes: data?.likes });
         if (!data) {
           setArticle(null);
         } else {
@@ -51,7 +58,7 @@ const ArticlePage: React.FC = () => {
           // fetch comments with user profiles
           const comments = await commentsService.listByArticle(data.id);
           
-          setArticle({
+          const articleData = {
             id: data.id,
             title: data.title,
             excerpt: data.excerpt,
@@ -67,12 +74,31 @@ const ArticlePage: React.FC = () => {
             publishedAt: data.publishedAt || new Date().toISOString(),
             readingTime: 5,
             likes: data.likes,
+            views: data.views,
             comments: comments,
             tags: data.tags,
             featured: data.featured,
             status: 'published',
             coverImage: data.coverImage || '/logo.png',
-          });
+          };
+          
+          setArticle(articleData as any);
+          setLikesCount(data.likes);
+          
+          // Track view
+          console.log('📄 [ARTICLE DEBUG] About to track view for article:', id, 'user:', authState.user?.id);
+          const viewTracked = await viewsService.trackView(id, authState.user?.id || null);
+          console.log('📄 [ARTICLE DEBUG] View tracking result:', viewTracked);
+          
+          // If view was tracked, refetch the article to get updated view count
+          if (viewTracked) {
+            console.log('📄 [ARTICLE DEBUG] View was tracked, refetching article for updated view count...');
+            const updatedData = await articlesService.getById(id);
+            if (updatedData) {
+              console.log('📄 [ARTICLE DEBUG] Updated article data:', { views: updatedData.views });
+              setArticle(prev => prev ? { ...prev, views: updatedData.views } as any : null);
+            }
+          }
         }
       } catch (error) {
         console.error('Failed to fetch article:', error);
@@ -85,15 +111,41 @@ const ArticlePage: React.FC = () => {
     fetchArticle();
   }, [id]);
 
+  // Load like status when article and user are available
+  useEffect(() => {
+    const loadLikeStatus = async () => {
+      if (!article || !authState.user) return;
+      
+      try {
+        const liked = await likesService.checkIfLiked(article.id, authState.user.id);
+        setIsLiked(liked);
+      } catch (error) {
+        console.error('Failed to load like status:', error);
+      }
+    };
+    
+    loadLikeStatus();
+  }, [article, authState.user]);
+
   const handleLike = async () => {
-    if (!article) return;
+    if (!article || !authState.user) {
+      showError('Please login to like articles');
+      return;
+    }
     
-    const isLiked = state.likedArticles.includes(article.id);
-    
-    if (isLiked) {
-      dispatch({ type: 'UNLIKE_ARTICLE', payload: article.id });
-    } else {
-      dispatch({ type: 'LIKE_ARTICLE', payload: article.id });
+    try {
+      if (isLiked) {
+        await likesService.unlikeArticle(article.id, authState.user.id);
+        setIsLiked(false);
+        setLikesCount(prev => prev - 1);
+      } else {
+        await likesService.likeArticle(article.id, authState.user.id);
+        setIsLiked(true);
+        setLikesCount(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
+      showError('Failed to update like');
     }
   };
 
@@ -113,7 +165,7 @@ const ArticlePage: React.FC = () => {
       const updatedComments = await commentsService.listByArticle(article.id);
       
       // Update the article with fresh comments
-      setArticle(prev => prev ? { ...prev, comments: updatedComments } : null);
+      setArticle(prev => prev ? { ...prev, comments: updatedComments } as any : null);
       
       setComment('');
     } catch (error) {
@@ -145,8 +197,6 @@ const ArticlePage: React.FC = () => {
       </div>
     );
   }
-
-  const isLiked = state.likedArticles.includes(article.id);
 
   return (
     <div className="min-h-screen bg-dark-950">
@@ -207,7 +257,7 @@ const ArticlePage: React.FC = () => {
                     <span>•</span>
                     <div className="flex items-center space-x-1">
                       <Eye className="w-4 h-4" />
-                      <span>1.2k views</span>
+                      <span>{(article.views || 0).toLocaleString()} views</span>
                     </div>
                   </div>
                 </div>
@@ -223,7 +273,7 @@ const ArticlePage: React.FC = () => {
                   }`}
                 >
                   <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-                  <span>{article.likes}</span>
+                  <span>{likesCount}</span>
                 </button>
 
                 <div className="relative group">

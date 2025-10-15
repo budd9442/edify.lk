@@ -353,5 +353,89 @@ with check (user_id = auth.uid());
 
 -- Seed a profile row on signup via SQL is not automatic; use a trigger (optional)
 
+-- ARTICLE VIEWS
+create table if not exists public.article_views (
+  id uuid primary key default gen_random_uuid(),
+  article_id uuid not null references public.articles(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
+  ip_address inet not null,
+  viewed_at timestamptz not null default now(),
+  view_date date not null default current_date
+);
+
+create unique index idx_article_views_unique_daily 
+  on public.article_views (article_id, coalesce(user_id::text, ''), ip_address, view_date);
+  
+create index idx_article_views_article on public.article_views (article_id);
+create index idx_article_views_user on public.article_views (user_id);
+
+alter table public.article_views enable row level security;
+
+create policy "Anyone can insert views"
+  on public.article_views for insert
+  to anon, authenticated
+  with check (true);
+
+create policy "Read views public"
+  on public.article_views for select
+  to anon, authenticated
+  using (true);
+
+-- Function to track article view
+create or replace function public.track_article_view(
+  p_article_id uuid,
+  p_user_id uuid,
+  p_ip_address inet
+)
+returns boolean
+language plpgsql
+security definer
+as $$
+declare
+  inserted_count integer;
+begin
+  insert into public.article_views (article_id, user_id, ip_address, view_date)
+  values (p_article_id, p_user_id, p_ip_address, current_date)
+  on conflict do nothing;
+  
+  -- Check if a row was actually inserted by counting affected rows
+  get diagnostics inserted_count = row_count;
+  
+  if inserted_count > 0 then
+    update public.articles
+    set views = views + 1
+    where id = p_article_id;
+    return true;
+  end if;
+  
+  return false;
+end;
+$$;
+
+-- Function to sync likes count from likes table
+create or replace function public.sync_article_likes()
+returns trigger
+language plpgsql
+as $$
+begin
+  if (TG_OP = 'INSERT') then
+    update public.articles
+    set likes = likes + 1
+    where id = NEW.article_id;
+  elsif (TG_OP = 'DELETE') then
+    update public.articles
+    set likes = likes - 1
+    where id = OLD.article_id;
+  end if;
+  return null;
+end;
+$$;
+
+-- Trigger to auto-sync likes
+drop trigger if exists trg_sync_article_likes on public.likes;
+create trigger trg_sync_article_likes
+after insert or delete on public.likes
+for each row execute function public.sync_article_likes();
+
 -- OPTIONAL: Create storage buckets via supabase UI (avatars, articles)
 -- Not SQL here; use Storage > Create bucket (public/private as needed)

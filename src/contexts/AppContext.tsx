@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { Article, Comment } from '../mock-data/articles';
+import { useAuth } from './AuthContext';
+import { likesService } from '../services/likesService';
 
 interface AppState {
   articles: Article[];
@@ -7,7 +9,7 @@ interface AppState {
   likedArticles: string[];
   notifications: any[];
   loading: boolean;
-  toasts: { id: string; message: string; type: 'info' | 'error' | 'success' }[];
+  toasts: { id: string; message: string; type: 'info' | 'error' | 'success'; duration?: number }[];
 }
 
 type AppAction =
@@ -18,8 +20,9 @@ type AppAction =
   | { type: 'UNFOLLOW_USER'; payload: string }
   | { type: 'ADD_COMMENT'; payload: { articleId: string; comment: Comment } }
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_TOAST'; payload: { id?: string; message: string; type?: 'info' | 'error' | 'success' } }
-  | { type: 'DISMISS_TOAST'; payload: { id: string } };
+  | { type: 'SET_TOAST'; payload: { id?: string; message: string; type?: 'info' | 'error' | 'success'; duration?: number } }
+  | { type: 'DISMISS_TOAST'; payload: { id: string } }
+  | { type: 'SET_LIKED_ARTICLES'; payload: string[] };
 
 const initialState: AppState = {
   articles: [],
@@ -77,11 +80,18 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return { ...state, loading: action.payload };
     case 'SET_TOAST': {
       const id = action.payload.id || Math.random().toString(36).slice(2);
-      const toast = { id, message: action.payload.message, type: action.payload.type || 'info' };
+      const toast = { 
+        id, 
+        message: action.payload.message, 
+        type: action.payload.type || 'info',
+        duration: action.payload.duration || 4000
+      };
       return { ...state, toasts: [...state.toasts, toast] };
     }
     case 'DISMISS_TOAST':
       return { ...state, toasts: state.toasts.filter(t => t.id !== action.payload.id) };
+    case 'SET_LIKED_ARTICLES':
+      return { ...state, likedArticles: action.payload };
     default:
       return state;
   }
@@ -102,6 +112,23 @@ export const useApp = () => {
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const { state: authState } = useAuth();
+
+  // Load user likes when user changes
+  useEffect(() => {
+    const loadUserLikes = async () => {
+      if (!authState.user) return;
+      
+      try {
+        const likedIds = await likesService.getUserLikedArticles(authState.user.id);
+        dispatch({ type: 'SET_LIKED_ARTICLES', payload: likedIds });
+      } catch (error) {
+        console.error('Failed to load user likes:', error);
+      }
+    };
+    
+    loadUserLikes();
+  }, [authState.user]);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>
