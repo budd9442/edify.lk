@@ -140,28 +140,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const init = async () => {
-      // Seed from cached session to avoid flash
-      const { data: { session } } = await supabase.auth.getSession();
-      const cachedUser = session?.user;
-      if (cachedUser) {
-        const minimal = mapMinimalUser(cachedUser);
-        dispatch({ type: 'LOGIN_SUCCESS', payload: minimal });
-        // Enrich in background (non-blocking)
-        enrichUserFromProfile(cachedUser.id, { name: cachedUser.user_metadata?.name, avatar_url: cachedUser.user_metadata?.avatar_url });
-      } else {
-        // no session - set loading to false
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          console.log('🔐 [AUTH DEBUG] Found session via getSession');
+          const minimal = mapMinimalUser(session.user);
+          dispatch({ type: 'LOGIN_SUCCESS', payload: minimal });
+          enrichUserFromProfile(session.user.id, { name: session.user.user_metadata?.name, avatar_url: session.user.user_metadata?.avatar_url });
+        } else {
+          console.log('🔐 [AUTH DEBUG] No session found, setting AUTH_READY');
+          dispatch({ type: 'AUTH_READY' });
+        }
+      } catch (error) {
+        console.error('🔐 [AUTH DEBUG] Error getting session:', error);
         dispatch({ type: 'AUTH_READY' });
       }
 
-      const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
-        const sUser = session?.user;
-        if (sUser) {
-          const minimal = mapMinimalUser(sUser);
-          dispatch({ type: 'LOGIN_SUCCESS', payload: minimal });
-          enrichUserFromProfile(sUser.id, { name: sUser.user_metadata?.name, avatar_url: sUser.user_metadata?.avatar_url });
-        } else {
+      // Set up auth state change listener
+      const { data: sub } = supabase.auth.onAuthStateChange(async (event) => {
+        console.log('Auth state change event:', event);
+        
+        // Only respond to SIGNED_OUT events to avoid unnecessary refreshes
+        if (event === 'SIGNED_OUT') {
           dispatch({ type: 'LOGOUT' });
         }
+        // Ignore all other events including SIGNED_IN on page focus
       });
 
       return () => {
@@ -172,9 +175,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     init();
   }, []);
 
+  // Session monitoring - check session health every 5 minutes
+
   const login = async (credentials: LoginCredentials) => {
-    dispatch({ type: 'AUTH_START' });
-    
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: credentials.email,
@@ -197,12 +200,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed';
       dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
+      throw error; // Re-throw so LoginPage can handle it
     }
   };
 
   const register = async (userData: RegisterData) => {
-    dispatch({ type: 'AUTH_START' });
-    
     try {
       const { data, error } = await supabase.auth.signUp({
         email: userData.email,
@@ -235,11 +237,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Registration failed';
       dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
+      throw error; // Re-throw so RegisterPage can handle it
     }
   };
 
   const logout = async () => {
     try {
+      // Clear session data first
       await supabase.auth.signOut();
     } catch (error) {
       console.warn('Logout request failed:', error);

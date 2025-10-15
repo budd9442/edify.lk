@@ -13,6 +13,30 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    storage: {
+      getItem: (key: string) => {
+        // Try cookies first, then localStorage as fallback
+        const cookies = document.cookie.split(';');
+        const cookie = cookies.find(c => c.trim().startsWith(`${key}=`));
+        if (cookie) {
+          return decodeURIComponent(cookie.split('=')[1]);
+        }
+        return localStorage.getItem(key);
+      },
+      setItem: (key: string, value: string) => {
+        // Set both cookie and localStorage for maximum persistence
+        const expires = new Date();
+        expires.setTime(expires.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days
+        document.cookie = `${key}=${encodeURIComponent(value)}; expires=${expires.toUTCString()}; path=/; SameSite=Lax; Secure`;
+        localStorage.setItem(key, value);
+      },
+      removeItem: (key: string) => {
+        // Remove from both cookie and localStorage
+        document.cookie = `${key}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        localStorage.removeItem(key);
+      }
+    },
+    flowType: 'pkce' // Use PKCE flow for better security and session persistence
   },
 });
 
