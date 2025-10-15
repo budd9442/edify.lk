@@ -103,13 +103,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         profilesService.ensureProfileExists(uid, fallbackMeta?.name || 'User').catch(() => {});
       }
 
+      console.log('🔐 [AUTH DEBUG] Enriching profile for user:', uid);
       const { data: prof, error } = await supabase
         .from('profiles')
         .select('role, name, bio, avatar_url, social_links')
         .eq('id', uid)
         .maybeSingle();
 
+      console.log('🔐 [AUTH DEBUG] Profile data:', { prof, error });
+
       if (error) {
+        console.error('🔐 [AUTH DEBUG] Profile fetch error:', error);
         // Fallback to auth metadata if profiles table fails
         if (fallbackMeta?.avatar_url) {
           dispatch({ type: 'UPDATE_USER', payload: {
@@ -121,6 +125,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }});
         }
       } else if (prof) {
+        console.log('🔐 [AUTH DEBUG] Updating user with profile data:', prof);
         dispatch({ type: 'UPDATE_USER', payload: {
           name: prof.name || fallbackMeta?.name || 'User',
           bio: prof.bio,
@@ -130,8 +135,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             id: 'avatar', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), filename: 'avatar', alt: 'avatar', mimeType: 'image/png', filesize: 0, url: prof.avatar_url,
           } : undefined,
         }});
+      } else {
+        console.log('🔐 [AUTH DEBUG] No profile found for user:', uid);
       }
-    } catch (_e) {
+    } catch (error) {
+      console.error('🔐 [AUTH DEBUG] Profile enrichment error:', error);
       // non-fatal; keep minimal user
     } finally {
       isEnrichingRef.current[uid] = false;
@@ -145,6 +153,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (session?.user) {
           console.log('🔐 [AUTH DEBUG] Found session via getSession');
           const minimal = mapMinimalUser(session.user);
+          console.log('🔐 [AUTH DEBUG] Initial minimal user:', minimal);
           dispatch({ type: 'LOGIN_SUCCESS', payload: minimal });
           enrichUserFromProfile(session.user.id, { name: session.user.user_metadata?.name, avatar_url: session.user.user_metadata?.avatar_url });
         } else {
@@ -157,14 +166,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       // Set up auth state change listener
-      const { data: sub } = supabase.auth.onAuthStateChange(async (event) => {
-        console.log('Auth state change event:', event);
+      const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('Auth state change event:', event, 'Session:', !!session);
         
         // Only respond to SIGNED_OUT events to avoid unnecessary refreshes
         if (event === 'SIGNED_OUT') {
           dispatch({ type: 'LOGOUT' });
         }
-        // Ignore all other events including SIGNED_IN on page focus
+        // Ignore SIGNED_IN events that happen after login (they're redundant)
+        // Only respond to SIGNED_IN if we don't already have a user
+        else if (event === 'SIGNED_IN' && !state.user && session?.user) {
+          console.log('🔐 [AUTH DEBUG] Handling SIGNED_IN event');
+          const minimal = mapMinimalUser(session.user);
+          dispatch({ type: 'LOGIN_SUCCESS', payload: minimal });
+          enrichUserFromProfile(session.user.id, { name: session.user.user_metadata?.name, avatar_url: session.user.user_metadata?.avatar_url });
+        }
+        // Ignore TOKEN_REFRESHED and INITIAL_SESSION events
       });
 
       return () => {
@@ -197,6 +214,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         stats: { followersCount: 0, followingCount: 0, articlesCount: 0 },
       };
       dispatch({ type: 'LOGIN_SUCCESS', payload: mappedUser });
+      // Enrich user profile after login
+      enrichUserFromProfile(authUser.id, { name: authUser.user_metadata?.name, avatar_url: authUser.user_metadata?.avatar_url });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed';
       dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
