@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, Filter, SortAsc, Calendar, Heart, MessageCircle, Clock } from 'lucide-react';
+import { Search, Filter, SortAsc, Calendar, Heart, MessageCircle, Clock, Eye } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useSearch } from '../hooks/useSearch';
 import { useApp } from '../contexts/AppContext';
@@ -191,6 +191,10 @@ const SearchPage: React.FC = () => {
                               </div>
                             </div>
                             <div className="flex items-center space-x-4 text-gray-400">
+                              <div className="flex items-center space-x-1">
+                                <Eye className="w-4 h-4" />
+                                <span className="text-sm">{article.views?.toLocaleString() || 0}</span>
+                              </div>
                               <div className="flex items-center space-x-1">
                                 <Heart className="w-4 h-4" />
                                 <span className="text-sm">{article.likes}</span>

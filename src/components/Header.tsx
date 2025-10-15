@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -14,11 +14,13 @@ import { useApp } from '../contexts/AppContext';
 import SearchBar from './SearchBar';
 import NotificationDropdown from './notifications/NotificationDropdown';
 import { ToastContainer } from './common/Toast';
+import supabase from '../services/supabaseClient';
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { state, logout } = useAuth();
   const navigate = useNavigate();
   const { state: appState, dispatch: appDispatch } = useApp();
@@ -48,15 +50,43 @@ const Header: React.FC = () => {
     };
   }, [isProfileOpen]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
+    if (isLoggingOut) return; // Prevent multiple clicks
+    
+    setIsLoggingOut(true);
+    
+    // Set a timeout to prevent hanging
+    const timeoutId = setTimeout(() => {
+      console.warn('Logout timeout, forcing page reload');
+      window.location.href = '/';
+    }, 5000); // 5 second timeout
+    
     try {
+      // Try the context logout first
       await logout();
+      clearTimeout(timeoutId);
       navigate('/');
       setIsProfileOpen(false);
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error('Context logout failed, trying direct Supabase logout:', error);
+      try {
+        // Fallback: direct Supabase logout
+        await supabase.auth.signOut();
+        clearTimeout(timeoutId);
+        navigate('/');
+        setIsProfileOpen(false);
+        // Force page reload to ensure clean state
+        window.location.href = '/';
+      } catch (fallbackError) {
+        console.error('Direct logout also failed:', fallbackError);
+        clearTimeout(timeoutId);
+        // Last resort: force reload to home page
+        window.location.href = '/';
+      }
+    } finally {
+      setIsLoggingOut(false);
     }
-  };
+  }, [logout, navigate, isLoggingOut]);
 
   return (
     <header className="bg-dark-950/80 backdrop-blur-md border-b border-dark-800 sticky top-0 z-50">
@@ -162,12 +192,21 @@ const Header: React.FC = () => {
                         <span>Profile</span>
                       </Link>
                       <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center space-x-3 px-4 py-2 text-gray-300 hover:text-white hover:bg-dark-800 transition-colors text-left"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleLogout();
+                        }}
+                        disabled={isLoggingOut}
+                        className={`w-full flex items-center space-x-3 px-4 py-2 text-left transition-colors ${
+                          isLoggingOut 
+                            ? 'text-gray-500 cursor-not-allowed' 
+                            : 'text-gray-300 hover:text-white hover:bg-dark-800'
+                        }`}
                         type="button"
                       >
-                        <LogOut className="w-4 h-4" />
-                        <span>Logout</span>
+                        <LogOut className={`w-4 h-4 ${isLoggingOut ? 'animate-spin' : ''}`} />
+                        <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
                       </button>
                     </motion.div>
                   )}

@@ -10,6 +10,7 @@ export interface ArticleListItem {
   publishedAt?: string;
   likes: number;
   views: number;
+  comments: number;
   tags: string[];
   authorId: string;
 }
@@ -23,7 +24,19 @@ export const articlesService = {
     const { data, error } = await safeQuery('articles/listFeatured', async () => {
       const res = await supabase
         .from('articles')
-        .select('id,title,excerpt,cover_image_url,featured,published_at,likes,views,tags,author_id')
+        .select(`
+          id,
+          title,
+          excerpt,
+          cover_image_url,
+          featured,
+          published_at,
+          likes,
+          views,
+          tags,
+          author_id,
+          comments:comments(count)
+        `)
         .eq('status', 'published')
         .eq('featured', true)
         .order('published_at', { ascending: false })
@@ -41,6 +54,7 @@ export const articlesService = {
       publishedAt: row.published_at || undefined,
       likes: row.likes ?? 0,
       views: row.views ?? 0,
+      comments: row.comments?.[0]?.count ?? 0,
       tags: row.tags ?? [],
       authorId: row.author_id,
     }));
@@ -50,7 +64,19 @@ export const articlesService = {
     const { data, error } = await safeQuery('articles/listAll', async () => {
       const res = await supabase
         .from('articles')
-        .select('id,title,excerpt,cover_image_url,featured,published_at,likes,views,tags,author_id')
+        .select(`
+          id,
+          title,
+          excerpt,
+          cover_image_url,
+          featured,
+          published_at,
+          likes,
+          views,
+          tags,
+          author_id,
+          comments:comments(count)
+        `)
         .eq('status', 'published')
         .order('published_at', { ascending: false })
         .limit(50);
@@ -67,6 +93,7 @@ export const articlesService = {
       publishedAt: row.published_at || undefined,
       likes: row.likes ?? 0,
       views: row.views ?? 0,
+      comments: row.comments?.[0]?.count ?? 0,
       tags: row.tags ?? [],
       authorId: row.author_id,
     }));
@@ -76,7 +103,20 @@ export const articlesService = {
     const { data, error } = await safeQuery('articles/getById', async () => {
       const res = await supabase
         .from('articles')
-        .select('id,title,excerpt,content_html,cover_image_url,featured,published_at,likes,views,tags,author_id')
+        .select(`
+          id,
+          title,
+          excerpt,
+          content_html,
+          cover_image_url,
+          featured,
+          published_at,
+          likes,
+          views,
+          tags,
+          author_id,
+          comments:comments(count)
+        `)
         .eq('id', id)
         .single();
       if (res.error) throw res.error;
@@ -97,6 +137,7 @@ export const articlesService = {
       publishedAt: row.published_at || undefined,
       likes: row.likes ?? 0,
       views: row.views ?? 0,
+      comments: row.comments?.[0]?.count ?? 0,
       tags: row.tags ?? [],
       authorId: row.author_id,
     };

@@ -19,6 +19,12 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
   const { state: authState } = useAuth();
   const { showError } = useToast();
   const isLiked = state.likedArticles.includes(article.id);
+  const [localLikesCount, setLocalLikesCount] = React.useState(article.likes);
+
+  // Update local likes count when article.likes changes
+  React.useEffect(() => {
+    setLocalLikesCount(article.likes);
+  }, [article.likes]);
 
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -32,8 +38,10 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
     try {
       if (isLiked) {
         await likesService.unlikeArticle(article.id, authState.user.id);
+        setLocalLikesCount(prev => Math.max(0, prev - 1));
       } else {
         await likesService.likeArticle(article.id, authState.user.id);
+        setLocalLikesCount(prev => prev + 1);
       }
     } catch (error) {
       console.error('Failed to toggle like:', error);
@@ -98,7 +106,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
                     }`}
                   >
                     <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-                    <span className="text-sm">{article.likes}</span>
+                    <span className="text-sm">{localLikesCount}</span>
                   </button>
                   <button className="text-gray-400 hover:text-primary-500 transition-colors">
                     <BookmarkPlus className="w-4 h-4" />
@@ -162,7 +170,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
                   }`}
                 >
                   <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-                  <span className="text-sm">{article.likes}</span>
+                  <span className="text-sm">{localLikesCount}</span>
                 </button>
                 <button className="text-gray-400 hover:text-primary-500 transition-colors">
                   <BookmarkPlus className="w-4 h-4" />
