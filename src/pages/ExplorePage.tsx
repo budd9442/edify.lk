@@ -16,7 +16,7 @@ import ArticleCard from '../components/ArticleCard';
 import AuthorCard from '../components/AuthorCard';
 import TagPill from '../components/TagPill';
 import LoaderSkeleton from '../components/LoaderSkeleton';
-import type { Article } from '../mock-data/articles';
+import type { Article } from '../types/payload';
 
 const ExplorePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'trending' | 'tags' | 'authors' | 'featured'>('trending');
@@ -51,6 +51,7 @@ const ExplorePage: React.FC = () => {
             return {
               id: item.id,
               title: item.title,
+              slug: item.slug,
               excerpt: item.excerpt,
               content: '', // Empty content for explore page
               author: {

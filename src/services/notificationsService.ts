@@ -1,9 +1,10 @@
 import supabase from './supabaseClient';
+import { articlesService } from './articlesService';
 
 export interface NotificationItem {
   id: string;
   user_id: string;
-  type: 'like' | 'comment' | 'follow' | 'article_approved' | 'article_rejected' | 'badge_earned' | 'mention' | 'success' | 'error' | 'award';
+  type: 'like' | 'comment' | 'follow' | 'publish' | 'article_approved' | 'article_rejected' | 'badge_earned' | 'mention' | 'success' | 'error' | 'award';
   title: string;
   message: string;
   read: boolean;
@@ -22,16 +23,41 @@ export const notificationsService = {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return (data || []).map((n: any) => ({
-      id: n.id,
-      user_id: n.user_id,
-      type: n.type,
-      title: n.title,
-      message: n.message,
-      read: !!n.read,
-      link: n.action_url,
-      created_at: n.created_at,
+    
+    // Convert article ID links to slug links
+    const notifications = await Promise.all((data || []).map(async (n: any) => {
+      let link = n.action_url;
+      
+      // If the link contains an article ID, convert it to a slug
+      if (link && link.includes('/article/')) {
+        const articleIdMatch = link.match(/\/article\/([a-f0-9-]{36})/);
+        if (articleIdMatch) {
+          const articleId = articleIdMatch[1];
+          try {
+            const article = await articlesService.getById(articleId);
+            if (article) {
+              link = `/article/${article.slug}`;
+            }
+          } catch (error) {
+            console.warn('Failed to convert article ID to slug:', error);
+            // Keep original link if conversion fails
+          }
+        }
+      }
+      
+      return {
+        id: n.id,
+        user_id: n.user_id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        read: !!n.read,
+        link: link,
+        created_at: n.created_at,
+      };
     }));
+    
+    return notifications;
   },
 
   async markAsRead(notificationId: string): Promise<void> {

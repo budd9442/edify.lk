@@ -8,7 +8,7 @@ import supabase from '../services/supabaseClient';
 import { articlesService } from '../services/articlesService';
 import ArticleCard from '../components/ArticleCard';
 import LoaderSkeleton from '../components/LoaderSkeleton';
-import { Article } from '../mock-data/articles';
+import { Article } from '../types/payload';
 
 const FeedPage: React.FC = () => {
   const [feedArticles, setFeedArticles] = useState<Article[]>([]);
@@ -56,6 +56,7 @@ const FeedPage: React.FC = () => {
         return {
           id: row.id,
           title: row.title,
+          slug: row.slug,
           excerpt: row.excerpt,
           content: '',
           author: {

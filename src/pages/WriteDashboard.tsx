@@ -11,7 +11,7 @@ import {
   Send
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { Draft } from '../mock-data/strapiBlocks';
+import { Draft } from '../types/payload';
 import { draftService } from '../services/draftService';
 import { organizeContentWithAI } from '../services/aiService';
 import QuillEditor from '../components/write/QuillEditor';
@@ -249,6 +249,18 @@ const WriteDashboard: React.FC = () => {
   ]);
 
   const handleSubmitForReview = async () => {
+    // Validate title before submission
+    if (!currentDraft?.title || currentDraft.title.trim().length === 0) {
+      showError('Please enter a title before submitting for review');
+      return;
+    }
+
+    // Validate content before submission
+    if (!currentDraft?.contentHtml || currentDraft.contentHtml.trim().length === 0) {
+      showError('Please add content before submitting for review');
+      return;
+    }
+
     if (!currentDraft?.id) {
       await handleSaveDraft();
       return;
@@ -260,8 +272,10 @@ const WriteDashboard: React.FC = () => {
         d.id === currentDraft.id ? { ...d, status: 'submitted' as const } : d
       ));
       setCurrentDraft(prev => prev ? { ...prev, status: 'submitted' as const } : prev);
+      showSuccess('Article submitted for review successfully!');
     } catch (error) {
       console.error('Failed to submit for review:', error);
+      showError('Failed to submit for review. Please try again.');
     }
   };
 
@@ -570,8 +584,8 @@ const WriteDashboard: React.FC = () => {
                   )}
                   <button
                     onClick={handleSubmitForReview}
-                    disabled={currentDraft.status === 'submitted'}
-                    className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+                    disabled={currentDraft.status === 'submitted' || !currentDraft.title || currentDraft.title.trim().length === 0}
+                    className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Send className="w-4 h-4" />
                     <span>{currentDraft.status === 'submitted' ? 'Submitted' : 'Submit for Review'}</span>
@@ -588,8 +602,15 @@ const WriteDashboard: React.FC = () => {
                     value={currentDraft.title || ''}
                     onChange={(e) => setCurrentDraft(prev => ({ ...prev, title: e.target.value }))}
                     placeholder="Article title..."
-                    className="w-full text-3xl font-bold bg-transparent border-none outline-none text-white placeholder-gray-500"
+                    className={`w-full text-3xl font-bold bg-transparent border-none outline-none text-white placeholder-gray-500 ${
+                      !currentDraft.title || currentDraft.title.trim().length === 0 
+                        ? 'border-b-2 border-red-500' 
+                        : 'border-b border-gray-600'
+                    }`}
                   />
+                  {(!currentDraft.title || currentDraft.title.trim().length === 0) && (
+                    <p className="text-red-400 text-sm mt-1">Title is required</p>
+                  )}
                 </div>
 
                 {/* Cover Image */}

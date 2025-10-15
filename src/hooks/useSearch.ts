@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import Fuse from 'fuse.js';
-import { Article } from '../mock-data/articles';
+import { Article } from '../types/payload';
 
 interface SearchResult {
   item: Article;

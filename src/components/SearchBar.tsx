@@ -22,7 +22,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
   const suggestions = query.trim() ? results.slice(0, 5) : [];
 
   const { selectedIndex } = useKeyboardNavigation(suggestions, (article) => {
-    navigate(`/article/${article.id}`);
+    navigate(`/article/${article.slug}`);
     setIsOpen(false);
     setQuery('');
   });
@@ -91,7 +91,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
                         animate={{ opacity: 1 }}
                         transition={{ delay: index * 0.05 }}
                         onClick={() => {
-                          navigate(`/article/${article.id}`);
+                          navigate(`/article/${article.slug}`);
                           setIsOpen(false);
                           setQuery('');
                         }}

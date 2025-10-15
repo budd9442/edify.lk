@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
-import { Article, Comment } from '../mock-data/articles';
+import { Article, Comment } from '../types/payload';
 import { useAuth } from './AuthContext';
 import { likesService } from '../services/likesService';
 

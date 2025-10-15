@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Heart, MessageCircle, Clock, BookmarkPlus, Eye } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { Article } from '../mock-data/articles';
+import { Article } from '../types/payload';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import { likesService } from '../services/likesService';
@@ -56,7 +56,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
         animate={{ opacity: 1, y: 0 }}
         className="group relative overflow-hidden rounded-xl bg-dark-900 border border-dark-800 hover:border-primary-500/50 transition-all duration-300"
       >
-        <Link to={`/article/${article.id}`}>
+        <Link to={`/article/${article.slug}`}>
           <div className="aspect-w-16 aspect-h-9 relative">
             <img
               src={article.coverImage}
@@ -126,7 +126,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
       animate={{ opacity: 1, y: 0 }}
       className="group bg-dark-900 border border-dark-800 rounded-lg p-6 hover:border-primary-500/50 transition-all duration-300"
     >
-      <Link to={`/article/${article.id}`}>
+      <Link to={`/article/${article.slug}`}>
         <div className="flex space-x-4">
           <div className="flex-1">
             <div className="flex items-center space-x-2 mb-3">

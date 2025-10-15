@@ -12,7 +12,7 @@ import {
   Calendar,
   Hash
 } from 'lucide-react';
-import { Draft } from '../../mock-data/strapiBlocks';
+import { Draft } from '../../types/payload';
 
 interface DraftCardProps {
   draft: Draft;

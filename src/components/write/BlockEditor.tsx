@@ -14,7 +14,7 @@ import {
   Link,
   Type
 } from 'lucide-react';
-import { StrapiBlock, StrapiTextNode } from '../../mock-data/strapiBlocks';
+import { StrapiBlock, StrapiTextNode } from '../../types/payload';
 import { StrapiBlockUtils } from '../../services/strapiBlockUtils';
 
 interface BlockEditorProps {

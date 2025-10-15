@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
-import { Quiz, QuizAttempt, LeaderboardEntry } from '../mock-data/quizData';
+import { SimpleQuiz as Quiz, QuizAttempt, LeaderboardEntry } from '../types/payload';
 
 interface QuizState {
   currentQuiz: Quiz | null;

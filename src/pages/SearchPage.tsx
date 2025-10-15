@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, Filter, SortAsc, Calendar, Heart, MessageCircle, Clock, Eye } from 'lucide-react';
@@ -143,7 +143,7 @@ const SearchPage: React.FC = () => {
                     transition={{ delay: index * 0.1 }}
                     className="bg-dark-900 border border-dark-800 rounded-lg p-6 hover:border-primary-500/50 transition-all duration-300"
                   >
-                    <Link to={`/article/${article.id}`}>
+                    <Link to={`/article/${article.slug}`}>
                       <div className="flex space-x-4">
                         <div className="flex-1">
                           {/* Tags */}

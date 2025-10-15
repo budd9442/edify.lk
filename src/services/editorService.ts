@@ -282,13 +282,34 @@ export const editorService = {
       if (fetchError) throw fetchError;
       if (!draft) throw new Error('Draft not found');
 
-      // Generate slug from title
-      const slug = draft.title
+      // Validate title is not empty
+      if (!draft.title || draft.title.trim().length === 0) {
+        throw new Error('Cannot approve draft: Title is required');
+      }
+
+      // Generate unique slug from title
+      let baseSlug = draft.title
         .toLowerCase()
         .replace(/[^a-z0-9\s-]/g, '')
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-')
         .trim('-');
+      
+      // Ensure slug is unique
+      let slug = baseSlug;
+      let counter = 1;
+      while (true) {
+        const { data: existing } = await supabase
+          .from('articles')
+          .select('id')
+          .eq('slug', slug)
+          .single();
+        
+        if (!existing) break;
+        
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+      }
 
       // Create article from draft
       const articleData = {
