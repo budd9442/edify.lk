@@ -36,6 +36,17 @@ jobs:
         sed -i "s|<title>|<title><!-- Deployed: $TIMESTAMP -->|" dist/index.html
         echo "Added deployment timestamp: $TIMESTAMP"
         
+    # New: hard-clean target before uploading to avoid stale files
+    - name: Cleanup target directory
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          mkdir -p /var/www/edify.budd.systems/current
+          rm -rf /var/www/edify.budd.systems/current/*
+        
     - name: Deploy to VPS
       uses: appleboy/scp-action@v0.1.4
       with:
