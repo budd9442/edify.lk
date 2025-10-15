@@ -29,6 +29,13 @@ jobs:
         VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
         
+    - name: Add cache busting
+      run: |
+        # Add timestamp to index.html to prevent caching
+        TIMESTAMP=$(date +%s)
+        sed -i "s|<title>|<title><!-- Deployed: $TIMESTAMP -->|" dist/index.html
+        echo "Added deployment timestamp: $TIMESTAMP"
+        
     - name: Upload and deploy
       uses: appleboy/scp-action@v0.1.4
       with:
@@ -46,36 +53,33 @@ jobs:
         username: ${{ secrets.VPS_USER }}
         key: ${{ secrets.VPS_SSH_KEY }}
         script: |
-          # Create new release directory with timestamp
-          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-          RELEASE_DIR="/var/www/edify.budd.systems/releases/$TIMESTAMP"
-          mkdir -p $RELEASE_DIR
+          # Create web directory if it doesn't exist
+          mkdir -p /var/www/edify.budd.systems
           
-          # Move files from temp to release directory
-          mv /tmp/deploy/* $RELEASE_DIR/
+          # Remove old files
+          rm -rf /var/www/edify.budd.systems/*
+          
+          # Copy new files directly
+          cp -r /tmp/deploy/* /var/www/edify.budd.systems/
+          
+          # Verify files were deployed
+          echo "Files deployed:"
+          ls -la /var/www/edify.budd.systems/
           
           # Clean up temp directory
           rm -rf /tmp/deploy
-        
-    - name: Update symlinks and restart
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.VPS_HOST }}
-        username: ${{ secrets.VPS_USER }}
-        key: ${{ secrets.VPS_SSH_KEY }}
-        script: |
-          # Get latest release
-          LATEST_RELEASE=$(ls -t /var/www/edify.budd.systems/releases/ | head -n1)
-          
-          # Update symlink
-          ln -sfn /var/www/edify.budd.systems/releases/$LATEST_RELEASE /var/www/edify.budd.systems/current
           
           # Set proper permissions
-          chown -R www-data:www-data /var/www/edify.budd.systems/current/
-          chmod -R 755 /var/www/edify.budd.systems/current/
+          chown -R www-data:www-data /var/www/edify.budd.systems/
+          chmod -R 755 /var/www/edify.budd.systems/
           
           # Restart Nginx
           systemctl reload nginx
           
-          # Health check
-          curl -f https://edify.budd.systems || exit 1
+          # Wait a moment for nginx to reload
+          sleep 2
+          
+          # Health check with cache busting
+          curl -f "https://edify.budd.systems/?v=$(date +%s)" || exit 1
+          
+          echo "Deployment completed successfully!"
