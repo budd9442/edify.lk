@@ -25,6 +25,7 @@ import { likesService } from '../services/likesService';
 import { useToast } from '../hooks/useToast';
 import LoadingSpinner from '../components/LoadingSpinner';
 import QuizCard from '../components/quiz/QuizCard';
+import { FollowButton } from '../components/follow/FollowButton';
 
 const ArticlePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -246,6 +247,19 @@ const ArticlePage: React.FC = () => {
                     <p className="text-sm text-gray-400">{article.author.followersCount.toLocaleString()} followers</p>
                   </div>
                 </Link>
+                <FollowButton
+                  authorId={article.author.id}
+                  compact
+                  onChange={(isFollowing) => {
+                    setArticle(prev => prev ? {
+                      ...prev,
+                      author: {
+                        ...prev.author,
+                        followersCount: Math.max(0, prev.author.followersCount + (isFollowing ? 1 : -1))
+                      }
+                    } as any : prev);
+                  }}
+                />
                 <div className="text-gray-400">
                   <div className="flex items-center space-x-4 text-sm">
                     <span>{formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true })}</span>

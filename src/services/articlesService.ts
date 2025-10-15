@@ -20,6 +20,35 @@ export interface ArticleDetail extends ArticleListItem {
 }
 
 export const articlesService = {
+  listFollowingFeed: async (userId: string) => {
+    return safeQuery('articles/listFollowingFeed', async () => {
+      // Fetch followed author IDs first
+      const followedRes = await supabase
+        .from('follows')
+        .select('followee_id')
+        .eq('follower_id', userId);
+      if (followedRes.error) throw followedRes.error;
+      const authorIds = (followedRes.data || []).map((r: any) => r.followee_id);
+      if (authorIds.length === 0) return [] as any[];
+
+      const res = await supabase
+        .from('articles')
+        .select(`
+          id, author_id, title, slug, excerpt, cover_image_url, tags, featured, status, likes, views, published_at, created_at,
+          comments:comments(count)
+        `)
+        .eq('status', 'published')
+        .in('author_id', authorIds)
+        .order('published_at', { ascending: false })
+        .limit(50);
+      if (res.error) throw res.error;
+      const rows = (res.data as any[]) || [];
+      return rows.map((row: any) => ({
+        ...row,
+        comments: row.comments?.[0]?.count ?? 0,
+      }));
+    });
+  },
   async listFeatured(): Promise<ArticleListItem[]> {
     const { data, error } = await safeQuery('articles/listFeatured', async () => {
       const res = await supabase

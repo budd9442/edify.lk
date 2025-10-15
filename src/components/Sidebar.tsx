@@ -3,51 +3,65 @@ import { motion } from 'framer-motion';
 import { TrendingUp, Users, Plus } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import supabase from '../services/supabaseClient';
+import { FollowButton } from './follow/FollowButton';
+import { useAuth } from '../contexts/AuthContext';
 
 const Sidebar: React.FC = () => {
   const { state, dispatch } = useApp();
+  const { state: authState } = useAuth();
   const [trendingTopics, setTrendingTopics] = useState<Array<{ name: string; count: number }>>([]);
   const [topAuthors, setTopAuthors] = useState<Array<{ id: string; name: string; avatar: string; followersCount: number }>>([]);
 
   useEffect(() => {
     const load = async () => {
-      // Load published articles minimal fields
-      const { data: articles } = await supabase
+      // Load trending topics (by tags across recent published articles)
+      const { data: tagSource } = await supabase
         .from('articles')
-        .select('author_id,tags')
+        .select('tags')
         .eq('status', 'published')
+        .order('published_at', { ascending: false })
         .limit(300);
 
       const tagCounts = new Map<string, number>();
-      const authorCounts = new Map<string, number>();
-
-      (articles || []).forEach((row: any) => {
+      (tagSource || []).forEach((row: any) => {
         (row.tags || []).forEach((t: string) => {
           if (t) tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
         });
-        if (row.author_id) {
-          authorCounts.set(row.author_id, (authorCounts.get(row.author_id) || 0) + 1);
-        }
       });
-
       const topics = Array.from(tagCounts.entries())
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
       setTrendingTopics(topics);
 
-      const authorIds = Array.from(authorCounts.entries())
+      // Compute top authors: only those who have published, sorted by total likes across their published articles
+      const { data: likeSource } = await supabase
+        .from('articles')
+        .select('author_id, likes')
+        .eq('status', 'published')
+        .limit(1000);
+
+      const totalLikesByAuthor = new Map<string, number>();
+      (likeSource || []).forEach((row: any) => {
+        if (!row.author_id) return;
+        totalLikesByAuthor.set(
+          row.author_id,
+          (totalLikesByAuthor.get(row.author_id) || 0) + (row.likes ?? 0)
+        );
+      });
+
+      const topByLikes = Array.from(totalLikesByAuthor.entries())
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
         .map(([id]) => id);
 
-      if (authorIds.length > 0) {
+      if (topByLikes.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
           .select('id,name,avatar_url,followers_count')
-          .in('id', authorIds);
+          .in('id', topByLikes);
         const idToProfile = new Map((profiles || []).map((p: any) => [p.id, p]));
-        const ordered = authorIds
+        const ordered = topByLikes
           .map((id) => idToProfile.get(id))
           .filter(Boolean)
           .map((p: any) => ({
@@ -113,7 +127,6 @@ const Sidebar: React.FC = () => {
         </div>
         <div className="space-y-4">
           {topAuthors.map((user) => {
-            const isFollowing = state.followedUsers.includes(user.id);
             return (
               <div key={user.id} className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
@@ -127,23 +140,19 @@ const Sidebar: React.FC = () => {
                     <p className="text-xs text-gray-400">{user.followersCount.toLocaleString()} followers</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleFollow(user.id)}
-                  className={`flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                    isFollowing
-                      ? 'bg-dark-800 text-gray-300 hover:bg-dark-700'
-                      : 'bg-primary-600 text-white hover:bg-primary-700'
-                  }`}
-                >
-                  {isFollowing ? (
-                    <span>Following</span>
-                  ) : (
-                    <>
-                      <Plus className="w-3 h-3" />
-                      <span>Follow</span>
-                    </>
-                  )}
-                </button>
+                {authState.user?.id !== user.id && (
+                  <FollowButton
+                    authorId={user.id}
+                    compact
+                    onChange={(isFollowing) => {
+                      // Optimistically adjust follower count
+                      setTopAuthors(prev => prev.map(a => a.id === user.id
+                        ? { ...a, followersCount: Math.max(0, a.followersCount + (isFollowing ? 1 : -1)) }
+                        : a
+                      ));
+                    }}
+                  />
+                )}
               </div>
             );
           })}

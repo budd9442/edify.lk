@@ -106,7 +106,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('🔐 [AUTH DEBUG] Enriching profile for user:', uid);
       const { data: prof, error } = await supabase
         .from('profiles')
-        .select('role, name, bio, avatar_url, social_links')
+        .select('role, name, bio, avatar_url, social_links, followers_count, following_count')
         .eq('id', uid)
         .maybeSingle();
 
@@ -131,6 +131,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           bio: prof.bio,
           role: prof.role as any,
           socialLinks: prof.social_links,
+          stats: { followersCount: prof.followers_count ?? 0, followingCount: prof.following_count ?? 0, articlesCount: 0 },
           avatar: prof.avatar_url ? {
             id: 'avatar', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), filename: 'avatar', alt: 'avatar', mimeType: 'image/png', filesize: 0, url: prof.avatar_url,
           } : undefined,

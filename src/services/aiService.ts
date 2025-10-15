@@ -202,18 +202,39 @@ export async function organizeContentWithAI(html: string): Promise<{ optimizedHt
   const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
   if (!text) return { optimizedHtml: html };
 
-  // Extract JSON from response
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  const jsonRaw = jsonMatch ? jsonMatch[0] : text;
+  // Robust JSON extraction and parsing (handles fences, trailing commas, smart quotes, extra text)
+  const tryParsers: Array<(s: string) => string> = [
+    // as-is
+    (s) => s,
+    // strip code fences
+    (s) => s.replace(/```json|```/gi, ''),
+    // extract between first '{' and last '}'
+    (s) => {
+      const start = s.indexOf('{');
+      const end = s.lastIndexOf('}');
+      return start >= 0 && end > start ? s.slice(start, end + 1) : s;
+    },
+    // normalize smart quotes
+    (s) => s.replace(/[“”]/g, '"').replace(/[‘’]/g, "'"),
+    // remove trailing commas before } or ]
+    (s) => s.replace(/,\s*([}\]])/g, '$1'),
+  ];
 
-  let parsed: any;
-  try {
-    parsed = JSON.parse(jsonRaw);
-  } catch (e) {
-    const sanitized = jsonRaw
-      .replace(/```json|```/g, '')
-      .replace(/\n/g, '\n');
-    parsed = JSON.parse(sanitized);
+  let parsed: any = null;
+  let lastError: unknown = null;
+  for (const transform of tryParsers) {
+    const candidate = transform(text);
+    try {
+      parsed = JSON.parse(candidate);
+      break;
+    } catch (e) {
+      lastError = e;
+      continue;
+    }
+  }
+  if (!parsed) {
+    console.error('🧠 [AI DEBUG] Failed to parse AI JSON:', lastError);
+    return { optimizedHtml: html };
   }
 
   const rewrittenHtml = parsed?.rewrittenHtml || html;

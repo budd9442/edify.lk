@@ -13,6 +13,7 @@ create table if not exists public.profiles (
   bio text,
   role text not null default 'user', -- 'user' | 'author' | 'editor' | 'admin'
   followers_count integer not null default 0,
+  following_count integer not null default 0,
   articles_count integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -194,6 +195,7 @@ create table if not exists public.follows (
 );
 
 create index if not exists idx_follows_followee on public.follows (followee_id);
+create index if not exists idx_follows_follower on public.follows (follower_id);
 
 alter table public.follows enable row level security;
 
@@ -212,6 +214,30 @@ create policy "User can unfollow"
 on public.follows for delete
 to authenticated
 using (follower_id = auth.uid());
+
+-- Triggers to keep follower/following counts in profiles in sync
+create or replace function public.sync_follow_counts()
+returns trigger
+language plpgsql
+as $$
+begin
+  if (TG_OP = 'INSERT') then
+    -- increment follower count for followee
+    update public.profiles p set followers_count = p.followers_count + 1 where p.id = NEW.followee_id;
+    -- increment following count for follower
+    update public.profiles p set following_count = p.following_count + 1 where p.id = NEW.follower_id;
+  elsif (TG_OP = 'DELETE') then
+    update public.profiles p set followers_count = greatest(p.followers_count - 1, 0) where p.id = OLD.followee_id;
+    update public.profiles p set following_count = greatest(p.following_count - 1, 0) where p.id = OLD.follower_id;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists trg_sync_follow_counts on public.follows;
+create trigger trg_sync_follow_counts
+after insert or delete on public.follows
+for each row execute function public.sync_follow_counts();
 
 -- LIKES (optional; UI currently reads articles.likes)
 create table if not exists public.likes (

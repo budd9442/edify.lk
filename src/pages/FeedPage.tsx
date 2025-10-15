@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { Rss, Filter, TrendingUp, Clock, Users, RefreshCw } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
+import supabase from '../services/supabaseClient';
+import { articlesService } from '../services/articlesService';
 import ArticleCard from '../components/ArticleCard';
 import LoaderSkeleton from '../components/LoaderSkeleton';
 import { Article } from '../mock-data/articles';
@@ -31,31 +33,73 @@ const FeedPage: React.FC = () => {
 
   const fetchFeedArticles = async () => {
     setLoading(true);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Filter articles from followed authors
-    const followedArticles = state.articles.filter(article => 
-      state.followedUsers.includes(article.author.id)
-    );
+    if (!authState.user?.id) {
+      setFeedArticles([]);
+      setLoading(false);
+      return;
+    }
 
-    // Sort articles
-    const sorted = [...followedArticles].sort((a, b) => {
-      if (sortBy === 'newest') {
-        return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-      } else {
+    const res = await articlesService.listFollowingFeed(authState.user.id);
+    const rows: any[] = (res.data as any) || [];
+
+    // Enrich authors from profiles
+    if (rows.length > 0) {
+      const authorIds = Array.from(new Set(rows.map(r => r.author_id)));
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id,name,avatar_url,bio')
+        .in('id', authorIds);
+      const idToProfile = new Map((profiles || []).map((p: any) => [p.id, p]));
+
+      const mapped: Article[] = rows.map((row: any) => {
+        const p: any = idToProfile.get(row.author_id);
+        return {
+          id: row.id,
+          title: row.title,
+          excerpt: row.excerpt,
+          content: '',
+          author: {
+            id: row.author_id,
+            name: p?.name || 'Anonymous',
+            avatar: p?.avatar_url || '/logo.png',
+            bio: p?.bio || '',
+            followersCount: 0,
+            articlesCount: 0,
+          },
+          publishedAt: row.published_at || new Date().toISOString(),
+          readingTime: 5,
+          likes: row.likes ?? 0,
+          views: row.views ?? 0,
+          comments: Array(row.comments ?? 0).fill({}),
+          tags: row.tags ?? [],
+          featured: !!row.featured,
+          status: 'published',
+          coverImage: row.cover_image_url || '/logo.png',
+        };
+      });
+
+      // Sort
+      const sorted = [...mapped].sort((a, b) => {
+        if (sortBy === 'newest') return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
         return b.likes - a.likes;
-      }
-    });
-
-    setFeedArticles(sorted);
+      });
+      setFeedArticles(sorted);
+    } else {
+      setFeedArticles([]);
+    }
     setLoading(false);
   };
 
   useEffect(() => {
     fetchFeedArticles();
-  }, [state.articles, state.followedUsers, sortBy]);
+  }, [authState.user?.id, sortBy]);
+
+  // Refetch on follow/unfollow across app
+  useEffect(() => {
+    const handler = () => fetchFeedArticles();
+    window.addEventListener('follow:changed', handler as any);
+    return () => window.removeEventListener('follow:changed', handler as any);
+  }, []);
 
   const handleRefresh = () => {
     fetchFeedArticles();
@@ -165,7 +209,7 @@ const FeedPage: React.FC = () => {
               </motion.div>
             ))}
           </div>
-        ) : state.followedUsers.length === 0 ? (
+        ) : feedArticles.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
