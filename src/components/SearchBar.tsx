@@ -1,10 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Clock, TrendingUp } from 'lucide-react';
-import { useSearch } from '../hooks/useSearch';
+import Fuse from 'fuse.js';
 import { useKeyboardNavigation } from '../hooks/useKeyboardNavigation';
-import { useApp } from '../contexts/AppContext';
+import { searchService } from '../services/searchService';
+import { articlesService } from '../services/articlesService';
+import supabase from '../services/supabaseClient';
+import { Article } from '../types/payload';
 
 interface SearchBarProps {
   className?: string;
@@ -13,19 +16,140 @@ interface SearchBarProps {
 const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
-  const [recentSearches] = useState(['AI Technology', 'Remote Work', 'Sustainability']);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [trendingSearches, setTrendingSearches] = useState<string[]>([]);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [searchResults, setSearchResults] = useState<Article[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [articlesLoaded, setArticlesLoaded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { state } = useApp();
-  const { results, isSearching } = useSearch(state.articles, query);
 
-  const suggestions = query.trim() ? results.slice(0, 5) : [];
+  // Initialize Fuse.js for search
+  const fuse = useMemo(() => {
+    return new Fuse(articles, {
+      keys: [
+        { name: 'title', weight: 0.4 },
+        { name: 'excerpt', weight: 0.3 },
+        { name: 'author.name', weight: 0.2 },
+        { name: 'tags', weight: 0.1 }
+      ],
+      threshold: 0.4,
+      includeScore: true,
+      minMatchCharLength: 2,
+    });
+  }, [articles]);
+
+  // Load articles for search
+  useEffect(() => {
+    const loadArticles = async () => {
+      if (articlesLoaded) return;
+      
+      try {
+        const items = await articlesService.listAll();
+        
+        if (!items || items.length === 0) {
+          setArticles([]);
+          setArticlesLoaded(true);
+          return;
+        }
+
+        // Enrich with author profiles
+        const authorIds = Array.from(new Set(items.map(i => i.authorId)));
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id,name,avatar_url,bio,followers_count,articles_count')
+          .in('id', authorIds);
+        
+        const idToProfile = new Map((profiles || []).map((p: any) => [p.id, p]));
+        const mapped: Article[] = items.map(item => {
+          const p: any = idToProfile.get(item.authorId);
+          return {
+            id: item.id,
+            title: item.title,
+            slug: item.slug,
+            excerpt: item.excerpt,
+            content: '',
+            author: {
+              id: item.authorId,
+              name: p?.name || 'Anonymous',
+              avatar: p?.avatar_url || '/logo.png',
+              bio: p?.bio || '',
+              followersCount: p?.followers_count ?? 0,
+              articlesCount: p?.articles_count ?? 0,
+            },
+            publishedAt: item.publishedAt || new Date().toISOString(),
+            readingTime: 5,
+            likes: item.likes,
+            views: item.views,
+            comments: Array(item.comments).fill({}),
+            tags: item.tags,
+            featured: item.featured,
+            status: 'published',
+            coverImage: item.coverImage || '/logo.png',
+          };
+        });
+        
+        setArticles(mapped);
+        setArticlesLoaded(true);
+      } catch (error) {
+        console.error('Failed to load articles for search:', error);
+        setArticles([]);
+        setArticlesLoaded(true);
+      }
+    };
+
+    loadArticles();
+  }, [articlesLoaded]);
+
+  // Load search data when component mounts
+  useEffect(() => {
+    const loadSearchData = async () => {
+      setRecentSearches(searchService.getRecentSearches());
+      const trending = await searchService.getTrendingSearches();
+      setTrendingSearches(trending);
+    };
+    
+    loadSearchData();
+  }, []);
+
+  // Perform search when query changes
+  useEffect(() => {
+    if (!query.trim() || !articlesLoaded) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    
+    const searchTimeout = setTimeout(() => {
+      const results = fuse.search(query);
+      setSearchResults(results.map(result => result.item));
+      setIsSearching(false);
+    }, 300);
+
+    return () => clearTimeout(searchTimeout);
+  }, [query, fuse, articlesLoaded]);
+
+  const suggestions = query.trim() ? searchResults.slice(0, 5) : [];
 
   const { selectedIndex } = useKeyboardNavigation(suggestions, (article) => {
-    navigate(`/article/${article.id}`);
+    navigate(`/article/${article.slug}`);
     setIsOpen(false);
     setQuery('');
   });
+
+  // Load search data when component mounts
+  useEffect(() => {
+    const loadSearchData = async () => {
+      setRecentSearches(searchService.getRecentSearches());
+      const trending = await searchService.getTrendingSearches();
+      setTrendingSearches(trending);
+    };
+    
+    loadSearchData();
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -40,9 +164,15 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
 
   const handleSearch = (searchQuery: string) => {
     if (searchQuery.trim()) {
+      // Add to search history
+      searchService.addToHistory(searchQuery.trim());
+      
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
       setIsOpen(false);
       setQuery('');
+      
+      // Refresh recent searches
+      setRecentSearches(searchService.getRecentSearches());
     }
   };
 
@@ -91,7 +221,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
                         animate={{ opacity: 1 }}
                         transition={{ delay: index * 0.05 }}
                         onClick={() => {
-                          navigate(`/article/${article.id}`);
+                          navigate(`/article/${article.slug}`);
                           setIsOpen(false);
                           setQuery('');
                         }}
@@ -146,22 +276,28 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
                 <div className="px-3 py-2 text-xs font-medium text-gray-400 uppercase tracking-wide">
                   Recent Searches
                 </div>
-                {recentSearches.map((search, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleSearch(search)}
-                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-dark-800 text-gray-300 transition-colors"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <Clock className="w-4 h-4 text-gray-500" />
-                      <span>{search}</span>
-                    </div>
-                  </button>
-                ))}
+                {recentSearches.length > 0 ? (
+                  recentSearches.map((search, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSearch(search)}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-dark-800 text-gray-300 transition-colors"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <Clock className="w-4 h-4 text-gray-500" />
+                        <span>{search}</span>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-sm text-gray-500">
+                    No recent searches
+                  </div>
+                )}
                 <div className="px-3 py-2 text-xs font-medium text-gray-400 uppercase tracking-wide mt-4">
                   Trending
                 </div>
-                {['Artificial Intelligence', 'Remote Work', 'Sustainability'].map((trend, index) => (
+                {trendingSearches.map((trend, index) => (
                   <button
                     key={index}
                     onClick={() => handleSearch(trend)}

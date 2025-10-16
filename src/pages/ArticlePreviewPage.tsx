@@ -174,7 +174,7 @@ const ArticlePreviewPage: React.FC = () => {
             {Array.isArray(draft.tags) && draft.tags.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-3">
                 {draft.tags.map((tag: string, idx: number) => (
-                  <span key={idx} className="bg-primary-900/30 text-primary-300 px-3 py-1 rounded-full text-sm">
+                  <span key={idx} className="bg-primary-900/30 text-primary-300 px-3 py-1 rounded-full text-sm whitespace-nowrap overflow-hidden" title={tag}>
                     {tag}
                   </span>
                 ))}

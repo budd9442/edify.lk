@@ -1,4 +1,4 @@
-import { Quiz, QuizAttempt, LeaderboardEntry } from '../mock-data/quizData';
+import { SimpleQuiz as Quiz, QuizAttempt, LeaderboardEntry } from '../types/payload';
 import supabase from './supabaseClient';
 import { safeQuery } from './supabaseUtils';
 
@@ -11,17 +11,12 @@ class QuizService {
         .from('quizzes')
         .select('id, article_id, title, questions_json')
         .eq('article_id', articleId)
-        .single()
+        .maybeSingle()
         .then((res: any) => { if (res.error) throw res.error; return res.data; })
     );
     
     if (error) {
       console.log('Quiz fetch error:', error);
-      // Return null for "not found" errors, but log other errors
-      if ((error as any).code === 'PGRST116' || error.message?.includes('No rows found')) {
-        console.log('No quiz found for article:', articleId);
-        return null;
-      }
       // For table not found or permission errors, return null instead of throwing
       if (error.message?.includes('relation "quizzes" does not exist') || 
           error.message?.includes('permission denied') ||
@@ -30,6 +25,11 @@ class QuizService {
         return null;
       }
       throw error;
+    }
+    
+    if (!data) {
+      console.log('No quiz found for article:', articleId);
+      return null;
     }
     const questions = ((data as any).questions_json || []).map((q: any) => ({
       question: q.question,
@@ -197,7 +197,7 @@ class QuizService {
           .from('quizzes')
           .select('id')
           .eq('article_id', articleId)
-          .single()
+          .maybeSingle()
           .then((res: any) => { if (res.error) throw res.error; return res.data; })
       );
       
@@ -213,16 +213,17 @@ class QuizService {
           .select('id, score, total_questions, time_spent, created_at')
           .eq('quiz_id', (quiz as any).id)
           .eq('user_id', userId)
-          .single()
+          .maybeSingle()
           .then((res: any) => { if (res.error) throw res.error; return res.data; })
       );
       
       if (error) {
-        if (error.code === 'PGRST116' || error.message?.includes('No rows found')) {
-          console.log('No existing attempt found');
-          return null;
-        }
         console.error('Error checking for existing attempt:', error);
+        return null;
+      }
+      
+      if (!attempt) {
+        console.log('No existing attempt found');
         return null;
       }
       
@@ -242,7 +243,7 @@ class QuizService {
           .from('quizzes')
           .select('id')
           .eq('article_id', articleId)
-          .single()
+          .maybeSingle()
           .then((res: any) => { if (res.error) throw res.error; return res.data; })
       );
       

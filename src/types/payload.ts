@@ -29,30 +29,32 @@ export interface User extends BaseDocument {
   };
 }
 
-// Article types
-export interface Article extends BaseDocument {
+// Article types - Simplified for actual app usage
+export interface Article {
+  id: string;
   title: string;
   slug: string;
   excerpt: string;
-  content: any; // Rich text content
-  author: User;
-  coverImage?: Media;
-  status: 'draft' | 'pending' | 'published' | 'archived';
+  content: string;
+  author: {
+    id: string;
+    name: string;
+    avatar: string;
+    bio: string;
+    followersCount: number;
+    articlesCount: number;
+  };
+  publishedAt: string;
+  readingTime: number;
+  likes: number;
+  views: number;
+  comments: any[]; // Array of comment objects
+  tags: string[];
   featured: boolean;
-  categories?: Category[];
-  tags?: Tag[];
-  readingTime?: number;
-  seo?: {
-    metaTitle?: string;
-    metaDescription?: string;
-    keywords?: string;
-  };
-  stats: {
-    views: number;
-    likes: number;
-    comments: number;
-  };
-  publishedAt?: string;
+  status: 'draft' | 'published' | 'pending';
+  coverImage: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Comment types
@@ -141,6 +143,47 @@ export interface QuizStats {
   completionRate: number;
 }
 
+// Simple Quiz types for actual app usage (different from complex Quiz above)
+export interface SimpleQuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation?: string;
+}
+
+export interface SimpleQuiz {
+  id: string;
+  articleId: string;
+  title: string;
+  questions: SimpleQuizQuestion[];
+}
+
+export interface QuizAttempt {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  quizId: string;
+  articleId: string;
+  score: number;
+  totalQuestions: number;
+  completedAt: string;
+  timeSpent: number; // in seconds
+}
+
+export interface LeaderboardEntry {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  score: number;
+  totalQuestions: number;
+  timeSpent: number;
+  completedAt: string;
+  rank: number;
+}
+
 // Notification types
 export interface Notification extends BaseDocument {
   title: string;
@@ -206,4 +249,38 @@ export interface SearchParams {
   page?: number;
   limit?: number;
   sort?: string;
+}
+
+// Editor types
+export interface StrapiTextNode {
+  text: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
+  code?: boolean;
+}
+
+export interface StrapiBlock {
+  type: 'paragraph' | 'heading' | 'quote' | 'list' | 'list-item' | 'code' | 'image' | 'link';
+  level?: number; // for headings (1-6)
+  format?: 'ordered' | 'unordered'; // for lists
+  url?: string; // for images and links
+  alt?: string; // for images
+  caption?: string; // for images
+  language?: string; // for code blocks
+  children: (StrapiTextNode | StrapiBlock)[];
+}
+
+export interface Draft {
+  id: string;
+  title: string;
+  contentHtml: string;
+  coverImage?: string;
+  tags: string[];
+  status: 'draft' | 'submitted' | 'published';
+  createdAt: string;
+  updatedAt: string;
+  wordCount: number;
+  readingTime: number;
 }

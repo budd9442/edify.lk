@@ -4,6 +4,7 @@ import { safeQuery } from './supabaseUtils';
 export interface ArticleListItem {
   id: string;
   title: string;
+  slug: string;
   excerpt: string;
   coverImage?: string;
   featured: boolean;
@@ -45,6 +46,7 @@ export const articlesService = {
       const rows = (res.data as any[]) || [];
       return rows.map((row: any) => ({
         ...row,
+        slug: row.slug || row.id, // Fallback to ID if slug is null/undefined
         comments: row.comments?.[0]?.count ?? 0,
       }));
     });
@@ -56,6 +58,7 @@ export const articlesService = {
         .select(`
           id,
           title,
+          slug,
           excerpt,
           cover_image_url,
           featured,
@@ -77,6 +80,7 @@ export const articlesService = {
     return ((data as any) || []).map((row: any) => ({
       id: row.id,
       title: row.title,
+      slug: row.slug || row.id, // Fallback to ID if slug is null/undefined
       excerpt: row.excerpt,
       coverImage: row.cover_image_url || undefined,
       featured: !!row.featured,
@@ -96,6 +100,7 @@ export const articlesService = {
         .select(`
           id,
           title,
+          slug,
           excerpt,
           cover_image_url,
           featured,
@@ -116,6 +121,7 @@ export const articlesService = {
     return ((data as any) || []).map((row: any) => ({
       id: row.id,
       title: row.title,
+      slug: row.slug || row.id, // Fallback to ID if slug is null/undefined
       excerpt: row.excerpt,
       coverImage: row.cover_image_url || undefined,
       featured: !!row.featured,
@@ -128,6 +134,53 @@ export const articlesService = {
     }));
   },
 
+  async getBySlug(slug: string): Promise<ArticleDetail | null> {
+    const { data, error } = await safeQuery('articles/getBySlug', async () => {
+      const res = await supabase
+        .from('articles')
+        .select(`
+          id,
+          title,
+          slug,
+          excerpt,
+          content_html,
+          cover_image_url,
+          featured,
+          published_at,
+          likes,
+          views,
+          tags,
+          author_id,
+          comments:comments(count)
+        `)
+        .eq('slug', slug)
+        .eq('status', 'published')
+        .single();
+      if (res.error) throw res.error;
+      return res.data;
+    });
+    if (error) {
+      if ((error as any).code === 'PGRST116') return null;
+      throw error;
+    }
+    const row: any = data as any;
+    return {
+      id: row.id,
+      title: row.title,
+      slug: row.slug || row.id, // Fallback to ID if slug is null/undefined
+      excerpt: row.excerpt,
+      contentHtml: row.content_html || '',
+      coverImage: row.cover_image_url || undefined,
+      featured: !!row.featured,
+      publishedAt: row.published_at || undefined,
+      likes: row.likes ?? 0,
+      views: row.views ?? 0,
+      comments: row.comments?.[0]?.count ?? 0,
+      tags: row.tags ?? [],
+      authorId: row.author_id,
+    };
+  },
+
   async getById(id: string): Promise<ArticleDetail | null> {
     const { data, error } = await safeQuery('articles/getById', async () => {
       const res = await supabase
@@ -135,6 +188,7 @@ export const articlesService = {
         .select(`
           id,
           title,
+          slug,
           excerpt,
           content_html,
           cover_image_url,
@@ -159,6 +213,7 @@ export const articlesService = {
     return {
       id: row.id,
       title: row.title,
+      slug: row.slug || row.id, // Fallback to ID if slug is null/undefined
       excerpt: row.excerpt,
       contentHtml: row.content_html || '',
       coverImage: row.cover_image_url || undefined,

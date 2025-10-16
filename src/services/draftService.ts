@@ -212,6 +212,11 @@ class DraftService {
 
     console.log('Draft found:', draft.title);
 
+    // Validate title is not empty
+    if (!draft.title || draft.title.trim().length === 0) {
+      throw new Error('Cannot approve draft: Title is required');
+    }
+
     // Generate slug from title
     const slug = draft.title
       .toLowerCase()

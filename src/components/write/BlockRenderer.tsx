@@ -1,5 +1,5 @@
 import React from 'react';
-import { StrapiBlock } from '../../mock-data/strapiBlocks';
+import { StrapiBlock } from '../../types/payload';
 
 interface BlockRendererProps {
   blocks: StrapiBlock[];

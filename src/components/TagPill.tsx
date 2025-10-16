@@ -44,7 +44,9 @@ const TagPill: React.FC<TagPillProps> = ({
         ${variantClasses[variant]}
         rounded-full border transition-all duration-200 font-medium
         ${onClick ? 'cursor-pointer' : 'cursor-default'}
+        whitespace-nowrap overflow-hidden
       `}
+      title={tag}
     >
       {tag}
     </motion.button>

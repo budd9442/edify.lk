@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
-import { Bell, Heart, MessageCircle, UserPlus, CheckCircle, XCircle, Award, AtSign, BookMarked as MarkAsRead, Trash2 } from 'lucide-react';
+import { Bell, Heart, MessageCircle, UserPlus, CheckCircle, XCircle, Award, AtSign } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { NotificationItem, notificationsService } from '../../services/notificationsService';
 
 interface NotificationDropdownProps {
@@ -14,6 +15,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadNotifications();
@@ -68,45 +70,71 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
     }
   };
 
-  const getNotificationIcon = (type: NotificationItem['type']) => {
-    switch (type) {
-      case 'like':
-        return <Heart className="w-4 h-4 text-red-400" />;
-      case 'comment':
-        return <MessageCircle className="w-4 h-4 text-blue-400" />;
-      case 'follow':
-        return <UserPlus className="w-4 h-4 text-green-400" />;
-      case 'success':
-        return <CheckCircle className="w-4 h-4 text-green-400" />;
-      case 'error':
-        return <XCircle className="w-4 h-4 text-red-400" />;
-      case 'award':
-        return <Award className="w-4 h-4 text-yellow-400" />;
-      case 'mention':
-        return <AtSign className="w-4 h-4 text-purple-400" />;
-      default:
-        return <Bell className="w-4 h-4 text-gray-400" />;
-    }
-  };
-
-  const getNotificationText = (notification: NotificationItem) => {
+  const getNotificationContent = (notification: NotificationItem) => {
     switch (notification.type) {
+      case 'publish':
+        return {
+          icon: <Bell className="w-4 h-4 text-blue-400" />,
+          primaryText: notification.title || 'New article published',
+          secondaryText: notification.message,
+          showDot: !notification.read
+        };
       case 'like':
-        return 'liked your article';
+        return {
+          icon: <Heart className="w-4 h-4 text-red-400" />,
+          primaryText: notification.title || 'Someone liked your article',
+          secondaryText: notification.message,
+          showDot: !notification.read
+        };
       case 'comment':
-        return 'commented on your article';
+        return {
+          icon: <MessageCircle className="w-4 h-4 text-blue-400" />,
+          primaryText: notification.title || 'New comment',
+          secondaryText: notification.message,
+          showDot: !notification.read
+        };
       case 'follow':
-        return 'started following you';
+        return {
+          icon: <UserPlus className="w-4 h-4 text-green-400" />,
+          primaryText: notification.title || 'New follower',
+          secondaryText: notification.message,
+          showDot: !notification.read
+        };
       case 'success':
-        return notification.message;
+        return {
+          icon: <CheckCircle className="w-4 h-4 text-green-400" />,
+          primaryText: notification.title || 'Success',
+          secondaryText: notification.message,
+          showDot: !notification.read
+        };
       case 'error':
-        return notification.message;
+        return {
+          icon: <XCircle className="w-4 h-4 text-red-400" />,
+          primaryText: notification.title || 'Error',
+          secondaryText: notification.message,
+          showDot: !notification.read
+        };
       case 'award':
-        return 'awarded you a badge';
+        return {
+          icon: <Award className="w-4 h-4 text-yellow-400" />,
+          primaryText: notification.title || 'Achievement unlocked',
+          secondaryText: notification.message,
+          showDot: !notification.read
+        };
       case 'mention':
-        return 'mentioned you in a comment';
+        return {
+          icon: <AtSign className="w-4 h-4 text-purple-400" />,
+          primaryText: notification.title || 'You were mentioned',
+          secondaryText: notification.message,
+          showDot: !notification.read
+        };
       default:
-        return notification.message;
+        return {
+          icon: <Bell className="w-4 h-4 text-gray-400" />,
+          primaryText: notification.title || 'Notification',
+          secondaryText: notification.message,
+          showDot: !notification.read
+        };
     }
   };
 
@@ -126,12 +154,12 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
       className="absolute right-0 mt-2 w-80 bg-dark-900 border border-dark-800 rounded-lg shadow-lg py-4 z-50"
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 mb-4">
+      <div className="flex items-center justify-between px-4 pb-3 border-b border-dark-800">
         <h3 className="text-lg font-semibold text-white">Notifications</h3>
         {notifications.some(n => !n.read) && (
           <button
             onClick={handleMarkAllAsRead}
-            className="text-sm text-primary-400 hover:text-primary-300 transition-colors"
+            className="text-sm text-primary-400 hover:text-primary-300 transition-colors font-medium"
           >
             Mark all as read
           </button>
@@ -149,48 +177,59 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
             </p>
           </div>
         ) : (
-          <div className="space-y-1">
-            {notifications.map((notification) => (
-              <motion.div
-                key={notification.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className={`px-4 py-3 hover:bg-dark-800 transition-colors cursor-pointer ${
-                  !notification.read ? 'bg-dark-800/50' : ''
-                }`}
-                onClick={() => {
-                  if (!notification.read) {
-                    handleMarkAsRead(notification.id);
-                  }
-                  if (notification.link) {
-                    window.location.href = notification.link;
-                  }
-                  onClose();
-                }}
-              >
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0 mt-1">
-                    {getNotificationIcon(notification.type)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-white font-medium">
-                        {notification.title}
-                      </p>
-                      <span className="text-xs text-gray-400">
-                        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                      </span>
+          <div className="space-y-0">
+            {notifications.map((notification) => {
+              const content = getNotificationContent(notification);
+              return (
+                <motion.div
+                  key={notification.id}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className={`px-4 py-3 hover:bg-dark-800 transition-colors cursor-pointer border-l-2 ${
+                    content.showDot ? 'border-primary-500 bg-dark-800/30' : 'border-transparent'
+                  }`}
+                  onClick={() => {
+                    if (!notification.read) {
+                      handleMarkAsRead(notification.id);
+                    }
+                    if (notification.link) {
+                      navigate(notification.link);
+                    }
+                    onClose();
+                  }}
+                >
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      {content.icon}
                     </div>
-                    <p className="text-sm text-gray-300 mt-1">
-                      {getNotificationText(notification)}
-                    </p>
-                    {!notification.read && (
-                      <div className="w-2 h-2 bg-primary-500 rounded-full mt-2"></div>
-                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="space-y-1">
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-white leading-tight">
+                              {content.primaryText}
+                            </p>
+                          </div>
+                          <div className="flex items-center space-x-2 flex-shrink-0">
+                            {content.showDot && (
+                              <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
+                            )}
+                            <span className="text-xs text-gray-500 whitespace-nowrap">
+                              {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                            </span>
+                          </div>
+                        </div>
+                        {content.secondaryText && (
+                          <p className="text-xs text-gray-400 leading-tight">
+                            {content.secondaryText}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>

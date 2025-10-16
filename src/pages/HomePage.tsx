@@ -6,7 +6,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { useApp } from '../contexts/AppContext';
 import { articlesService } from '../services/articlesService';
 import supabase from '../services/supabaseClient';
-import type { Article } from '../mock-data/articles';
+import type { Article } from '../types/payload';
 
 const HomePage: React.FC = () => {
   const { state, dispatch } = useApp();
@@ -39,6 +39,7 @@ const HomePage: React.FC = () => {
           return {
             id: item.id,
             title: item.title,
+            slug: item.slug,
             excerpt: item.excerpt,
             content: '',
             author: {

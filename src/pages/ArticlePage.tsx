@@ -14,7 +14,7 @@ import {
   Facebook,
   Send
 } from 'lucide-react';
-import { Article } from '../mock-data/articles';
+import { Article } from '../types/payload';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import { articlesService } from '../services/articlesService';
@@ -28,23 +28,30 @@ import QuizCard from '../components/quiz/QuizCard';
 import { FollowButton } from '../components/follow/FollowButton';
 
 const ArticlePage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
   const [comment, setComment] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
-  const { state, dispatch } = useApp();
+  const { dispatch } = useApp();
   const { state: authState } = useAuth();
-  const { showError, showSuccess } = useToast();
+  const { showError } = useToast();
 
   useEffect(() => {
     const fetchArticle = async () => {
-      if (!id) return;
+      if (!slug) return;
       
       try {
-        const data = await articlesService.getById(id);
+        // Try to fetch by slug first, if that fails and slug looks like a UUID, try by ID
+        let data = await articlesService.getBySlug(slug);
+        
+        // If slug is actually an ID (UUID format), try fetching by ID
+        if (!data && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)) {
+          data = await articlesService.getById(slug);
+        }
+        
         console.log('📄 [ARTICLE DEBUG] Fetched article data:', { id: data?.id, views: data?.views, likes: data?.likes });
         if (!data) {
           setArticle(null);
@@ -87,14 +94,14 @@ const ArticlePage: React.FC = () => {
           setLikesCount(data.likes);
           
           // Track view
-          console.log('📄 [ARTICLE DEBUG] About to track view for article:', id, 'user:', authState.user?.id);
-          const viewTracked = await viewsService.trackView(id, authState.user?.id || null);
+          console.log('📄 [ARTICLE DEBUG] About to track view for article:', data.id, 'user:', authState.user?.id);
+          const viewTracked = await viewsService.trackView(data.id, authState.user?.id || null);
           console.log('📄 [ARTICLE DEBUG] View tracking result:', viewTracked);
           
           // If view was tracked, refetch the article to get updated view count
           if (viewTracked) {
             console.log('📄 [ARTICLE DEBUG] View was tracked, refetching article for updated view count...');
-            const updatedData = await articlesService.getById(id);
+            const updatedData = await articlesService.getBySlug(slug);
             if (updatedData) {
               console.log('📄 [ARTICLE DEBUG] Updated article data:', { views: updatedData.views });
               setArticle(prev => prev ? { ...prev, views: updatedData.views } as any : null);
@@ -110,7 +117,7 @@ const ArticlePage: React.FC = () => {
     };
 
     fetchArticle();
-  }, [id]);
+  }, [slug, authState.user?.id]);
 
   // Load like status when article and user are available
   useEffect(() => {
@@ -176,7 +183,7 @@ const ArticlePage: React.FC = () => {
     }
   };
 
-  const shareUrl = `https://edify.exposition.lk/article/${id}`;
+  const shareUrl = `https://edify.exposition.lk/article/${article?.slug || article?.id}`;
 
   if (loading) {
     return <LoadingSpinner />;
@@ -223,7 +230,8 @@ const ArticlePage: React.FC = () => {
               {article.tags.map(tag => (
                 <span 
                   key={tag}
-                  className="bg-primary-900/30 text-primary-300 px-3 py-1 rounded-full text-sm"
+                  className="bg-primary-900/30 text-primary-300 px-3 py-1 rounded-full text-sm whitespace-nowrap overflow-hidden"
+                  title={tag}
                 >
                   {tag}
                 </span>
