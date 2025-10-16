@@ -277,8 +277,8 @@ const EditorDashboard: React.FC = () => {
                     </div>
                     <p className="text-3xl font-bold text-red-400">{stats.totalLikes.toLocaleString()}</p>
                   </motion.div>
+            </div>
                 </div>
-              </div>
             )}
 
             {/* Articles Tab */}
@@ -343,13 +343,13 @@ const EditorDashboard: React.FC = () => {
                             {article.tags.map(tag => (
                               <span key={tag} className="px-2 py-1 bg-dark-700 text-gray-300 text-xs rounded">
                                 {tag}
-                              </span>
+                    </span>
                             ))}
                           </div>
                         </div>
 
                         <div className="flex items-center space-x-2 ml-4">
-                          <button
+                    <button
                             onClick={() => handleToggleFeatured(article.id, article.featured)}
                             className={`p-2 rounded-lg transition-colors ${
                               article.featured
@@ -359,15 +359,15 @@ const EditorDashboard: React.FC = () => {
                             title={article.featured ? 'Unfeature article' : 'Feature article'}
                           >
                             {article.featured ? <StarOff className="w-4 h-4" /> : <Star className="w-4 h-4" />}
-                          </button>
+                    </button>
                           
-                          <button
+                    <button
                             onClick={() => handleDeleteArticle(article.id, article.title)}
                             className="p-2 bg-dark-700 text-gray-400 hover:text-red-500 hover:bg-red-500/20 rounded-lg transition-colors"
                             title="Delete article"
-                          >
+                    >
                             <Trash2 className="w-4 h-4" />
-                          </button>
+                    </button>
                         </div>
                       </div>
                     </motion.div>
@@ -411,8 +411,8 @@ const EditorDashboard: React.FC = () => {
                             <span key={tag} className="px-2 py-1 bg-dark-700 text-gray-300 text-xs rounded">
                               {tag}
                             </span>
-                          ))}
-                        </div>
+              ))}
+            </div>
                       </div>
 
                       <div className="flex items-center space-x-2 ml-4">
@@ -450,7 +450,7 @@ const EditorDashboard: React.FC = () => {
                   <div className="text-center py-12 text-gray-400">
                     <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No pending submissions at the moment.</p>
-                  </div>
+          </div>
                 )}
               </div>
             )}

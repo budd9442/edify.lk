@@ -230,7 +230,8 @@ const ArticlePage: React.FC = () => {
               {article.tags.map(tag => (
                 <span 
                   key={tag}
-                  className="bg-primary-900/30 text-primary-300 px-3 py-1 rounded-full text-sm"
+                  className="bg-primary-900/30 text-primary-300 px-3 py-1 rounded-full text-sm whitespace-nowrap overflow-hidden"
+                  title={tag}
                 >
                   {tag}
                 </span>

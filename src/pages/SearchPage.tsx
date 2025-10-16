@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, Filter, SortAsc, Calendar, Heart, MessageCircle, Clock, Eye } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { useSearch } from '../hooks/useSearch';
-import { useApp } from '../contexts/AppContext';
+import Fuse from 'fuse.js';
+import { articlesService } from '../services/articlesService';
+import supabase from '../services/supabaseClient';
+import { Article } from '../types/payload';
 import LoaderSkeleton from '../components/LoaderSkeleton';
 import TagPill from '../components/TagPill';
 
@@ -13,12 +15,110 @@ const SearchPage: React.FC = () => {
   const query = searchParams.get('q') || '';
   const [sortBy, setSortBy] = useState<'relevance' | 'date' | 'likes'>('relevance');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const { state } = useApp();
-  const { results, isSearching } = useSearch(state.articles, query);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [searchResults, setSearchResults] = useState<Article[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [articlesLoaded, setArticlesLoaded] = useState(false);
 
-  const allTags = Array.from(new Set(state.articles.flatMap(article => article.tags)));
+  // Initialize Fuse.js for search
+  const fuse = useMemo(() => {
+    return new Fuse(articles, {
+      keys: [
+        { name: 'title', weight: 0.4 },
+        { name: 'excerpt', weight: 0.3 },
+        { name: 'author.name', weight: 0.2 },
+        { name: 'tags', weight: 0.1 }
+      ],
+      threshold: 0.4,
+      includeScore: true,
+      minMatchCharLength: 2,
+    });
+  }, [articles]);
 
-  const filteredResults = results.filter(article => {
+  // Load articles for search
+  useEffect(() => {
+    const loadArticles = async () => {
+      if (articlesLoaded) return;
+      
+      try {
+        const items = await articlesService.listAll();
+        
+        if (!items || items.length === 0) {
+          setArticles([]);
+          setArticlesLoaded(true);
+          return;
+        }
+
+        // Enrich with author profiles
+        const authorIds = Array.from(new Set(items.map(i => i.authorId)));
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id,name,avatar_url,bio,followers_count,articles_count')
+          .in('id', authorIds);
+        
+        const idToProfile = new Map((profiles || []).map((p: any) => [p.id, p]));
+        const mapped: Article[] = items.map(item => {
+          const p: any = idToProfile.get(item.authorId);
+          return {
+            id: item.id,
+            title: item.title,
+            slug: item.slug,
+            excerpt: item.excerpt,
+            content: '',
+            author: {
+              id: item.authorId,
+              name: p?.name || 'Anonymous',
+              avatar: p?.avatar_url || '/logo.png',
+              bio: p?.bio || '',
+              followersCount: p?.followers_count ?? 0,
+              articlesCount: p?.articles_count ?? 0,
+            },
+            publishedAt: item.publishedAt || new Date().toISOString(),
+            readingTime: 5,
+            likes: item.likes,
+            views: item.views,
+            comments: Array(item.comments).fill({}),
+            tags: item.tags,
+            featured: item.featured,
+            status: 'published',
+            coverImage: item.coverImage || '/logo.png',
+          };
+        });
+        
+        setArticles(mapped);
+        setArticlesLoaded(true);
+      } catch (error) {
+        console.error('Failed to load articles for search:', error);
+        setArticles([]);
+        setArticlesLoaded(true);
+      }
+    };
+
+    loadArticles();
+  }, [articlesLoaded]);
+
+  // Perform search when query changes
+  useEffect(() => {
+    if (!query.trim() || !articlesLoaded) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    
+    const searchTimeout = setTimeout(() => {
+      const results = fuse.search(query);
+      setSearchResults(results.map(result => result.item));
+      setIsSearching(false);
+    }, 300);
+
+    return () => clearTimeout(searchTimeout);
+  }, [query, fuse, articlesLoaded]);
+
+  const allTags = Array.from(new Set(articles.flatMap(article => article.tags)));
+
+  const filteredResults = searchResults.filter(article => {
     if (selectedTags.length === 0) return true;
     return selectedTags.some(tag => article.tags.includes(tag));
   });

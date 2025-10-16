@@ -106,19 +106,20 @@ const DraftCard: React.FC<DraftCardProps> = ({
         <div className="flex items-center space-x-2 mb-4">
           <Hash className="w-4 h-4 text-gray-500" />
           <div className="flex flex-wrap gap-2">
-            {draft.tags.slice(0, 3).map((tag, index) => (
-              <span
-                key={index}
-                className="px-2 py-1 bg-dark-800 text-gray-300 text-xs rounded-full"
-              >
-                {tag}
-              </span>
-            ))}
-            {draft.tags.length > 3 && (
-              <span className="px-2 py-1 bg-dark-800 text-gray-400 text-xs rounded-full">
-                +{draft.tags.length - 3} more
-              </span>
-            )}
+             {draft.tags.slice(0, 2).map((tag, index) => (
+               <span
+                 key={index}
+                 className="px-2 py-1 bg-dark-800 text-gray-300 text-xs rounded-full whitespace-nowrap overflow-hidden"
+                 title={tag}
+               >
+                 {tag}
+               </span>
+             ))}
+             {draft.tags.length > 2 && (
+               <span className="px-2 py-1 bg-dark-800 text-gray-400 text-xs rounded-full">
+                 +{draft.tags.length - 2} more
+               </span>
+             )}
           </div>
         </div>
       )}

@@ -8,7 +8,9 @@ import {
   Users,
   Eye,
   Save,
-  Send
+  Send,
+  Type,
+  X
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Draft } from '../types/payload';
@@ -31,9 +33,12 @@ const WriteDashboard: React.FC = () => {
   const loadInFlightRef = useRef(false);
   const [activeView, setActiveView] = useState<'options' | 'editor' | 'preview'>('options');
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showEditorTutorial, setShowEditorTutorial] = useState(false);
+  const [hasShownTutorialForNewArticle, setHasShownTutorialForNewArticle] = useState(false);
   const [organizingWithAI, setOrganizingWithAI] = useState(false);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [currentDraft, setCurrentDraft] = useState<Partial<Draft> | null>(null);
+  const [tagsInput, setTagsInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -46,6 +51,27 @@ const WriteDashboard: React.FC = () => {
   useEffect(() => {
     loadDrafts();
   }, [authState.isAuthenticated, authState.user?.id]);
+
+  // Show editor tutorial when creating new article (only once per new article)
+  useEffect(() => {
+    if (activeView === 'editor' && currentDraft && !currentDraft.id && !hasShownTutorialForNewArticle) {
+      setShowEditorTutorial(true);
+      setHasShownTutorialForNewArticle(true);
+    }
+  }, [activeView, currentDraft, hasShownTutorialForNewArticle]);
+
+  const handleEditorTutorialClose = () => {
+    setShowEditorTutorial(false);
+  };
+
+  // Sync tagsInput with currentDraft.tags
+  useEffect(() => {
+    if (currentDraft?.tags) {
+      setTagsInput(currentDraft.tags.join(', '));
+    } else {
+      setTagsInput('');
+    }
+  }, [currentDraft?.tags]);
 
   // Revalidate on route focus/popstate and window focus
   useEffect(() => {
@@ -94,6 +120,7 @@ const WriteDashboard: React.FC = () => {
       tags: [],
       status: 'draft'
     });
+    setHasShownTutorialForNewArticle(false); // Reset tutorial flag for new article
     setActiveView('editor');
   };
 
@@ -104,6 +131,7 @@ const WriteDashboard: React.FC = () => {
       tags: [],
       status: 'draft'
     });
+    setHasShownTutorialForNewArticle(false); // Reset tutorial flag for imported article
     setShowImportModal(false);
     setActiveView('editor');
   };
@@ -360,9 +388,9 @@ const WriteDashboard: React.FC = () => {
                   {/* Drafts Section */}
                   <section>
                     <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold text-white">Your Drafts</h2>
+                      <h2 className="text-2xl font-bold text-white">Your Articles</h2>
                       <span className="text-sm text-gray-400">
-                        {drafts.length} {drafts.length === 1 ? 'draft' : 'drafts'}
+                        {drafts.filter(d => d.status === 'draft').length} {drafts.filter(d => d.status === 'draft').length === 1 ? 'draft' : 'drafts'}
                       </span>
                     </div>
                     
@@ -407,14 +435,14 @@ const WriteDashboard: React.FC = () => {
                                   }`}>
                                     {draft.status === 'published' ? 'Published' : draft.status === 'submitted' ? 'Under Review' : 'Draft'}
                                   </span>
-                                  {draft.tags.slice(0, 3).map((tag, i) => (
-                                    <span key={i} className="px-2 py-0.5 text-xs bg-dark-800 text-gray-300 rounded-full">
-                                      {tag}
-                                    </span>
-                                  ))}
-                                  {draft.tags.length > 3 && (
-                                    <span className="px-2 py-0.5 text-xs bg-dark-800 text-gray-400 rounded-full">+{draft.tags.length - 3} more</span>
-                                  )}
+                                   {draft.tags.slice(0, 2).map((tag, i) => (
+                                     <span key={i} className="px-2 py-0.5 text-xs bg-dark-800 text-gray-300 rounded-full whitespace-nowrap overflow-hidden" title={tag}>
+                                       {tag}
+                                     </span>
+                                   ))}
+                                   {draft.tags.length > 2 && (
+                                     <span className="px-2 py-0.5 text-xs bg-dark-800 text-gray-400 rounded-full">+{draft.tags.length - 2} more</span>
+                                   )}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
@@ -486,7 +514,9 @@ const WriteDashboard: React.FC = () => {
                           <FileText className="w-4 h-4 text-gray-400" />
                           <span className="text-sm text-gray-400">Drafts</span>
                         </div>
-                        <span className="text-sm font-medium text-white">{drafts.length}</span>
+                        <span className="text-sm font-medium text-white">
+                          {drafts.filter(d => d.status === 'draft').length}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
@@ -494,7 +524,7 @@ const WriteDashboard: React.FC = () => {
                           <span className="text-sm text-gray-400">Published</span>
                         </div>
                         <span className="text-sm font-medium text-white">
-                          {Number((authState.user as any)?.articlesCount) || 0}
+                          {drafts.filter(d => d.status === 'published').length}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -503,17 +533,17 @@ const WriteDashboard: React.FC = () => {
                           <span className="text-sm text-gray-400">Followers</span>
                         </div>
                         <span className="text-sm font-medium text-white">
-                          {Number((authState.user as any)?.followersCount) || 0}
+                          {(authState.user as any)?.followersCount || 0}
                         </span>
                       </div>
                     </div>
                     <div className="mt-6">
-                      <a
-                        href="/feed"
+                      <button
+                        onClick={() => window.open('/feed', '_blank')}
                         className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors"
                       >
                         View Published
-                      </a>
+                      </button>
                     </div>
                   </motion.div>
                 </div>
@@ -576,7 +606,7 @@ const WriteDashboard: React.FC = () => {
                       <span>{saving ? 'Saving...' : 'Save Draft'}</span>
                     </button>
                     {autoSavedAt && (
-                      <span className="text-xs text-gray-400">Auto-saved {new Date(autoSavedAt).toLocaleTimeString()}</span>
+                      <span className="text-xs text-gray-400">Last saved {new Date(autoSavedAt).toLocaleTimeString()}</span>
                     )}
                   </div>
                   {saveError && (
@@ -631,11 +661,20 @@ const WriteDashboard: React.FC = () => {
                 <div className="mb-6">
                   <input
                     type="text"
-                    value={currentDraft.tags?.join(', ') || ''}
-                    onChange={(e) => setCurrentDraft(prev => ({ 
-                      ...prev, 
-                      tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean)
-                    }))}
+                    value={tagsInput}
+                    onChange={(e) => setTagsInput(e.target.value)}
+                    onBlur={() => {
+                      const tags = tagsInput.split(',').map(tag => tag.trim()).filter(Boolean);
+                      setCurrentDraft(prev => ({ ...prev, tags }));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const tags = tagsInput.split(',').map(tag => tag.trim()).filter(Boolean);
+                        setCurrentDraft(prev => ({ ...prev, tags }));
+                        e.currentTarget.blur();
+                      }
+                    }}
                     placeholder="Tags (comma separated)..."
                     className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-gray-300 placeholder-gray-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none"
                   />
@@ -724,7 +763,8 @@ const WriteDashboard: React.FC = () => {
                     {currentDraft.tags.map((tag, index) => (
                       <span
                         key={index}
-                        className="px-3 py-1 bg-primary-900/30 text-primary-300 rounded-full text-sm"
+                        className="px-3 py-1 bg-primary-900/30 text-primary-300 rounded-full text-sm whitespace-nowrap overflow-hidden"
+                        title={tag}
                       >
                         {tag}
                       </span>
@@ -745,6 +785,85 @@ const WriteDashboard: React.FC = () => {
               onImportComplete={handleImportComplete}
               onClose={() => setShowImportModal(false)}
             />
+          )}
+        </AnimatePresence>
+
+        {/* Editor Tutorial */}
+        <AnimatePresence>
+          {showEditorTutorial && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 flex items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-dark-900 border border-dark-800 rounded-lg max-w-md w-full"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b border-dark-800">
+                  <div className="flex items-center space-x-2">
+                    <Type className="w-5 h-5 text-primary-400" />
+                    <h3 className="font-semibold text-white">How to use the editor</h3>
+                  </div>
+                  <button
+                    onClick={handleEditorTutorialClose}
+                    className="p-1 hover:bg-dark-800 rounded transition-colors"
+                  >
+                    <X className="w-4 h-4 text-gray-400" />
+                  </button>
+                </div>
+
+                {/* Content */}
+                <div className="p-4 space-y-4">
+                  <div className="text-sm text-gray-300">
+                    <p className="mb-3 font-medium text-white">Select some text and use the toolbar to format your text:</p>
+                    <ul className="space-y-2 text-xs">
+                      <li className="flex items-center">
+                        <span className="w-2 h-2 bg-primary-400 rounded-full mr-3 flex-shrink-0"></span>
+                        <span><strong>Bold</strong>, &nbsp; <em>italic</em>, &nbsp; <u>underline</u> &nbsp; or &nbsp; <code className="bg-dark-800 px-1 rounded text-primary-300">code formatting</code> &nbsp; for emphasis</span>
+                      </li>
+                      <li className="flex items-center">
+                        <span className="w-2 h-2 bg-primary-400 rounded-full mr-3 flex-shrink-0"></span>
+                        <span>Headers (H1, H2, H3) for structure</span>
+                      </li>
+                      <li className="flex items-center">
+                        <span className="w-2 h-2 bg-primary-400 rounded-full mr-3 flex-shrink-0"></span>
+                        <span>Lists and blockquotes for organization</span>
+                      </li>
+                      <li className="flex items-center">
+                        <span className="w-2 h-2 bg-primary-400 rounded-full mr-3 flex-shrink-0"></span>
+                        <span>Links and images for rich content</span>
+                      </li>
+                    </ul>
+                    
+                    <div className="mt-4 pt-3 border-t border-dark-700">
+                      <div className="space-y-2">
+                        <p className="text-xs text-gray-400">
+                          <span className="font-medium text-white">💡 Pro Tip:</span> You can use the <span className="text-primary-300 font-medium">Organize with AI</span> button to help you format your content.
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          <span className="font-medium text-white">🧠 Quiz Builder:</span> In the quiz builder you can add questions and answers to your article. They can be generated with the <span className="text-primary-300 font-medium">Generate with AI</span> button as well.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex justify-end p-4 border-t border-dark-800">
+                  <button
+                    onClick={handleEditorTutorialClose}
+                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded text-sm font-medium transition-colors"
+                  >
+                    Got it!
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
