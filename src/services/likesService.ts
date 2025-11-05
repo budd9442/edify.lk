@@ -7,10 +7,38 @@ export const likesService = {
       const res = await supabase
         .from('likes')
         .insert({ article_id: articleId, user_id: userId });
-      if (res.error) throw res.error;
+      
+      // If conflict error (duplicate key), treat as success (like already exists)
+      if (res.error) {
+        // Check if it's a unique constraint violation (PostgreSQL error code 23505)
+        const errorCode = String(res.error.code || '').toUpperCase();
+        const errorMessage = res.error.message?.toLowerCase() || '';
+        const statusCode = (res.error as any)?.status || (res.error as any)?.statusCode;
+        
+        // Check for various conflict indicators
+        if (
+          errorCode === '23505' || 
+          errorCode === 'PGRST116' ||
+          statusCode === 409 ||
+          errorMessage.includes('duplicate key') ||
+          errorMessage.includes('unique constraint') ||
+          errorMessage.includes('already exists') ||
+          errorMessage.includes('violates unique constraint')
+        ) {
+          // Like already exists, return successfully
+          return null;
+        }
+        throw res.error;
+      }
       return res.data;
     });
-    if (error) throw error;
+    if (error) {
+      // If it's a conflict error, treat it as a no-op (like already exists)
+      if (error.code === 'conflict' || error.code === '23505') {
+        return;
+      }
+      throw error;
+    }
   },
 
   async unlikeArticle(articleId: string, userId: string): Promise<void> {
