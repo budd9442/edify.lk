@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import 'highlight.js/styles/github-dark.css';
+
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
@@ -63,6 +65,13 @@
 
   .prose pre {
     @apply bg-dark-800 p-4 rounded-lg overflow-x-auto text-sm;
+  }
+
+  /* Quill editor code block styling (live editing) */
+  .ql-editor pre.ql-syntax {
+    @apply bg-dark-800 p-4 rounded-lg overflow-x-auto text-sm text-gray-200;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    white-space: pre;
   }
 
   .prose ul,

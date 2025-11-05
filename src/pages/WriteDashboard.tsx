@@ -91,6 +91,36 @@ const WriteDashboard: React.FC = () => {
     }
   }, [location.key, location.pathname]);
 
+  // Apply syntax highlighting in preview when content changes
+  useEffect(() => {
+    if (activeView !== 'preview') return;
+    // Defer to next tick to ensure DOM is painted
+    const id = window.setTimeout(async () => {
+      const mod: any = await import('highlight.js/lib/common');
+      const hljs = mod.default || mod;
+      // Highlight <pre><code>...</code></pre>
+      document.querySelectorAll('pre code').forEach((el) => {
+        hljs.highlightElement(el as HTMLElement);
+      });
+      // Highlight Quill code blocks (<pre class="ql-syntax">...)
+      
+      document.querySelectorAll('pre.ql-syntax').forEach((el) => {
+        // Wrap contents in a code element for consistent styling if not present
+        if (!el.querySelector('code')) {
+          const code = document.createElement('code');
+          code.textContent = (el as HTMLElement).textContent || '';
+          el.textContent = '';
+          el.appendChild(code);
+          hljs.highlightElement(code);
+        } else {
+          const code = el.querySelector('code') as HTMLElement;
+          hljs.highlightElement(code);
+        }
+      });
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [activeView, currentDraft?.contentHtml]);
+
   const loadDrafts = async () => {
     if (loadInFlightRef.current) return;
     loadInFlightRef.current = true;

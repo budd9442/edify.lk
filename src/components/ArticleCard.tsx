@@ -20,6 +20,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
   const { showError } = useToast();
   const isLiked = state.likedArticles.includes(article.id);
   const [localLikesCount, setLocalLikesCount] = React.useState(article.likes);
+  const [isTogglingLike, setIsTogglingLike] = React.useState(false);
 
   // Update local likes count when article.likes changes
   React.useEffect(() => {
@@ -35,8 +36,29 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
       return;
     }
     
+    // Prevent concurrent requests
+    if (isTogglingLike) {
+      return;
+    }
+    
+    setIsTogglingLike(true);
+    
+    // Optimistically update UI state
+    const wasLiked = isLiked;
+    const previousCount = localLikesCount;
+    
+    if (wasLiked) {
+      // Optimistically update: remove from liked list and decrease count
+      dispatch({ type: 'UNLIKE_ARTICLE', payload: article.id });
+      setLocalLikesCount(prev => Math.max(0, prev - 1));
+    } else {
+      // Optimistically update: add to liked list and increase count
+      dispatch({ type: 'LIKE_ARTICLE', payload: article.id });
+      setLocalLikesCount(prev => prev + 1);
+    }
+    
     try {
-      if (isLiked) {
+      if (wasLiked) {
         await likesService.unlikeArticle(article.id, authState.user.id);
         dispatch({ type: 'UNLIKE_ARTICLE', payload: article.id });
         setLocalLikesCount(prev => Math.max(0, prev - 1));
@@ -47,7 +69,17 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
       }
     } catch (error) {
       console.error('Failed to toggle like:', error);
+      // Revert optimistic update on error
+      if (wasLiked) {
+        dispatch({ type: 'LIKE_ARTICLE', payload: article.id });
+        setLocalLikesCount(previousCount);
+      } else {
+        dispatch({ type: 'UNLIKE_ARTICLE', payload: article.id });
+        setLocalLikesCount(previousCount);
+      }
       showError('Failed to update like');
+    } finally {
+      setIsTogglingLike(false);
     }
   };
 
@@ -103,9 +135,10 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={handleLike}
+                    disabled={isTogglingLike}
                     className={`flex items-center space-x-1 transition-colors ${
                       isLiked ? 'text-red-500' : 'text-gray-400 hover:text-red-500'
-                    }`}
+                    } ${isTogglingLike ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
                     <span className="text-sm">{localLikesCount}</span>

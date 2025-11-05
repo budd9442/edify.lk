@@ -41,6 +41,27 @@ const ArticlePreviewPage: React.FC = () => {
     load();
   }, [id]);
 
+  // Apply syntax highlighting after draft content loads/changes
+  useEffect(() => {
+    const id = window.setTimeout(async () => {
+      const mod: any = await import('highlight.js/lib/common');
+      const hljs = mod.default || mod;
+      document.querySelectorAll('pre code').forEach((el) => hljs.highlightElement(el as HTMLElement));
+      document.querySelectorAll('pre.ql-syntax').forEach((el) => {
+        if (!el.querySelector('code')) {
+          const code = document.createElement('code');
+          code.textContent = (el as HTMLElement).textContent || '';
+          el.textContent = '';
+          el.appendChild(code);
+          hljs.highlightElement(code);
+        } else {
+          hljs.highlightElement(el.querySelector('code') as HTMLElement);
+        }
+      });
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [draft?.contentHtml]);
+
   const handleApprove = async () => {
     if (!id) return;
     setActionLoading(true);

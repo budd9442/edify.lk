@@ -38,6 +38,10 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'SET_ARTICLES':
       return { ...state, articles: action.payload };
     case 'LIKE_ARTICLE':
+      // Prevent duplicate likes
+      if (state.likedArticles.includes(action.payload)) {
+        return state;
+      }
       return {
         ...state,
         likedArticles: [...state.likedArticles, action.payload],
