@@ -15,7 +15,7 @@ interface ArticleCardProps {
 }
 
 const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) => {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const { state: authState } = useAuth();
   const { showError } = useToast();
   const isLiked = state.likedArticles.includes(article.id);
@@ -38,9 +38,11 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
     try {
       if (isLiked) {
         await likesService.unlikeArticle(article.id, authState.user.id);
+        dispatch({ type: 'UNLIKE_ARTICLE', payload: article.id });
         setLocalLikesCount(prev => Math.max(0, prev - 1));
       } else {
         await likesService.likeArticle(article.id, authState.user.id);
+        dispatch({ type: 'LIKE_ARTICLE', payload: article.id });
         setLocalLikesCount(prev => prev + 1);
       }
     } catch (error) {
