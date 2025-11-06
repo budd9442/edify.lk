@@ -299,11 +299,13 @@ export const editorService = {
       let slug = baseSlug;
       let counter = 1;
       while (true) {
-        const { data: existing } = await supabase
+        const { data: existing, error: checkError } = await supabase
           .from('articles')
           .select('id')
           .eq('slug', slug)
-          .single();
+          .maybeSingle();
+        
+        if (checkError) throw checkError;
         
         if (!existing) break;
         
