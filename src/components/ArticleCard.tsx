@@ -15,7 +15,7 @@ interface ArticleCardProps {
 }
 
 const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) => {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const { state: authState } = useAuth();
   const { showError } = useToast();
   const isLiked = state.likedArticles.includes(article.id);
