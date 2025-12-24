@@ -2,15 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
-import { 
+import {
   Heart,
-  MessageCircle, 
-  Share2, 
-  BookmarkPlus, 
-  Clock, 
+  MessageCircle,
+  Share2,
+  BookmarkPlus,
+  Clock,
   Eye,
   Linkedin,
-  Twitter,
   Facebook,
   Send
 } from 'lucide-react';
@@ -42,16 +41,16 @@ const ArticlePage: React.FC = () => {
   useEffect(() => {
     const fetchArticle = async () => {
       if (!slug) return;
-      
+
       try {
         // Try to fetch by slug first, if that fails and slug looks like a UUID, try by ID
         let data = await articlesService.getBySlug(slug);
-        
+
         // If slug is actually an ID (UUID format), try fetching by ID
         if (!data && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)) {
           data = await articlesService.getById(slug);
         }
-        
+
         console.log('📄 [ARTICLE DEBUG] Fetched article data:', { id: data?.id, views: data?.views, likes: data?.likes });
         if (!data) {
           setArticle(null);
@@ -62,10 +61,10 @@ const ArticlePage: React.FC = () => {
             .select('id,name,avatar_url,bio,followers_count,articles_count')
             .eq('id', (data as any).authorId)
             .single();
-          
+
           // fetch comments with user profiles
           const comments = await commentsService.listByArticle(data.id);
-          
+
           const articleData = {
             id: data.id,
             title: data.title,
@@ -89,15 +88,15 @@ const ArticlePage: React.FC = () => {
             status: 'published',
             coverImage: data.coverImage || '/logo.png',
           };
-          
+
           setArticle(articleData as any);
           setLikesCount(data.likes);
-          
+
           // Track view
           console.log('📄 [ARTICLE DEBUG] About to track view for article:', data.id, 'user:', authState.user?.id);
           const viewTracked = await viewsService.trackView(data.id, authState.user?.id || null);
           console.log('📄 [ARTICLE DEBUG] View tracking result:', viewTracked);
-          
+
           // If view was tracked, refetch the article to get updated view count
           if (viewTracked) {
             console.log('📄 [ARTICLE DEBUG] View was tracked, refetching article for updated view count...');
@@ -123,7 +122,7 @@ const ArticlePage: React.FC = () => {
   useEffect(() => {
     const loadLikeStatus = async () => {
       if (!article || !authState.user) return;
-      
+
       try {
         const liked = await likesService.checkIfLiked(article.id, authState.user.id);
         setIsLiked(liked);
@@ -131,7 +130,7 @@ const ArticlePage: React.FC = () => {
         console.error('Failed to load like status:', error);
       }
     };
-    
+
     loadLikeStatus();
   }, [article, authState.user]);
 
@@ -140,7 +139,7 @@ const ArticlePage: React.FC = () => {
       showError('Please login to like articles');
       return;
     }
-    
+
     try {
       if (isLiked) {
         await likesService.unlikeArticle(article.id, authState.user.id);
@@ -168,13 +167,13 @@ const ArticlePage: React.FC = () => {
         userId: authState.user.id,
         content: comment,
       });
-      
+
       // Refresh comments from database to get the latest with proper user data
       const updatedComments = await commentsService.listByArticle(article.id);
-      
+
       // Update the article with fresh comments
       setArticle(prev => prev ? { ...prev, comments: updatedComments } as any : null);
-      
+
       setComment('');
     } catch (error) {
       console.error('Failed to add comment:', error);
@@ -195,7 +194,7 @@ const ArticlePage: React.FC = () => {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white mb-4">Article Not Found</h1>
           <p className="text-gray-400 mb-8">The article you're looking for doesn't exist.</p>
-          <Link 
+          <Link
             to="/"
             className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors"
           >
@@ -228,7 +227,7 @@ const ArticlePage: React.FC = () => {
           <header className="mb-8">
             <div className="flex items-center space-x-2 mb-4">
               {article.tags.map(tag => (
-                <span 
+                <span
                   key={tag}
                   className="bg-primary-900/30 text-primary-300 px-3 py-1 rounded-full text-sm whitespace-nowrap overflow-hidden"
                   title={tag}
@@ -237,7 +236,7 @@ const ArticlePage: React.FC = () => {
                 </span>
               ))}
             </div>
-            
+
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-6 leading-tight">
               {article.title}
             </h1>
@@ -288,11 +287,10 @@ const ArticlePage: React.FC = () => {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={handleLike}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                    isLiked 
-                      ? 'bg-red-500/20 text-red-400 border border-red-500/50' 
-                      : 'bg-dark-800 text-gray-400 hover:text-red-400 border border-dark-700'
-                  }`}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${isLiked
+                    ? 'bg-red-500/20 text-red-400 border border-red-500/50'
+                    : 'bg-dark-800 text-gray-400 hover:text-red-400 border border-dark-700'
+                    }`}
                 >
                   <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
                   <span>{likesCount}</span>
@@ -303,7 +301,7 @@ const ArticlePage: React.FC = () => {
                     <Share2 className="w-4 h-4" />
                     <span>Share</span>
                   </button>
-                  
+
                   <div className="absolute right-0 mt-2 w-48 bg-dark-800 rounded-lg shadow-lg border border-dark-700 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
                     <a
                       href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`}
@@ -314,15 +312,7 @@ const ArticlePage: React.FC = () => {
                       <Linkedin className="w-4 h-4" />
                       <span>LinkedIn</span>
                     </a>
-                    <a
-                      href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(article.title)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-dark-700 transition-colors"
-                    >
-                      <Twitter className="w-4 h-4" />
-                      <span>Twitter</span>
-                    </a>
+
                     <a
                       href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
                       target="_blank"
@@ -343,7 +333,7 @@ const ArticlePage: React.FC = () => {
           </header>
 
           {/* Article Content */}
-          <div 
+          <div
             className="prose prose-invert prose-lg max-w-none mb-12"
             dangerouslySetInnerHTML={{ __html: article.content }}
           />
@@ -409,15 +399,19 @@ const ArticlePage: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="flex space-x-4"
                 >
-                  <img
-                    src={comment.author.avatar}
-                    alt={comment.author.name}
-                    className="w-10 h-10 rounded-full"
-                  />
+                  <Link to={`/profile/${comment.author.id}`} className="flex-shrink-0">
+                    <img
+                      src={comment.author.avatar}
+                      alt={comment.author.name}
+                      className="w-10 h-10 rounded-full hover:opacity-80 transition-opacity"
+                    />
+                  </Link>
                   <div className="flex-1">
                     <div className="bg-dark-800 rounded-lg p-4">
                       <div className="flex items-center space-x-2 mb-2">
-                        <h4 className="font-medium text-white">{comment.author.name}</h4>
+                        <Link to={`/profile/${comment.author.id}`} className="hover:text-primary-400 transition-colors">
+                          <h4 className="font-medium text-white">{comment.author.name}</h4>
+                        </Link>
                         <span className="text-gray-400 text-sm">
                           {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
                         </span>

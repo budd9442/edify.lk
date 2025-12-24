@@ -9,6 +9,7 @@ export interface ArticleListItem {
   coverImage?: string;
   featured: boolean;
   publishedAt?: string;
+  readingTime?: number;
   likes: number;
   views: number;
   comments: number;
@@ -35,7 +36,7 @@ export const articlesService = {
       const res = await supabase
         .from('articles')
         .select(`
-          id, author_id, title, slug, excerpt, cover_image_url, tags, featured, status, likes, views, published_at, created_at,
+          id, author_id, title, slug, excerpt, cover_image_url, tags, featured, status, likes, views, published_at, reading_time, created_at,
           comments:comments(count)
         `)
         .eq('status', 'published')
@@ -47,6 +48,7 @@ export const articlesService = {
       return rows.map((row: any) => ({
         ...row,
         slug: row.slug || row.id, // Fallback to ID if slug is null/undefined
+        readingTime: row.reading_time || 5,
         comments: row.comments?.[0]?.count ?? 0,
       }));
     });
@@ -63,6 +65,7 @@ export const articlesService = {
           cover_image_url,
           featured,
           published_at,
+          reading_time,
           likes,
           views,
           tags,
@@ -85,6 +88,7 @@ export const articlesService = {
       coverImage: row.cover_image_url || undefined,
       featured: !!row.featured,
       publishedAt: row.published_at || undefined,
+      readingTime: row.reading_time || 5,
       likes: row.likes ?? 0,
       views: row.views ?? 0,
       comments: row.comments?.[0]?.count ?? 0,
@@ -105,6 +109,7 @@ export const articlesService = {
           cover_image_url,
           featured,
           published_at,
+          reading_time,
           likes,
           views,
           tags,
@@ -126,6 +131,50 @@ export const articlesService = {
       coverImage: row.cover_image_url || undefined,
       featured: !!row.featured,
       publishedAt: row.published_at || undefined,
+      readingTime: row.reading_time || 5,
+      likes: row.likes ?? 0,
+      views: row.views ?? 0,
+      comments: row.comments?.[0]?.count ?? 0,
+      tags: row.tags ?? [],
+      authorId: row.author_id,
+    }));
+  },
+
+  async listByAuthor(authorId: string): Promise<ArticleListItem[]> {
+    const { data, error } = await safeQuery('articles/listByAuthor', async () => {
+      const res = await supabase
+        .from('articles')
+        .select(`
+          id,
+          title,
+          slug,
+          excerpt,
+          cover_image_url,
+          featured,
+          published_at,
+          reading_time,
+          likes,
+          views,
+          tags,
+          author_id,
+          comments:comments(count)
+        `)
+        .eq('author_id', authorId)
+        .eq('status', 'published')
+        .order('published_at', { ascending: false });
+      if (res.error) throw res.error;
+      return res.data;
+    });
+    if (error) throw error;
+    return ((data as any) || []).map((row: any) => ({
+      id: row.id,
+      title: row.title,
+      slug: row.slug || row.id,
+      excerpt: row.excerpt,
+      coverImage: row.cover_image_url || undefined, // Correctly map cover_image_url
+      featured: !!row.featured,
+      publishedAt: row.published_at || undefined,
+      readingTime: row.reading_time || 5,
       likes: row.likes ?? 0,
       views: row.views ?? 0,
       comments: row.comments?.[0]?.count ?? 0,

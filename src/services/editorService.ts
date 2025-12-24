@@ -1,5 +1,6 @@
 import supabase from './supabaseClient';
 import { safeQuery } from './supabaseUtils';
+import { badgesService } from './badgesService';
 
 export interface EditorStats {
   totalArticles: number;
@@ -159,7 +160,7 @@ export const editorService = {
         .from('articles')
         .update({ featured })
         .eq('id', articleId);
-      
+
       if (error) throw error;
       return true;
     });
@@ -181,7 +182,7 @@ export const editorService = {
           updated_at: new Date().toISOString()
         })
         .eq('id', articleId);
-      
+
       if (error) throw error;
       return true;
     });
@@ -189,17 +190,14 @@ export const editorService = {
     if (error) throw error;
   },
 
-  // Delete an article (soft delete by changing status)
+  // Delete an article (hard delete to actually remove it)
   async deleteArticle(articleId: string): Promise<void> {
     const { error } = await safeQuery('editor/deleteArticle', async () => {
       const { error } = await supabase
         .from('articles')
-        .update({ 
-          status: 'deleted',
-          updated_at: new Date().toISOString()
-        })
+        .delete()
         .eq('id', articleId);
-      
+
       if (error) throw error;
       return true;
     });
@@ -234,7 +232,7 @@ export const editorService = {
 
       // Get author profiles
       const authorIds = drafts?.map(d => d.user_id) || [];
-      
+
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, name, avatar_url')
@@ -265,7 +263,7 @@ export const editorService = {
     if (error) {
       throw error;
     }
-    
+
     return data as any[];
   },
 
@@ -294,7 +292,7 @@ export const editorService = {
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-')
         .trim('-');
-      
+
       // Ensure slug is unique
       let slug = baseSlug;
       let counter = 1;
@@ -304,11 +302,11 @@ export const editorService = {
           .select('id')
           .eq('slug', slug)
           .maybeSingle();
-        
+
         if (checkError) throw checkError;
-        
+
         if (!existing) break;
-        
+
         slug = `${baseSlug}-${counter}`;
         counter++;
       }
@@ -339,16 +337,58 @@ export const editorService = {
 
       if (articleError) throw articleError;
 
+      if (articleError) throw articleError;
+
+      // Create quiz if exists
+      try {
+        const quizQuestions = (draft as any).quiz_questions_json || [];
+        if (Array.isArray(quizQuestions) && quizQuestions.length > 0) {
+          const normalized = (quizQuestions as any[]).slice(0, 10).map((q) => ({
+            question: String(q.question || ''),
+            options: Array.isArray(q.options) ? q.options.slice(0, 4) : [],
+            correctAnswer: Number.isInteger(q.correctAnswer) ? q.correctAnswer : 0,
+            explanation: q.explanation ? String(q.explanation) : undefined,
+            points: 1,
+          }));
+
+          const { error: quizError } = await supabase
+            .from('quizzes')
+            .insert([{
+              article_id: articleData.id,
+              title: 'Article Quiz',
+              questions_json: normalized
+            }]);
+
+          if (quizError) {
+            console.warn('Quiz creation failed (non-fatal):', quizError);
+          }
+        }
+      } catch (qerr) {
+        console.warn('Quiz creation step failed (non-fatal):', qerr);
+      }
+
       // Update draft status
       const { error: draftError } = await supabase
         .from('drafts')
-        .update({ 
+        .update({
           status: 'published',
           updated_at: new Date().toISOString()
         })
         .eq('id', draftId);
 
       if (draftError) throw draftError;
+
+      // Check for writer badges (async)
+      // Retrieve current article count for author
+      const { count } = await supabase
+        .from('articles')
+        .select('*', { count: 'exact', head: true })
+        .eq('author_id', draft.user_id)
+        .eq('status', 'published');
+
+      if (count !== null) {
+        badgesService.checkArticleBadges(draft.user_id, count);
+      }
 
       return true;
     });
@@ -361,13 +401,13 @@ export const editorService = {
     const { error } = await safeQuery('editor/rejectDraft', async () => {
       const { error } = await supabase
         .from('drafts')
-        .update({ 
+        .update({
           status: 'rejected',
           rejection_reason: reason,
           updated_at: new Date().toISOString()
         })
         .eq('id', draftId);
-      
+
       if (error) throw error;
       return true;
     });

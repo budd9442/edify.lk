@@ -2,6 +2,7 @@ import { marked } from 'marked';
 import mammoth from 'mammoth';
 import supabase from './supabaseClient';
 import { withTimeout, safeQuery } from './supabaseUtils';
+import { Draft } from '../types/payload';
 
 class DraftService {
   private extractMetricsFromHtml(html: string) {
@@ -105,18 +106,18 @@ class DraftService {
     };
     let saved: any;
     if (draft.id) {
-    const { data, error } = await safeQuery('drafts/update', () =>
-      supabase
-        .from('drafts')
-        .update({ ...payload, updated_at: new Date().toISOString() })
-        .eq('id', draft.id)
-        .select()
-        .single()
-        .then((res: any) => {
-          if (res.error) throw res.error;
-          return res.data;
-        })
-    );
+      const { data, error } = await safeQuery('drafts/update', () =>
+        supabase
+          .from('drafts')
+          .update({ ...payload, updated_at: new Date().toISOString() })
+          .eq('id', draft.id)
+          .select()
+          .single()
+          .then((res: any) => {
+            if (res.error) throw res.error;
+            return res.data;
+          })
+      );
       if (error) throw error;
       saved = data;
     } else {
@@ -160,6 +161,38 @@ class DraftService {
     return true;
   }
 
+  async deleteDraftAndArticle(draftId: string, userId: string, title: string): Promise<boolean> {
+    console.log('Attempting to delete draft and associated article:', title);
+
+    // 1. Try to find and delete the published article first
+    // Since we don't store article_id on drafts, we fuzzy match by author and title
+    // This is a best-effort approach given current schema limitations
+    const { data: article } = await supabase
+      .from('articles')
+      .select('id')
+      .eq('author_id', userId)
+      .eq('title', title)
+      .maybeSingle();
+
+    if (article) {
+      console.log('Found associated article, deleting:', article.id);
+      const { error: articleError } = await supabase
+        .from('articles')
+        .delete()
+        .eq('id', article.id);
+
+      if (articleError) {
+        console.error('Failed to delete associated article:', articleError);
+        // Continue to delete draft anyway, but log error
+      }
+    } else {
+      console.log('No associated published article found for this draft');
+    }
+
+    // 2. Delete the draft
+    return this.deleteDraft(draftId);
+  }
+
   async submitForReview(id: string): Promise<boolean> {
     const { error } = await supabase
       .from('drafts')
@@ -196,14 +229,14 @@ class DraftService {
 
   async approveDraft(id: string): Promise<boolean> {
     console.log('Approving draft:', id);
-    
+
     // Get the draft first
     const { data: draft, error: fetchError } = await supabase
       .from('drafts')
       .select('*')
       .eq('id', id)
       .single();
-    
+
     if (fetchError) {
       console.error('Failed to fetch draft:', fetchError);
       throw fetchError;
@@ -287,7 +320,7 @@ class DraftService {
       .from('drafts')
       .update({ status: 'published', updated_at: new Date().toISOString() })
       .eq('id', id);
-    
+
     if (updateError) {
       console.error('Failed to update draft status:', updateError);
       throw updateError;
@@ -320,47 +353,47 @@ class DraftService {
   async importFromDocument(file: File): Promise<{ contentHtml: string; title: string }> {
     const fileName = file.name.replace(/\.[^/.]+$/, '');
     const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
-    
+
     try {
       let contentHtml: string;
-      
+
       switch (fileExtension) {
         case '.docx':
           // Parse Word document using mammoth
           const mammothResult = await mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() });
           contentHtml = mammothResult.value;
-          
+
           // Clean up mammoth's HTML output
           contentHtml = this.cleanWordHtml(contentHtml);
           break;
-          
+
         case '.md':
           // Parse Markdown using marked
           const markdownText = await file.text();
           contentHtml = await Promise.resolve(marked(markdownText));
           break;
-          
+
         case '.txt':
           // Parse plain text
           const textContent = await file.text();
           contentHtml = this.convertTextToHtml(textContent);
           break;
-          
+
         case '.doc':
           // For .doc files, try to read as text (basic support)
           const docText = await file.text();
           contentHtml = this.convertTextToHtml(docText);
           break;
-          
+
         default:
           throw new Error(`Unsupported file format: ${fileExtension}`);
       }
-      
-      return { 
-        contentHtml: contentHtml || `<p>${fileName}</p>`, 
-        title: fileName 
+
+      return {
+        contentHtml: contentHtml || `<p>${fileName}</p>`,
+        title: fileName
       };
-      
+
     } catch (error) {
       console.error('Document import error:', error);
       throw new Error(`Failed to import document: ${error instanceof Error ? error.message : 'Unknown error'}`);

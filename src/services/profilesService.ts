@@ -1,5 +1,7 @@
+
 import supabase from './supabaseClient';
 import { safeQuery } from './supabaseUtils';
+import { badgesService } from './badgesService';
 
 export interface ProfileLite {
   id: string;
@@ -15,7 +17,6 @@ export interface ProfileUpdateData {
   avatar_url?: string;
   social_links?: {
     linkedin?: string;
-    twitter?: string;
     website?: string;
   };
 }
@@ -35,7 +36,7 @@ export const profilesService = {
         })
     );
     const existingProfile: any = existingProfileResult as any;
-    
+
     if (!existingProfile || !existingProfile.name || existingProfile.name.trim() === '') {
       console.log('Profile missing or has empty name, creating/updating...');
       const { error } = await safeQuery('profiles/upsert', () =>
@@ -51,7 +52,7 @@ export const profilesService = {
             return res.data;
           })
       );
-      
+
       if (error) {
         // Soft-fail to avoid blocking UI; rely on auth metadata
         console.warn('Failed to ensure profile exists (non-blocking):', error);
@@ -63,7 +64,7 @@ export const profilesService = {
 
   async updateProfile(updates: ProfileUpdateData): Promise<void> {
     console.log('profilesService.updateProfile called with:', updates);
-    
+
     const { data: session } = await supabase.auth.getUser();
     const userId = session.user?.id;
     if (!userId) throw new Error('Not authenticated');
@@ -91,24 +92,24 @@ export const profilesService = {
         ...profileUpdates
       };
       console.log('Upsert data:', upsertData);
-      
-    const { data: result, error: profileError } = await safeQuery('profiles/update', () =>
-      supabase
-        .from('profiles')
-        .upsert(upsertData, { onConflict: 'id' })
-        .select()
-        .then((res: any) => {
-          if (res.error) throw res.error;
-          return res.data;
-        })
-    );
-      
+
+      const { data: result, error: profileError } = await safeQuery('profiles/update', () =>
+        supabase
+          .from('profiles')
+          .upsert(upsertData, { onConflict: 'id' })
+          .select()
+          .then((res: any) => {
+            if (res.error) throw res.error;
+            return res.data;
+          })
+      );
+
       if (profileError) {
         console.error('Profile update error:', profileError);
         throw profileError;
       }
       console.log('Profiles table updated successfully, result:', result);
-      
+
       // Verify the update by reading back the data
       const { data: verifyData, error: verifyError } = await safeQuery('profiles/verify', () =>
         supabase
@@ -121,7 +122,7 @@ export const profilesService = {
             return res.data;
           })
       );
-      
+
       if (verifyError) {
         console.error('Verify read error:', verifyError);
       } else {
@@ -145,7 +146,22 @@ export const profilesService = {
           return res.data;
         })
     );
-    if (error && error.code !== '23505') throw error; // ignore duplicate
+    if (error) {
+      // Ignore unique constraint violation (already following)
+      if (error.code !== '23505') throw error;
+    } else {
+      // Check badges for the person being followed
+      // We need to fetch their new follower count first
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('followers_count')
+        .eq('id', followeeId)
+        .single();
+
+      if (profile) {
+        badgesService.checkFollowerBadges(followeeId, profile.followers_count + 1); // +1 because trigger might not have run yet or we want to be optimistic
+      }
+    }
   },
 
   async unfollow(followeeId: string): Promise<void> {

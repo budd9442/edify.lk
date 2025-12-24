@@ -16,7 +16,7 @@ const HomePage: React.FC = () => {
       dispatch({ type: 'SET_LOADING', payload: true });
       try {
         const items = await articlesService.listAll();
-        
+
         // Handle empty articles gracefully
         if (!items || items.length === 0) {
           dispatch({ type: 'SET_ARTICLES', payload: [] });
@@ -28,7 +28,7 @@ const HomePage: React.FC = () => {
           .from('profiles')
           .select('id,name,avatar_url,bio,followers_count,articles_count')
           .in('id', authorIds);
-        
+
         if (profileError) {
           console.warn('Failed to fetch profiles:', profileError);
         }
@@ -101,7 +101,7 @@ const HomePage: React.FC = () => {
                   </span>
                 </h1>
                 <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-                  Join thousands of readers exploring ideas that matter. From technology to culture, 
+                  Join thousands of readers exploring ideas that matter. From technology to culture,
                   find your next great read on edify community.
                 </p>
               </div>

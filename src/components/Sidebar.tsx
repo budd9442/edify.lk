@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TrendingUp, Users, Plus } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
@@ -129,17 +130,22 @@ const Sidebar: React.FC = () => {
           {topAuthors.map((user) => {
             return (
               <div key={user.id} className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
+                <Link
+                  to={`/profile/${user.id}`}
+                  className="flex items-center space-x-3 group cursor-pointer"
+                >
                   <img
                     src={user.avatar}
                     alt={user.name}
-                    className="w-10 h-10 rounded-full"
+                    className="w-10 h-10 rounded-full ring-2 ring-transparent group-hover:ring-primary-500 transition-all"
                   />
                   <div>
-                    <h4 className="text-sm font-medium text-white">{user.name}</h4>
+                    <h4 className="text-sm font-medium text-white group-hover:text-primary-400 transition-colors">
+                      {user.name}
+                    </h4>
                     <p className="text-xs text-gray-400">{user.followersCount.toLocaleString()} followers</p>
                   </div>
-                </div>
+                </Link>
                 {authState.user?.id !== user.id && (
                   <FollowButton
                     authorId={user.id}

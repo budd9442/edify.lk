@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Bell, 
-  Menu, 
-  X, 
+import {
+  Bell,
+  Menu,
+  X,
   PenTool,
   User,
   LogOut
@@ -64,7 +64,20 @@ const Header: React.FC = () => {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${state.user.id}` },
         (payload: any) => {
-          const n = payload.new as { read?: boolean };
+          const n = payload.new as { read?: boolean; type?: string; title?: string; message?: string };
+
+          // Show toast for badges
+          if (n && n.type === 'badge_earned') {
+            appDispatch({
+              type: 'SET_TOAST',
+              payload: {
+                message: `🏆 ${n.title}: ${n.message}`,
+                type: 'success',
+                duration: 6000
+              }
+            });
+          }
+
           if (n && n.read === false) {
             setUnreadCount((c) => c + 1);
           } else {
@@ -104,7 +117,7 @@ const Header: React.FC = () => {
     }, 30000);
 
     return () => {
-      try { supabase.removeChannel(channel); } catch {}
+      try { supabase.removeChannel(channel); } catch { }
       clearInterval(poll);
     };
   }, [state.isAuthenticated, state.user?.id]);
@@ -128,15 +141,15 @@ const Header: React.FC = () => {
 
   const handleLogout = useCallback(async () => {
     if (isLoggingOut) return; // Prevent multiple clicks
-    
+
     setIsLoggingOut(true);
-    
+
     // Set a timeout to prevent hanging
     const timeoutId = setTimeout(() => {
       console.warn('Logout timeout, forcing page reload');
       window.location.href = '/';
     }, 5000); // 5 second timeout
-    
+
     try {
       // Try the context logout first
       await logout();
@@ -188,11 +201,11 @@ const Header: React.FC = () => {
             <Link to="/explore" className="text-gray-300 hover:text-white transition-colors focus:outline-none">
               Explore
             </Link>
-              {state.isAuthenticated && (state.user?.role === 'editor' || state.user?.role === 'admin') && (
-                <Link to="/editor" className="text-primary-400 hover:text-primary-300 transition-colors focus:outline-none">
-                  Editor
-                </Link>
-              )}
+            {state.isAuthenticated && (state.user?.role === 'editor' || state.user?.role === 'admin') && (
+              <Link to="/editor" className="text-primary-400 hover:text-primary-300 transition-colors focus:outline-none">
+                Editor
+              </Link>
+            )}
           </nav>
 
           {/* Search Bar */}
@@ -231,11 +244,11 @@ const Header: React.FC = () => {
                       />
                     )}
                   </button>
-                  
+
                   {isNotificationOpen && (
                     <NotificationDropdown
                       onClose={() => setIsNotificationOpen(false)}
-                      // When dropdown opens, we could refresh unread in case items were marked read inside
+                    // When dropdown opens, we could refresh unread in case items were marked read inside
                     />
                   )}
                 </div>
@@ -281,11 +294,10 @@ const Header: React.FC = () => {
                           handleLogout();
                         }}
                         disabled={isLoggingOut}
-                        className={`w-full flex items-center space-x-3 px-4 py-2 text-left transition-colors ${
-                          isLoggingOut 
-                            ? 'text-gray-500 cursor-not-allowed' 
+                        className={`w-full flex items-center space-x-3 px-4 py-2 text-left transition-colors ${isLoggingOut
+                            ? 'text-gray-500 cursor-not-allowed'
                             : 'text-gray-300 hover:text-white hover:bg-dark-800'
-                        }`}
+                          }`}
                         type="button"
                       >
                         <LogOut className={`w-4 h-4 ${isLoggingOut ? 'animate-spin' : ''}`} />
@@ -322,7 +334,7 @@ const Header: React.FC = () => {
           </div>
         </div>
         {/* Toasts */}
-        <ToastContainer 
+        <ToastContainer
           toasts={appState.toasts}
           onDismiss={(id) => appDispatch({ type: 'DISMISS_TOAST', payload: { id } })}
         />

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  PenTool, 
-  Upload, 
-  FileText, 
+import {
+  PenTool,
+  Upload,
+  FileText,
   TrendingUp,
   Users,
   Eye,
@@ -103,7 +103,7 @@ const WriteDashboard: React.FC = () => {
         hljs.highlightElement(el as HTMLElement);
       });
       // Highlight Quill code blocks (<pre class="ql-syntax">...)
-      
+
       document.querySelectorAll('pre.ql-syntax').forEach((el) => {
         // Wrap contents in a code element for consistent styling if not present
         if (!el.querySelector('code')) {
@@ -168,25 +168,25 @@ const WriteDashboard: React.FC = () => {
 
   const handleOrganizeWithAI = async () => {
     if (!currentDraft?.contentHtml) return;
-    
+
     setOrganizingWithAI(true);
     try {
       const result = await organizeContentWithAI(currentDraft.contentHtml);
-      
+
       // Update content with optimized HTML
       const updatedDraft = {
         ...currentDraft,
         contentHtml: result.optimizedHtml,
       };
-      
+
       // Add suggested tags if none are present and AI suggested some
-          if ((!currentDraft.tags || currentDraft.tags.length === 0) && result.suggestedTags) {
-            updatedDraft.tags = result.suggestedTags;
-            showSuccess('Content organized with AI and tags added!');
-          } else {
-            showSuccess('Content organized with AI!');
-          }
-      
+      if ((!currentDraft.tags || currentDraft.tags.length === 0) && result.suggestedTags) {
+        updatedDraft.tags = result.suggestedTags;
+        showSuccess('Content organized with AI and tags added!');
+      } else {
+        showSuccess('Content organized with AI!');
+      }
+
       setCurrentDraft(updatedDraft);
     } catch (error) {
       console.error('AI organization failed:', error);
@@ -202,18 +202,49 @@ const WriteDashboard: React.FC = () => {
   };
 
   const handleDeleteDraft = async (draftId: string) => {
+    // Find the draft to check status
+    const draftToDelete = drafts.find(d => d.id === draftId);
+    if (!draftToDelete) return;
+
+    const message = draftToDelete.status === 'published'
+      ? 'WARNING: This will delete both the draft AND the published article from the website. This action cannot be undone. Are you sure?'
+      : 'Are you sure you want to delete this draft? This action cannot be undone.';
+
+    if (!window.confirm(message)) {
+      return;
+    }
+
     try {
-      await draftService.deleteDraft(draftId);
+      if (draftToDelete.status === 'published' && authState.user?.id && draftToDelete.title) {
+        // Attempt to delete cascade
+        await draftService.deleteDraftAndArticle(draftId, authState.user.id, draftToDelete.title);
+      } else {
+        await draftService.deleteDraft(draftId);
+      }
+
       setDrafts(prev => prev.filter(d => d.id !== draftId));
+
+      // If the deleted draft was the current one, reset state
+      if (currentDraft?.id === draftId) {
+        setCurrentDraft({
+          title: '',
+          contentHtml: '',
+          tags: [],
+          status: 'draft'
+        });
+        setActiveView('options');
+      }
+      showSuccess('Deleted successfully');
     } catch (error) {
       console.error('Failed to delete draft:', error);
+      showError('Failed to delete');
     }
   };
 
   const handleSubmitDraft = async (draftId: string) => {
     try {
       await draftService.submitForReview(draftId);
-      setDrafts(prev => prev.map(d => 
+      setDrafts(prev => prev.map(d =>
         d.id === draftId ? { ...d, status: 'submitted' as const } : d
       ));
     } catch (error) {
@@ -319,21 +350,52 @@ const WriteDashboard: React.FC = () => {
       return;
     }
 
-    if (!currentDraft?.id) {
-      await handleSaveDraft();
-      return;
-    }
+    // Set saving state to verify operations
+    setSaving(true);
 
     try {
-      await draftService.submitForReview(currentDraft.id);
-      setDrafts(prev => prev.map(d => 
-        d.id === currentDraft.id ? { ...d, status: 'submitted' as const } : d
-      ));
-      setCurrentDraft(prev => prev ? { ...prev, status: 'submitted' as const } : prev);
+      if (!authState.isAuthenticated || !authState.user?.id) {
+        showError('Please sign in to submit.');
+        return;
+      }
+
+      // Always save the draft first to ensure latest content and quiz questions are persisted
+      // This handles both new drafts (creating them) and existing drafts (updating them)
+      const savedDraft = await draftService.saveDraft({
+        id: currentDraft.id,
+        title: currentDraft.title!,
+        contentHtml: currentDraft.contentHtml || '',
+        coverImage: currentDraft.coverImage,
+        tags: currentDraft.tags || [],
+        status: 'draft', // Keep as draft initially during save
+        userId: authState.user.id,
+        quizQuestions: (currentDraft as any).quizQuestions || []
+      });
+
+      // Now submit for review
+      await draftService.submitForReview(savedDraft.id);
+
+      // Update local state with submitted status
+      setDrafts(prev => {
+        const existing = prev.find(d => d.id === savedDraft.id);
+        if (existing) {
+          return prev.map(d => d.id === savedDraft.id ? { ...savedDraft, status: 'submitted' as const } : d);
+        } else {
+          return [{ ...savedDraft, status: 'submitted' as const }, ...prev];
+        }
+      });
+
+      setCurrentDraft({ ...savedDraft, status: 'submitted' as const });
       showSuccess('Article submitted for review successfully!');
+
+      // Update autoSavedAt
+      setAutoSavedAt(new Date().toISOString());
+
     } catch (error) {
       console.error('Failed to submit for review:', error);
       showError('Failed to submit for review. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -423,7 +485,7 @@ const WriteDashboard: React.FC = () => {
                         {drafts.filter(d => d.status === 'draft').length} {drafts.filter(d => d.status === 'draft').length === 1 ? 'draft' : 'drafts'}
                       </span>
                     </div>
-                    
+
                     {loading ? (
                       <div className="grid md:grid-cols-2 gap-6">
                         {[...Array(4)].map((_, i) => (
@@ -456,23 +518,22 @@ const WriteDashboard: React.FC = () => {
                                 </div>
                                 <p className="text-sm text-gray-400 line-clamp-1 mt-1">{textPreview || 'No content yet...'}</p>
                                 <div className="mt-2 flex items-center gap-2">
-                                  <span className={`px-2 py-0.5 text-xs rounded-full border ${
-                                    draft.status === 'published'
+                                  <span className={`px-2 py-0.5 text-xs rounded-full border ${draft.status === 'published'
                                       ? 'text-green-400 bg-green-900/20 border-green-500/50'
                                       : draft.status === 'submitted'
-                                      ? 'text-yellow-400 bg-yellow-900/20 border-yellow-500/50'
-                                      : 'text-gray-400 bg-gray-900/20 border-gray-500/50'
-                                  }`}>
+                                        ? 'text-yellow-400 bg-yellow-900/20 border-yellow-500/50'
+                                        : 'text-gray-400 bg-gray-900/20 border-gray-500/50'
+                                    }`}>
                                     {draft.status === 'published' ? 'Published' : draft.status === 'submitted' ? 'Under Review' : 'Draft'}
                                   </span>
-                                   {draft.tags.slice(0, 2).map((tag, i) => (
-                                     <span key={i} className="px-2 py-0.5 text-xs bg-dark-800 text-gray-300 rounded-full whitespace-nowrap overflow-hidden" title={tag}>
-                                       {tag}
-                                     </span>
-                                   ))}
-                                   {draft.tags.length > 2 && (
-                                     <span className="px-2 py-0.5 text-xs bg-dark-800 text-gray-400 rounded-full">+{draft.tags.length - 2} more</span>
-                                   )}
+                                  {draft.tags.slice(0, 2).map((tag, i) => (
+                                    <span key={i} className="px-2 py-0.5 text-xs bg-dark-800 text-gray-300 rounded-full whitespace-nowrap overflow-hidden" title={tag}>
+                                      {tag}
+                                    </span>
+                                  ))}
+                                  {draft.tags.length > 2 && (
+                                    <span className="px-2 py-0.5 text-xs bg-dark-800 text-gray-400 rounded-full">+{draft.tags.length - 2} more</span>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
@@ -567,13 +628,9 @@ const WriteDashboard: React.FC = () => {
                         </span>
                       </div>
                     </div>
+                    {/* View Published button removed here */}
                     <div className="mt-6">
-                      <button
-                        onClick={() => window.open('/feed', '_blank')}
-                        className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors"
-                      >
-                        View Published
-                      </button>
+
                     </div>
                   </motion.div>
                 </div>
@@ -662,11 +719,10 @@ const WriteDashboard: React.FC = () => {
                     value={currentDraft.title || ''}
                     onChange={(e) => setCurrentDraft(prev => ({ ...prev, title: e.target.value }))}
                     placeholder="Article title..."
-                    className={`w-full text-3xl font-bold bg-transparent border-none outline-none text-white placeholder-gray-500 ${
-                      !currentDraft.title || currentDraft.title.trim().length === 0 
-                        ? 'border-b-2 border-red-500' 
+                    className={`w-full text-3xl font-bold bg-transparent border-none outline-none text-white placeholder-gray-500 ${!currentDraft.title || currentDraft.title.trim().length === 0
+                        ? 'border-b-2 border-red-500'
                         : 'border-b border-gray-600'
-                    }`}
+                      }`}
                   />
                   {(!currentDraft.title || currentDraft.title.trim().length === 0) && (
                     <p className="text-red-400 text-sm mt-1">Title is required</p>
@@ -787,7 +843,7 @@ const WriteDashboard: React.FC = () => {
                 <h1 className="text-4xl font-bold text-white mb-6">
                   {currentDraft.title || 'Untitled Article'}
                 </h1>
-                
+
                 {currentDraft.tags && currentDraft.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-8">
                     {currentDraft.tags.map((tag, index) => (
@@ -869,7 +925,7 @@ const WriteDashboard: React.FC = () => {
                         <span>Links and images for rich content</span>
                       </li>
                     </ul>
-                    
+
                     <div className="mt-4 pt-3 border-t border-dark-700">
                       <div className="space-y-2">
                         <p className="text-xs text-gray-400">

@@ -36,12 +36,12 @@ function App() {
                   <Route path="/search" element={<SearchPage />} />
                   <Route path="/feed" element={<FeedPage />} />
                   <Route path="/explore" element={<ExplorePage />} />
-                  <Route element={<ProtectedRoute />}> 
+                  <Route element={<ProtectedRoute />}>
                     <Route path="/write" element={<WriteDashboard />} />
                     <Route path="/editor" element={<EditorDashboard />} />
                     <Route path="/profile" element={<ProfilePage />} />
-                    <Route path="/profile/:userId" element={<ProfilePage />} />
                   </Route>
+                  <Route path="/profile/:userId" element={<ProfilePage />} />
                 </Routes>
               </div>
             </AuthGate>
