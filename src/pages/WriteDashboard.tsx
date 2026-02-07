@@ -508,16 +508,16 @@ const WriteDashboard: React.FC = () => {
                             .trim();
                           const isDraft = draft.status === 'draft';
                           return (
-                            <div key={draft.id} className={"flex items-center gap-4 p-4 bg-dark-900 hover:bg-dark-800 rounded-lg border border-dark-800"}>
+                            <div key={draft.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-dark-900 hover:bg-dark-800 rounded-lg border border-dark-800">
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-4">
+                                <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4">
                                   <h3 className="text-white font-medium truncate">{draft.title || 'Untitled Draft'}</h3>
                                   <span className="text-xs text-gray-400 whitespace-nowrap">
                                     {formatDistanceToNow(new Date(draft.updatedAt), { addSuffix: true })}
                                   </span>
                                 </div>
                                 <p className="text-sm text-gray-400 line-clamp-1 mt-1">{textPreview || 'No content yet...'}</p>
-                                <div className="mt-2 flex items-center gap-2">
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
                                   <span className={`px-2 py-0.5 text-xs rounded-full border ${draft.status === 'published'
                                       ? 'text-green-400 bg-green-900/20 border-green-500/50'
                                       : draft.status === 'submitted'
@@ -527,7 +527,7 @@ const WriteDashboard: React.FC = () => {
                                     {draft.status === 'published' ? 'Published' : draft.status === 'submitted' ? 'Under Review' : 'Draft'}
                                   </span>
                                   {draft.tags.slice(0, 2).map((tag, i) => (
-                                    <span key={i} className="px-2 py-0.5 text-xs bg-dark-800 text-gray-300 rounded-full whitespace-nowrap overflow-hidden" title={tag}>
+                                    <span key={i} className="px-2 py-0.5 text-xs bg-dark-800 text-gray-300 rounded-full whitespace-nowrap overflow-hidden max-w-full" title={tag}>
                                       {tag}
                                     </span>
                                   ))}
@@ -536,32 +536,32 @@ const WriteDashboard: React.FC = () => {
                                   )}
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
                                 {isDraft && (
                                   <button
                                     onClick={() => handleEditDraft(draft)}
-                                    className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
+                                    className="px-3 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
                                   >
                                     Edit
                                   </button>
                                 )}
                                 <button
                                   onClick={() => handlePreviewDraft(draft)}
-                                  className="px-3 py-1.5 bg-dark-800 text-gray-300 rounded-lg hover:bg-dark-700 text-sm"
+                                  className="px-3 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 bg-dark-800 text-gray-300 rounded-lg hover:bg-dark-700 text-sm"
                                 >
                                   Preview
                                 </button>
                                 {isDraft && (
                                   <button
                                     onClick={() => handleSubmitDraft(draft.id)}
-                                    className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                                    className="px-3 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
                                   >
                                     Submit
                                   </button>
                                 )}
                                 <button
                                   onClick={() => handleDeleteDraft(draft.id)}
-                                  className="px-2 py-1 text-gray-400 hover:text-red-400"
+                                  className="px-2 py-2 min-h-[44px] sm:min-h-0 sm:py-1 text-gray-400 hover:text-red-400 flex items-center justify-center"
                                   aria-label="Delete draft"
                                 >
                                   Delete
@@ -646,20 +646,20 @@ const WriteDashboard: React.FC = () => {
               exit={{ opacity: 0, y: -20 }}
             >
               {/* Editor Header */}
-              <div className="flex items-center justify-between mb-8">
-                <div>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
+                <div className="min-w-0">
                   <button
                     onClick={() => setActiveView('options')}
-                    className="text-gray-400 hover:text-white transition-colors mb-2"
+                    className="text-gray-400 hover:text-white transition-colors mb-2 min-h-[44px] sm:min-h-0 flex items-center"
                   >
                     ← Back to Dashboard
                   </button>
-                  <h1 className="text-3xl font-bold text-white">Write Article</h1>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-white">Write Article</h1>
                 </div>
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                   <button
                     onClick={() => setActiveView('preview')}
-                    className="flex items-center space-x-2 px-4 py-2 bg-dark-800 text-gray-300 rounded-lg hover:bg-dark-700 transition-colors"
+                    className="flex items-center space-x-2 px-4 py-2 min-h-[44px] bg-dark-800 text-gray-300 rounded-lg hover:bg-dark-700 transition-colors"
                   >
                     <Eye className="w-4 h-4" />
                     <span>Preview</span>
@@ -667,7 +667,7 @@ const WriteDashboard: React.FC = () => {
                   <button
                     onClick={handleOrganizeWithAI}
                     disabled={organizingWithAI || !currentDraft?.contentHtml}
-                    className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center space-x-2 px-4 py-2 min-h-[44px] bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {organizingWithAI ? (
                       <>
@@ -683,11 +683,11 @@ const WriteDashboard: React.FC = () => {
                       </>
                     )}
                   </button>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       onClick={handleSaveDraft}
                       disabled={saving}
-                      className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+                      className="flex items-center space-x-2 px-4 py-2 min-h-[44px] bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
                     >
                       <Save className="w-4 h-4" />
                       <span>{saving ? 'Saving...' : 'Save Draft'}</span>
@@ -697,12 +697,12 @@ const WriteDashboard: React.FC = () => {
                     )}
                   </div>
                   {saveError && (
-                    <div className="text-xs text-red-400 mt-1">{saveError}</div>
+                    <div className="text-xs text-red-400 mt-1 w-full basis-full">{saveError}</div>
                   )}
                   <button
                     onClick={handleSubmitForReview}
                     disabled={currentDraft.status === 'submitted' || !currentDraft.title || currentDraft.title.trim().length === 0}
-                    className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center space-x-2 px-4 py-2 min-h-[44px] bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Send className="w-4 h-4" />
                     <span>{currentDraft.status === 'submitted' ? 'Submitted' : 'Submit for Review'}</span>
@@ -711,7 +711,7 @@ const WriteDashboard: React.FC = () => {
               </div>
 
               {/* Editor Form */}
-              <div className="bg-dark-900 border border-dark-800 rounded-xl p-8">
+              <div className="bg-dark-900 border border-dark-800 rounded-xl p-4 sm:p-6 lg:p-8">
                 {/* Title */}
                 <div className="mb-6">
                   <input
@@ -798,21 +798,21 @@ const WriteDashboard: React.FC = () => {
               exit={{ opacity: 0, y: -20 }}
             >
               {/* Preview Header */}
-              <div className="flex items-center justify-between mb-8">
-                <div>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
+                <div className="min-w-0">
                   <button
                     onClick={() => setActiveView('editor')}
-                    className="text-gray-400 hover:text-white transition-colors mb-2"
+                    className="text-gray-400 hover:text-white transition-colors mb-2 min-h-[44px] sm:min-h-0 flex items-center"
                   >
                     ← Back to Editor
                   </button>
-                  <h1 className="text-3xl font-bold text-white">Preview</h1>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-white">Preview</h1>
                 </div>
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                   <button
                     onClick={handleOrganizeWithAI}
                     disabled={organizingWithAI || !currentDraft?.contentHtml}
-                    className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center space-x-2 px-4 py-2 min-h-[44px] bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {organizingWithAI ? (
                       <>
@@ -830,7 +830,7 @@ const WriteDashboard: React.FC = () => {
                   </button>
                   <button
                     onClick={() => setActiveView('editor')}
-                    className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    className="flex items-center space-x-2 px-4 py-2 min-h-[44px] bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                   >
                     <PenTool className="w-4 h-4" />
                     <span>Continue Editing</span>
@@ -839,7 +839,7 @@ const WriteDashboard: React.FC = () => {
               </div>
 
               {/* Preview Content */}
-              <div className="bg-dark-900 border border-dark-800 rounded-xl p-8">
+              <div className="bg-dark-900 border border-dark-800 rounded-xl p-4 sm:p-6 lg:p-8">
                 <h1 className="text-4xl font-bold text-white mb-6">
                   {currentDraft.title || 'Untitled Article'}
                 </h1>
@@ -881,13 +881,13 @@ const WriteDashboard: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 flex items-center justify-center p-4"
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 flex items-center justify-center p-4 overflow-y-auto"
             >
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-dark-900 border border-dark-800 rounded-lg max-w-md w-full"
+                className="bg-dark-900 border border-dark-800 rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto my-auto"
               >
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b border-dark-800">

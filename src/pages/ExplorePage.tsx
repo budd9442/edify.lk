@@ -185,36 +185,37 @@ const ExplorePage: React.FC = () => {
         </nav>
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2 flex items-center space-x-3">
-              <Compass className="w-8 h-8 text-primary-500" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 flex items-center space-x-3">
+              <Compass className="w-7 h-7 sm:w-8 sm:h-8 text-primary-500 flex-shrink-0" />
               <span>Explore</span>
             </h1>
-            <p className="text-gray-400">
+            <p className="text-gray-400 text-sm sm:text-base">
               Discover trending content, topics, and authors across the platform
             </p>
           </div>
-          
           {(activeTab === 'trending' || activeTab === 'featured') && (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 flex-shrink-0">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-colors ${
                   viewMode === 'grid'
                     ? 'bg-primary-900/30 text-primary-300'
                     : 'text-gray-400 hover:text-white'
                 }`}
+                aria-label="Grid view"
               >
                 <Grid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-colors ${
                   viewMode === 'list'
                     ? 'bg-primary-900/30 text-primary-300'
                     : 'text-gray-400 hover:text-white'
                 }`}
+                aria-label="List view"
               >
                 <List className="w-4 h-4" />
               </button>
@@ -223,28 +224,30 @@ const ExplorePage: React.FC = () => {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center space-x-1 mb-8 bg-dark-900 p-1 rounded-lg border border-dark-800">
-          {tabs.map(tab => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id as any);
-                  setSelectedTag(null);
-                  setLoading(true);
-                }}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-dark-800'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
+        <div className="flex items-center mb-8 bg-dark-900 p-1 rounded-lg border border-dark-800 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="flex items-center space-x-1 flex-nowrap">
+            {tabs.map(tab => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id as any);
+                    setSelectedTag(null);
+                    setLoading(true);
+                  }}
+                  className={`flex items-center space-x-2 px-4 py-2 min-h-[44px] rounded-lg transition-colors flex-shrink-0 ${
+                    activeTab === tab.id
+                      ? 'bg-primary-600 text-white'
+                      : 'text-gray-400 hover:text-white hover:bg-dark-800'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Content */}

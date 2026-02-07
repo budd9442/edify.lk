@@ -394,7 +394,7 @@ const ProfilePage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center space-x-3 mt-4 md:mt-0">
+            <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
               {!isCurrentUser && (
                 <FollowButton
                   authorId={user.id}
@@ -410,7 +410,7 @@ const ProfilePage: React.FC = () => {
                 />
               )}
               {isCurrentUser && (
-                <div className="flex space-x-2">
+                <div className="flex flex-wrap gap-2">
                   {isEditing ? (
                     <>
                       <button

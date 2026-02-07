@@ -34,6 +34,8 @@ const ArticlePage: React.FC = () => {
   const [commentLoading, setCommentLoading] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const shareRef = React.useRef<HTMLDivElement>(null);
   const { dispatch } = useApp();
   const { state: authState } = useAuth();
   const { showError } = useToast();
@@ -184,6 +186,16 @@ const ArticlePage: React.FC = () => {
 
   const shareUrl = `https://edify.exposition.lk/article/${article?.slug || article?.id}`;
 
+  // Close share dropdown on outside click
+  useEffect(() => {
+    if (!isShareOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (shareRef.current && !shareRef.current.contains(e.target as Node)) setIsShareOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isShareOpen]);
+
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -221,15 +233,15 @@ const ArticlePage: React.FC = () => {
         <motion.article
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-dark-900 border border-dark-800 rounded-xl p-8 shadow-2xl"
+          className="bg-dark-900 border border-dark-800 rounded-xl p-4 sm:p-6 lg:p-8 shadow-2xl"
         >
           {/* Article Header */}
           <header className="mb-8">
-            <div className="flex items-center space-x-2 mb-4">
+            <div className="flex flex-wrap gap-2 mb-4">
               {article.tags.map(tag => (
                 <span
                   key={tag}
-                  className="bg-primary-900/30 text-primary-300 px-3 py-1 rounded-full text-sm whitespace-nowrap overflow-hidden"
+                  className="bg-primary-900/30 text-primary-300 px-3 py-1 rounded-full text-sm whitespace-nowrap overflow-hidden max-w-full"
                   title={tag}
                 >
                   {tag}
@@ -241,16 +253,16 @@ const ArticlePage: React.FC = () => {
               {article.title}
             </h1>
 
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center space-x-4">
-                <Link to={`/profile/${article.author.id}`} className="flex items-center space-x-3">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                <Link to={`/profile/${article.author.id}`} className="flex items-center space-x-3 flex-shrink-0">
                   <img
                     src={article.author.avatar}
                     alt={article.author.name}
-                    className="w-12 h-12 rounded-full"
+                    className="w-12 h-12 rounded-full flex-shrink-0"
                   />
-                  <div>
-                    <h3 className="font-medium text-white">{article.author.name}</h3>
+                  <div className="min-w-0">
+                    <h3 className="font-medium text-white truncate">{article.author.name}</h3>
                     <p className="text-sm text-gray-400">{article.author.followersCount.toLocaleString()} followers</p>
                   </div>
                 </Link>
@@ -267,65 +279,74 @@ const ArticlePage: React.FC = () => {
                     } as any : prev);
                   }}
                 />
-                <div className="text-gray-400">
-                  <div className="flex items-center space-x-4 text-sm">
-                    <span>{formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true })}</span>
-                    <span>•</span>
-                    <div className="flex items-center space-x-1">
-                      <Clock className="w-4 h-4" />
-                      <span>{article.readingTime} min read</span>
-                    </div>
-                    <span>•</span>
-                    <div className="flex items-center space-x-1">
-                      <Eye className="w-4 h-4" />
-                      <span>{(article.views || 0).toLocaleString()} views</span>
-                    </div>
+              </div>
+              <div className="text-gray-400">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                  <span>{formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true })}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <div className="flex items-center space-x-1">
+                    <Clock className="w-4 h-4 flex-shrink-0" />
+                    <span>{article.readingTime} min read</span>
+                  </div>
+                  <span className="hidden sm:inline">•</span>
+                  <div className="flex items-center space-x-1">
+                    <Eye className="w-4 h-4 flex-shrink-0" />
+                    <span>{(article.views || 0).toLocaleString()} views</span>
                   </div>
                 </div>
               </div>
-
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={handleLike}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${isLiked
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg min-h-[44px] transition-colors ${isLiked
                     ? 'bg-red-500/20 text-red-400 border border-red-500/50'
                     : 'bg-dark-800 text-gray-400 hover:text-red-400 border border-dark-700'
                     }`}
                 >
-                  <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+                  <Heart className={`w-4 h-4 flex-shrink-0 ${isLiked ? 'fill-current' : ''}`} />
                   <span>{likesCount}</span>
                 </button>
 
-                <div className="relative group">
-                  <button className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-dark-800 text-gray-400 hover:text-white border border-dark-700 transition-colors">
+                <div className="relative" ref={shareRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsShareOpen(!isShareOpen)}
+                    className="flex items-center space-x-2 px-4 py-2 min-h-[44px] rounded-lg bg-dark-800 text-gray-400 hover:text-white border border-dark-700 transition-colors"
+                  >
                     <Share2 className="w-4 h-4" />
                     <span>Share</span>
                   </button>
-
-                  <div className="absolute right-0 mt-2 w-48 bg-dark-800 rounded-lg shadow-lg border border-dark-700 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
-                    <a
-                      href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-dark-700 transition-colors"
-                    >
-                      <Linkedin className="w-4 h-4" />
-                      <span>LinkedIn</span>
-                    </a>
-
-                    <a
-                      href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-dark-700 transition-colors"
-                    >
-                      <Facebook className="w-4 h-4" />
-                      <span>Facebook</span>
-                    </a>
-                  </div>
+                  {isShareOpen && (
+                    <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-48 bg-dark-800 rounded-lg shadow-lg border border-dark-700 py-2 z-10">
+                      <a
+                        href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-dark-700 transition-colors"
+                        onClick={() => setIsShareOpen(false)}
+                      >
+                        <Linkedin className="w-4 h-4" />
+                        <span>LinkedIn</span>
+                      </a>
+                      <a
+                        href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-dark-700 transition-colors"
+                        onClick={() => setIsShareOpen(false)}
+                      >
+                        <Facebook className="w-4 h-4" />
+                        <span>Facebook</span>
+                      </a>
+                    </div>
+                  )}
                 </div>
 
-                <button className="p-2 rounded-lg bg-dark-800 text-gray-400 hover:text-primary-400 border border-dark-700 transition-colors">
+                <button
+                  type="button"
+                  className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg bg-dark-800 text-gray-400 hover:text-primary-400 border border-dark-700 transition-colors"
+                  aria-label="Bookmark"
+                >
                   <BookmarkPlus className="w-4 h-4" />
                 </button>
               </div>
@@ -351,13 +372,13 @@ const ArticlePage: React.FC = () => {
             {/* Comment Form */}
             {authState.isAuthenticated ? (
               <form onSubmit={handleComment} className="mb-8">
-                <div className="flex space-x-4">
+                <div className="flex flex-col sm:flex-row gap-4">
                   <img
                     src={authState.user?.avatar?.url || '/logo.png'}
                     alt={authState.user?.name || 'User'}
-                    className="w-10 h-10 rounded-full object-cover"
+                    className="w-10 h-10 rounded-full object-cover flex-shrink-0 self-start sm:self-center"
                   />
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <textarea
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
@@ -369,7 +390,7 @@ const ArticlePage: React.FC = () => {
                       <button
                         type="submit"
                         disabled={!comment.trim() || commentLoading}
-                        className="flex items-center space-x-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center space-x-2 bg-primary-600 text-white px-4 py-2 rounded-lg min-h-[44px] hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Send className="w-4 h-4" />
                         <span>{commentLoading ? 'Posting...' : 'Post Comment'}</span>
@@ -397,9 +418,9 @@ const ArticlePage: React.FC = () => {
                   key={comment.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex space-x-4"
+                  className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:space-x-0"
                 >
-                  <Link to={`/profile/${comment.author.id}`} className="flex-shrink-0">
+                  <Link to={`/profile/${comment.author.id}`} className="flex-shrink-0 self-start">
                     <img
                       src={comment.author.avatar}
                       alt={comment.author.name}

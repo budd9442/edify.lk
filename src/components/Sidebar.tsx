@@ -89,7 +89,7 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <aside className="w-80 space-y-6">
+    <aside className="w-full max-w-80 space-y-6">
       {/* Trending Topics */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}

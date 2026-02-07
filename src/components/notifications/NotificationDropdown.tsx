@@ -140,7 +140,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 
   if (loading) {
     return (
-      <div className="absolute right-0 mt-2 w-80 bg-dark-900 border border-dark-800 rounded-lg shadow-lg py-4 z-50">
+      <div className="absolute right-0 mt-2 w-[min(20rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] bg-dark-900 border border-dark-800 rounded-lg shadow-lg py-4 z-50">
         <div className="flex items-center justify-center py-8">
           <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
@@ -151,7 +151,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
   return (
     <div
       ref={dropdownRef}
-      className="absolute right-0 mt-2 w-80 bg-dark-900 border border-dark-800 rounded-lg shadow-lg py-4 z-50"
+      className="absolute right-0 mt-2 w-[min(20rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] bg-dark-900 border border-dark-800 rounded-lg shadow-lg py-4 z-50"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 pb-3 border-b border-dark-800">

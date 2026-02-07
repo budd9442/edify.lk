@@ -137,20 +137,20 @@ const FeedPage: React.FC = () => {
         </nav>
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2 flex items-center space-x-3">
-              <Rss className="w-8 h-8 text-primary-500" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 flex items-center space-x-3">
+              <Rss className="w-7 h-7 sm:w-8 sm:h-8 text-primary-500 flex-shrink-0" />
               <span>My Feed</span>
             </h1>
-            <p className="text-gray-400">
+            <p className="text-gray-400 text-sm sm:text-base">
               Latest articles from authors you follow
             </p>
           </div>
           <button
             onClick={handleRefresh}
             disabled={loading}
-            className="flex items-center space-x-2 px-4 py-2 bg-dark-800 text-gray-300 rounded-lg hover:bg-dark-700 transition-colors disabled:opacity-50"
+            className="flex items-center justify-center space-x-2 px-4 py-2 min-h-[44px] bg-dark-800 text-gray-300 rounded-lg hover:bg-dark-700 transition-colors disabled:opacity-50 flex-shrink-0 self-start sm:self-center"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
@@ -158,16 +158,16 @@ const FeedPage: React.FC = () => {
         </div>
 
         {/* Controls */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <div className="flex items-center space-x-2">
-              <Filter className="w-4 h-4 text-gray-400" />
+              <Filter className="w-4 h-4 text-gray-400 flex-shrink-0" />
               <span className="text-sm text-gray-400">Sort by:</span>
             </div>
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setSortBy('newest')}
-                className={`flex items-center space-x-1 px-3 py-1 rounded-lg text-sm transition-colors ${
+                className={`flex items-center space-x-1 px-3 py-2 min-h-[44px] sm:min-h-0 sm:py-1 rounded-lg text-sm transition-colors ${
                   sortBy === 'newest'
                     ? 'bg-primary-900/30 text-primary-300 border border-primary-500/50'
                     : 'text-gray-400 hover:text-white'
@@ -178,7 +178,7 @@ const FeedPage: React.FC = () => {
               </button>
               <button
                 onClick={() => setSortBy('likes')}
-                className={`flex items-center space-x-1 px-3 py-1 rounded-lg text-sm transition-colors ${
+                className={`flex items-center space-x-1 px-3 py-2 min-h-[44px] sm:min-h-0 sm:py-1 rounded-lg text-sm transition-colors ${
                   sortBy === 'likes'
                     ? 'bg-primary-900/30 text-primary-300 border border-primary-500/50'
                     : 'text-gray-400 hover:text-white'

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -182,11 +183,11 @@ const Header: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 ">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2  focus:outline-none">
+          <Link to="/" className="flex items-center space-x-2 focus:outline-none" onClick={() => setIsMenuOpen(false)}>
             <img
               src="/logo.png"
               alt="edify.exposition.lk logo"
-              className="w-48 h-16 object-contain"
+              className="w-36 h-12 sm:w-48 sm:h-16 object-contain max-w-[180px] sm:max-w-none"
             />
           </Link>
 
@@ -234,7 +235,7 @@ const Header: React.FC = () => {
                 <div className="relative">
                   <button
                     onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                    className="relative p-2 text-gray-300 hover:text-white transition-colors focus:outline-none"
+                    className="relative p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-300 hover:text-white transition-colors focus:outline-none"
                   >
                     <Bell className="w-5 h-5" />
                     {unreadCount > 0 && (
@@ -257,7 +258,7 @@ const Header: React.FC = () => {
                 <div className="relative" ref={profileRef}>
                   <button
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
-                    className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors focus:outline-none"
+                    className="flex items-center space-x-2 min-h-[44px] min-w-[44px] md:min-w-0 text-gray-300 hover:text-white transition-colors focus:outline-none"
                   >
                     <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center overflow-hidden">
                       {state.user?.avatar ? (
@@ -295,8 +296,8 @@ const Header: React.FC = () => {
                         }}
                         disabled={isLoggingOut}
                         className={`w-full flex items-center space-x-3 px-4 py-2 text-left transition-colors ${isLoggingOut
-                            ? 'text-gray-500 cursor-not-allowed'
-                            : 'text-gray-300 hover:text-white hover:bg-dark-800'
+                          ? 'text-gray-500 cursor-not-allowed'
+                          : 'text-gray-300 hover:text-white hover:bg-dark-800'
                           }`}
                         type="button"
                       >
@@ -308,7 +309,7 @@ const Header: React.FC = () => {
                 </div>
               </>
             ) : (
-              <div className="flex items-center space-x-4">
+              <div className="hidden md:flex items-center space-x-4">
                 <Link
                   to="/login"
                   className="text-gray-300 hover:text-white transition-colors focus:outline-none"
@@ -326,13 +327,147 @@ const Header: React.FC = () => {
 
             {/* Mobile Menu Button */}
             <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 text-gray-300 hover:text-white transition-colors focus:outline-none"
+              onClick={(e) => {
+                // Prevent the same tap from also hitting the overlay (which would immediately close the drawer)
+                e.stopPropagation();
+                setIsMenuOpen(!isMenuOpen);
+              }}
+              className="md:hidden p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-300 hover:text-white transition-colors focus:outline-none"
+              aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
             >
               {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>
+
+        {isMenuOpen &&
+          createPortal(
+            <div className="relative z-[99999]" aria-labelledby="mobile-menu-title" role="dialog" aria-modal="true">
+              {/* Backdrop */}
+              <div
+                className="fixed inset-0 bg-black/50 transition-opacity"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsMenuOpen(false);
+                }}
+                aria-hidden="true"
+              />
+
+              {/* Menu Panel */}
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'tween', duration: 0.2 }}
+                className="fixed inset-0 w-full bg-dark-900 shadow-xl overflow-y-auto"
+              >
+                <div className="flex flex-col gap-6 p-6 pt-8">
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => setIsMenuOpen(false)}
+                      className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-white rounded-lg focus:outline-none"
+                      aria-label="Close menu"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-2">Search</label>
+                    <SearchBar className="w-full" />
+                  </div>
+                  <nav className="flex flex-col gap-1">
+                    <Link
+                      to="/"
+                      className="px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-dark-800 transition-colors"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Home
+                    </Link>
+                    <Link
+                      to="/feed"
+                      className="px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-dark-800 transition-colors"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Feed
+                    </Link>
+                    <Link
+                      to="/explore"
+                      className="px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-dark-800 transition-colors"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Explore
+                    </Link>
+                    {state.isAuthenticated && (state.user?.role === 'editor' || state.user?.role === 'admin') && (
+                      <Link
+                        to="/editor"
+                        className="px-4 py-3 rounded-lg text-primary-400 hover:text-primary-300 hover:bg-dark-800 transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Editor
+                      </Link>
+                    )}
+                  </nav>
+                  {state.isAuthenticated ? (
+                    <>
+                      <Link
+                        to="/write"
+                        className="flex items-center justify-center space-x-2 bg-primary-600 text-white px-4 py-3 rounded-lg hover:bg-primary-700 transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <PenTool className="w-4 h-4" />
+                        <span>Write</span>
+                      </Link>
+                      <div className="border-t border-dark-800 pt-4 space-y-1">
+                        <Link
+                          to="/profile"
+                          className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-dark-800 transition-colors"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <User className="w-4 h-4" />
+                          <span>Profile</span>
+                        </Link>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleLogout();
+                            setIsMenuOpen(false);
+                          }}
+                          disabled={isLoggingOut}
+                          className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${isLoggingOut
+                            ? 'text-gray-500 cursor-not-allowed'
+                            : 'text-gray-300 hover:text-white hover:bg-dark-800'
+                            }`}
+                          type="button"
+                        >
+                          <LogOut className={`w-4 h-4 flex-shrink-0 ${isLoggingOut ? 'animate-spin' : ''}`} />
+                          <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <Link
+                        to="/login"
+                        className="px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-dark-800 transition-colors text-center"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Sign In
+                      </Link>
+                      <Link
+                        to="/register"
+                        className="px-4 py-3 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors text-center"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Get Started
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </div>,
+            document.body
+          )}
+
         {/* Toasts */}
         <ToastContainer
           toasts={appState.toasts}

@@ -78,7 +78,7 @@ interface ToastContainerProps {
 
 export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismiss }) => {
   return (
-    <div className="fixed top-4 right-4 z-[10000] space-y-3 pointer-events-none">
+    <div className="fixed top-16 sm:top-4 right-4 left-4 sm:left-auto z-[10000] space-y-3 pointer-events-none max-w-[calc(100vw-2rem)]">
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => (
           <div key={toast.id} className="pointer-events-auto">

@@ -148,8 +148,8 @@ const EditorDashboard: React.FC = () => {
         </div>
 
         {/* Tab Navigation */}
-        <div className="mb-6">
-          <nav className="flex space-x-8">
+        <div className="mb-6 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <nav className="flex flex-wrap gap-2 sm:gap-0 sm:space-x-8 min-w-0">
             {[
               { id: 'overview', label: 'Overview', icon: BarChart3 },
               { id: 'articles', label: 'Articles', icon: FileText },
@@ -158,7 +158,7 @@ const EditorDashboard: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                className={`flex items-center space-x-2 px-4 py-2 min-h-[44px] sm:min-h-0 rounded-lg transition-colors flex-shrink-0 ${
                   activeTab === tab.id
                     ? 'bg-primary-600 text-white'
                     : 'text-gray-400 hover:text-white hover:bg-dark-800'
@@ -315,10 +315,10 @@ const EditorDashboard: React.FC = () => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      className="bg-dark-800 rounded-lg p-6 border border-dark-700"
+                      className="bg-dark-800 rounded-lg p-4 sm:p-6 border border-dark-700"
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-2 mb-2">
                             <h3 className="text-lg font-semibold text-white">{article.title}</h3>
                             {article.featured && (
@@ -327,15 +327,15 @@ const EditorDashboard: React.FC = () => {
                           </div>
                           <p className="text-gray-400 mb-3">{article.excerpt}</p>
                           
-                          <div className="flex items-center space-x-4 text-sm text-gray-500 mb-3">
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mb-3">
                             <span>By {article.author.name}</span>
-                            <span>•</span>
+                            <span className="hidden sm:inline">•</span>
                             <span>{formatDistanceToNow(new Date(article.publishedAt || article.createdAt), { addSuffix: true })}</span>
-                            <span>•</span>
+                            <span className="hidden sm:inline">•</span>
                             <span>{article.views} views</span>
-                            <span>•</span>
+                            <span className="hidden sm:inline">•</span>
                             <span>{article.likes} likes</span>
-                            <span>•</span>
+                            <span className="hidden sm:inline">•</span>
                             <span>{article.comments} comments</span>
                           </div>
 
@@ -348,10 +348,10 @@ const EditorDashboard: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="flex items-center space-x-2 ml-4">
+                        <div className="flex items-center gap-2 flex-shrink-0 sm:ml-4">
                     <button
                             onClick={() => handleToggleFeatured(article.id, article.featured)}
-                            className={`p-2 rounded-lg transition-colors ${
+                            className={`p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-colors ${
                               article.featured
                                 ? 'bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30'
                                 : 'bg-dark-700 text-gray-400 hover:text-yellow-500 hover:bg-yellow-500/20'
@@ -363,7 +363,7 @@ const EditorDashboard: React.FC = () => {
                           
                     <button
                             onClick={() => handleDeleteArticle(article.id, article.title)}
-                            className="p-2 bg-dark-700 text-gray-400 hover:text-red-500 hover:bg-red-500/20 rounded-lg transition-colors"
+                            className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center bg-dark-700 text-gray-400 hover:text-red-500 hover:bg-red-500/20 rounded-lg transition-colors"
                             title="Delete article"
                     >
                             <Trash2 className="w-4 h-4" />
