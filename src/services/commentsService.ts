@@ -1,4 +1,5 @@
 import supabase from './supabaseClient';
+import { badgesService } from './badgesService';
 
 export interface CommentRecord {
   id: string;
@@ -28,25 +29,25 @@ export const commentsService = {
         .select('id,article_id,user_id,content,created_at')
         .eq('article_id', articleId)
         .order('created_at', { ascending: true });
-      
+
       if (commentsError) {
         console.error('Failed to fetch comments:', commentsError);
         return [];
       }
-      
+
       if (!comments || comments.length === 0) {
         return [];
       }
-      
+
       // Get user IDs for profile lookup
       const userIds = comments.map(comment => comment.user_id);
-      
+
       // Fetch user profiles
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
         .select('id, name, avatar_url')
         .in('id', userIds);
-      
+
       if (profileError) {
         console.error('Failed to fetch user profiles:', profileError);
         // Return comments with default names if profile fetch fails
@@ -61,13 +62,13 @@ export const commentsService = {
           createdAt: comment.created_at,
         }));
       }
-      
+
       // Create a map of user profiles for quick lookup
       const profileMap = new Map();
       (profiles || []).forEach((profile: any) => {
         profileMap.set(profile.id, profile);
       });
-      
+
       // Map comments with profile data
       return comments.map(comment => {
         const profile = profileMap.get(comment.user_id);
@@ -95,6 +96,10 @@ export const commentsService = {
       .select('id,article_id,user_id,content,created_at')
       .single();
     if (error) throw error;
+
+    // Check for comment badges
+    badgesService.checkCommentBadges(input.userId);
+
     return data as CommentRecord;
   },
 
@@ -104,5 +109,4 @@ export const commentsService = {
   },
 };
 
-export default commentsService;
 

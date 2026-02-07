@@ -1,5 +1,6 @@
 import supabase from './supabaseClient';
 import { safeQuery } from './supabaseUtils';
+import { badgesService } from './badgesService';
 
 export const likesService = {
   async likeArticle(articleId: string, userId: string): Promise<void> {
@@ -38,7 +39,7 @@ export const likesService = {
         if (res.error) throw res.error;
         return res.data;
       });
-      
+
       if (error) throw error;
       return Array.isArray(data) && data.length > 0;
     } catch (error) {
@@ -57,15 +58,15 @@ export const likesService = {
         if (res.error) throw res.error;
         return res.data;
       });
-      
+
       if (error) throw error;
-      
+
       // Ensure data is an array before mapping
       if (!Array.isArray(data)) {
         console.warn('getUserLikedArticles: data is not an array:', data);
         return [];
       }
-      
+
       return data.map((row: any) => row.article_id);
     } catch (error) {
       console.error('Failed to get user liked articles:', error);

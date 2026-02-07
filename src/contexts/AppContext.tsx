@@ -10,6 +10,7 @@ interface AppState {
   notifications: any[];
   loading: boolean;
   toasts: { id: string; message: string; type: 'info' | 'error' | 'success'; duration?: number }[];
+  headerMode: 'default' | 'custom';
 }
 
 type AppAction =
@@ -22,7 +23,8 @@ type AppAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_TOAST'; payload: { id?: string; message: string; type?: 'info' | 'error' | 'success'; duration?: number } }
   | { type: 'DISMISS_TOAST'; payload: { id: string } }
-  | { type: 'SET_LIKED_ARTICLES'; payload: string[] };
+  | { type: 'SET_LIKED_ARTICLES'; payload: string[] }
+  | { type: 'SET_HEADER_MODE'; payload: 'default' | 'custom' };
 
 const initialState: AppState = {
   articles: [],
@@ -31,10 +33,13 @@ const initialState: AppState = {
   notifications: [],
   loading: false,
   toasts: [],
+  headerMode: 'default',
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
+    case 'SET_HEADER_MODE':
+      return { ...state, headerMode: action.payload };
     case 'SET_ARTICLES':
       return { ...state, articles: action.payload };
     case 'LIKE_ARTICLE':
@@ -80,9 +85,9 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return { ...state, loading: action.payload };
     case 'SET_TOAST': {
       const id = action.payload.id || Math.random().toString(36).slice(2);
-      const toast = { 
-        id, 
-        message: action.payload.message, 
+      const toast = {
+        id,
+        message: action.payload.message,
         type: action.payload.type || 'info',
         duration: action.payload.duration || 4000
       };
@@ -118,7 +123,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     const loadUserLikes = async () => {
       if (!authState.user) return;
-      
+
       try {
         const likedIds = await likesService.getUserLikedArticles(authState.user.id);
         dispatch({ type: 'SET_LIKED_ARTICLES', payload: likedIds });
@@ -126,7 +131,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         console.error('Failed to load user likes:', error);
       }
     };
-    
+
     loadUserLikes();
   }, [authState.user]);
 

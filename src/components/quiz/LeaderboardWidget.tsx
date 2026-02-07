@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Trophy, Crown, Medal, Clock, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -85,29 +86,31 @@ const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ articleId, limit 
                   <div className="flex items-center justify-center w-8 h-8">
                     {getRankIcon(entry.rank)}
                   </div>
-                  
-                  <img
-                    src={entry.userAvatar}
-                    alt={entry.userName}
-                    className="w-8 h-8 rounded-full"
-                  />
-                  
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">
-                      {entry.userName}
-                    </p>
-                    <div className="flex items-center space-x-2 text-xs text-gray-400">
-                      <div className="flex items-center space-x-1">
-                        <Clock className="w-3 h-3" />
-                        <span className="font-mono">{entry.timeSpent}s</span>
+
+                  <Link to={`/profile/${entry.userId}`} className="flex items-center space-x-3 flex-1 min-w-0 group cursor-pointer">
+                    <img
+                      src={entry.userAvatar}
+                      alt={entry.userName}
+                      className="w-8 h-8 rounded-full ring-2 ring-transparent group-hover:ring-primary-500 transition-all"
+                    />
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate group-hover:text-primary-400 transition-colors">
+                        {entry.userName}
+                      </p>
+                      <div className="flex items-center space-x-2 text-xs text-gray-400 group-hover:text-gray-300 transition-colors">
+                        <div className="flex items-center space-x-1">
+                          <Clock className="w-3 h-3" />
+                          <span className="font-mono">{entry.timeSpent}s</span>
+                        </div>
+                        <span>•</span>
+                        <span>
+                          {formatDistanceToNow(new Date(entry.completedAt), { addSuffix: true })}
+                        </span>
                       </div>
-                      <span>•</span>
-                      <span>
-                        {formatDistanceToNow(new Date(entry.completedAt), { addSuffix: true })}
-                      </span>
                     </div>
-                  </div>
-                  
+                  </Link>
+
                   <div className="text-right">
                     <div className="text-sm font-bold text-green-400">
                       {entry.score}/{entry.totalQuestions}

@@ -15,7 +15,6 @@ export interface User extends BaseDocument {
   verified: boolean;
   socialLinks?: {
     linkedin?: string;
-    twitter?: string;
     website?: string;
   };
   preferences?: {
@@ -27,6 +26,7 @@ export interface User extends BaseDocument {
     followingCount: number;
     articlesCount: number;
   };
+  badges?: string[];
 }
 
 // Article types - Simplified for actual app usage

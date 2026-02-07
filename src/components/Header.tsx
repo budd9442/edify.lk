@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Bell, 
-  Menu, 
-  X, 
+import {
+  Bell,
+  Menu,
+  X,
   PenTool,
   User,
-  LogOut
+  LogOut,
+  Compass,
+  Rss
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
@@ -24,8 +27,33 @@ const Header: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const { state, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { state: appState, dispatch: appDispatch } = useApp();
   const profileRef = useRef<HTMLDivElement>(null);
+
+  // Get page title based on current route
+  const getPageTitle = () => {
+    const path = location.pathname;
+    if (path === '/feed') return (
+      <div className="flex items-center gap-2">
+        <Rss className="w-5 h-5 text-primary-500" />
+        <span>Your Feed</span>
+      </div>
+    );
+    if (path === '/explore') return (
+      <div className="flex items-center gap-2">
+        <Compass className="w-5 h-5 text-primary-500" />
+        <span>Explore</span>
+      </div>
+    );
+    if (path.startsWith('/profile') || path.match(/^\/profile\/[^\/]+$/)) return (
+      <div className="flex items-center gap-2">
+        <User className="w-5 h-5 text-primary-500" />
+        <span>Profile</span>
+      </div>
+    );
+    return null; // Show logo for home and other pages
+  };
 
   useEffect(() => {
     if (!state.isAuthenticated || !state.user?.id) {
@@ -64,7 +92,20 @@ const Header: React.FC = () => {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${state.user.id}` },
         (payload: any) => {
-          const n = payload.new as { read?: boolean };
+          const n = payload.new as { read?: boolean; type?: string; title?: string; message?: string };
+
+          // Show toast for badges
+          if (n && n.type === 'badge_earned') {
+            appDispatch({
+              type: 'SET_TOAST',
+              payload: {
+                message: `🏆 ${n.title}: ${n.message}`,
+                type: 'success',
+                duration: 6000
+              }
+            });
+          }
+
           if (n && n.read === false) {
             setUnreadCount((c) => c + 1);
           } else {
@@ -104,7 +145,7 @@ const Header: React.FC = () => {
     }, 30000);
 
     return () => {
-      try { supabase.removeChannel(channel); } catch {}
+      try { supabase.removeChannel(channel); } catch { }
       clearInterval(poll);
     };
   }, [state.isAuthenticated, state.user?.id]);
@@ -128,15 +169,15 @@ const Header: React.FC = () => {
 
   const handleLogout = useCallback(async () => {
     if (isLoggingOut) return; // Prevent multiple clicks
-    
+
     setIsLoggingOut(true);
-    
+
     // Set a timeout to prevent hanging
     const timeoutId = setTimeout(() => {
       console.warn('Logout timeout, forcing page reload');
       window.location.href = '/';
     }, 5000); // 5 second timeout
-    
+
     try {
       // Try the context logout first
       await logout();
@@ -168,14 +209,32 @@ const Header: React.FC = () => {
     <header className="bg-dark-950/80 backdrop-blur-md border-b border-dark-800 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 ">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2  focus:outline-none">
-            <img
-              src="/logo.png"
-              alt="edify.exposition.lk logo"
-              className="w-48 h-16 object-contain"
-            />
-          </Link>
+          {/* Logo / Page Title */}
+          {/* Logo / Page Title / Custom Content */}
+          <div className="flex items-center space-x-2">
+            {appState.headerMode === 'custom' ? (
+              <div id="header-custom-content" className="flex items-center w-full min-w-[200px] sm:min-w-[400px]" />
+            ) : (
+              <Link to="/" className="flex items-center space-x-2 focus:outline-none" onClick={() => setIsMenuOpen(false)}>
+                {getPageTitle() ? (
+                  <>
+                    <div className="md:hidden text-xl font-bold text-white">{getPageTitle()}</div>
+                    <img
+                      src="/logo.png"
+                      alt="edify.exposition.lk logo"
+                      className="hidden md:block w-36 h-12 sm:w-48 sm:h-16 object-contain max-w-[180px] sm:max-w-none"
+                    />
+                  </>
+                ) : (
+                  <img
+                    src="/logo.png"
+                    alt="edify.exposition.lk logo"
+                    className="w-36 h-12 sm:w-48 sm:h-16 object-contain max-w-[180px] sm:max-w-none"
+                  />
+                )}
+              </Link>
+            )}
+          </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
@@ -188,11 +247,11 @@ const Header: React.FC = () => {
             <Link to="/explore" className="text-gray-300 hover:text-white transition-colors focus:outline-none">
               Explore
             </Link>
-              {state.isAuthenticated && (state.user?.role === 'editor' || state.user?.role === 'admin') && (
-                <Link to="/editor" className="text-primary-400 hover:text-primary-300 transition-colors focus:outline-none">
-                  Editor
-                </Link>
-              )}
+            {state.isAuthenticated && (state.user?.role === 'editor' || state.user?.role === 'admin') && (
+              <Link to="/editor" className="text-primary-400 hover:text-primary-300 transition-colors focus:outline-none">
+                Editor
+              </Link>
+            )}
           </nav>
 
           {/* Search Bar */}
@@ -221,7 +280,7 @@ const Header: React.FC = () => {
                 <div className="relative">
                   <button
                     onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                    className="relative p-2 text-gray-300 hover:text-white transition-colors focus:outline-none"
+                    className="relative p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-300 hover:text-white transition-colors focus:outline-none"
                   >
                     <Bell className="w-5 h-5" />
                     {unreadCount > 0 && (
@@ -231,11 +290,11 @@ const Header: React.FC = () => {
                       />
                     )}
                   </button>
-                  
+
                   {isNotificationOpen && (
                     <NotificationDropdown
                       onClose={() => setIsNotificationOpen(false)}
-                      // When dropdown opens, we could refresh unread in case items were marked read inside
+                    // When dropdown opens, we could refresh unread in case items were marked read inside
                     />
                   )}
                 </div>
@@ -244,7 +303,7 @@ const Header: React.FC = () => {
                 <div className="relative" ref={profileRef}>
                   <button
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
-                    className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors focus:outline-none"
+                    className="flex items-center space-x-2 min-h-[44px] min-w-[44px] md:min-w-0 text-gray-300 hover:text-white transition-colors focus:outline-none"
                   >
                     <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center overflow-hidden">
                       {state.user?.avatar ? (
@@ -281,11 +340,10 @@ const Header: React.FC = () => {
                           handleLogout();
                         }}
                         disabled={isLoggingOut}
-                        className={`w-full flex items-center space-x-3 px-4 py-2 text-left transition-colors ${
-                          isLoggingOut 
-                            ? 'text-gray-500 cursor-not-allowed' 
-                            : 'text-gray-300 hover:text-white hover:bg-dark-800'
-                        }`}
+                        className={`w-full flex items-center space-x-3 px-4 py-2 text-left transition-colors ${isLoggingOut
+                          ? 'text-gray-500 cursor-not-allowed'
+                          : 'text-gray-300 hover:text-white hover:bg-dark-800'
+                          }`}
                         type="button"
                       >
                         <LogOut className={`w-4 h-4 ${isLoggingOut ? 'animate-spin' : ''}`} />
@@ -296,7 +354,7 @@ const Header: React.FC = () => {
                 </div>
               </>
             ) : (
-              <div className="flex items-center space-x-4">
+              <div className="hidden md:flex items-center space-x-4">
                 <Link
                   to="/login"
                   className="text-gray-300 hover:text-white transition-colors focus:outline-none"
@@ -314,15 +372,149 @@ const Header: React.FC = () => {
 
             {/* Mobile Menu Button */}
             <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 text-gray-300 hover:text-white transition-colors focus:outline-none"
+              onClick={(e) => {
+                // Prevent the same tap from also hitting the overlay (which would immediately close the drawer)
+                e.stopPropagation();
+                setIsMenuOpen(!isMenuOpen);
+              }}
+              className="md:hidden p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-300 hover:text-white transition-colors focus:outline-none"
+              aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
             >
               {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>
+
+        {isMenuOpen &&
+          createPortal(
+            <div className="relative z-[99999]" aria-labelledby="mobile-menu-title" role="dialog" aria-modal="true">
+              {/* Backdrop */}
+              <div
+                className="fixed inset-0 bg-black/50 transition-opacity"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsMenuOpen(false);
+                }}
+                aria-hidden="true"
+              />
+
+              {/* Menu Panel */}
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'tween', duration: 0.2 }}
+                className="fixed inset-0 w-full bg-dark-900 shadow-xl overflow-y-auto"
+              >
+                <div className="flex flex-col gap-6 p-6 pt-8">
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => setIsMenuOpen(false)}
+                      className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-white rounded-lg focus:outline-none"
+                      aria-label="Close menu"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-2">Search</label>
+                    <SearchBar className="w-full" />
+                  </div>
+                  <nav className="flex flex-col gap-1">
+                    <Link
+                      to="/"
+                      className="px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-dark-800 transition-colors"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Home
+                    </Link>
+                    <Link
+                      to="/feed"
+                      className="px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-dark-800 transition-colors"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Feed
+                    </Link>
+                    <Link
+                      to="/explore"
+                      className="px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-dark-800 transition-colors"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Explore
+                    </Link>
+                    {state.isAuthenticated && (state.user?.role === 'editor' || state.user?.role === 'admin') && (
+                      <Link
+                        to="/editor"
+                        className="px-4 py-3 rounded-lg text-primary-400 hover:text-primary-300 hover:bg-dark-800 transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Editor
+                      </Link>
+                    )}
+                  </nav>
+                  {state.isAuthenticated ? (
+                    <>
+                      <Link
+                        to="/write"
+                        className="flex items-center justify-center space-x-2 bg-primary-600 text-white px-4 py-3 rounded-lg hover:bg-primary-700 transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <PenTool className="w-4 h-4" />
+                        <span>Write</span>
+                      </Link>
+                      <div className="border-t border-dark-800 pt-4 space-y-1">
+                        <Link
+                          to="/profile"
+                          className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-dark-800 transition-colors"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <User className="w-4 h-4" />
+                          <span>Profile</span>
+                        </Link>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleLogout();
+                            setIsMenuOpen(false);
+                          }}
+                          disabled={isLoggingOut}
+                          className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${isLoggingOut
+                            ? 'text-gray-500 cursor-not-allowed'
+                            : 'text-gray-300 hover:text-white hover:bg-dark-800'
+                            }`}
+                          type="button"
+                        >
+                          <LogOut className={`w-4 h-4 flex-shrink-0 ${isLoggingOut ? 'animate-spin' : ''}`} />
+                          <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <Link
+                        to="/login"
+                        className="px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-dark-800 transition-colors text-center"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Sign In
+                      </Link>
+                      <Link
+                        to="/register"
+                        className="px-4 py-3 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors text-center"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Get Started
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </div>,
+            document.body
+          )}
+
         {/* Toasts */}
-        <ToastContainer 
+        <ToastContainer
           toasts={appState.toasts}
           onDismiss={(id) => appDispatch({ type: 'DISMISS_TOAST', payload: { id } })}
         />

@@ -241,11 +241,11 @@ const SearchPage: React.FC = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className="bg-dark-900 border border-dark-800 rounded-lg p-6 hover:border-primary-500/50 transition-all duration-300"
+                    className="bg-dark-900 border border-dark-800 rounded-lg p-4 sm:p-6 hover:border-primary-500/50 transition-all duration-300"
                   >
                     <Link to={`/article/${article.slug}`}>
-                      <div className="flex space-x-4">
-                        <div className="flex-1">
+                      <div className="flex flex-col sm:flex-row gap-4 min-w-0">
+                        <div className="flex-1 min-w-0">
                           {/* Tags */}
                           <div className="flex items-center space-x-2 mb-3">
                             {article.tags.slice(0, 3).map(tag => (
@@ -269,8 +269,8 @@ const SearchPage: React.FC = () => {
                           </p>
 
                           {/* Meta */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                               <div className="flex items-center space-x-2">
                                 <img
                                   src={article.author.avatar}
@@ -290,7 +290,7 @@ const SearchPage: React.FC = () => {
                                 <span className="text-sm">{article.readingTime} min read</span>
                               </div>
                             </div>
-                            <div className="flex items-center space-x-4 text-gray-400">
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-400">
                               <div className="flex items-center space-x-1">
                                 <Eye className="w-4 h-4" />
                                 <span className="text-sm">{article.views?.toLocaleString() || 0}</span>

@@ -100,13 +100,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { profilesService } = await import('../services/profilesService');
       if (!didEnsureRef.current[uid]) {
         didEnsureRef.current[uid] = true;
-        profilesService.ensureProfileExists(uid, fallbackMeta?.name || 'User').catch(() => {});
+        profilesService.ensureProfileExists(uid, fallbackMeta?.name || 'User').catch(() => { });
       }
 
       console.log('🔐 [AUTH DEBUG] Enriching profile for user:', uid);
       const { data: prof, error } = await supabase
         .from('profiles')
-        .select('role, name, bio, avatar_url, social_links, followers_count, following_count')
+        .select('role, name, bio, avatar_url, social_links, followers_count, following_count, articles_count, badges')
         .eq('id', uid)
         .maybeSingle();
 
@@ -116,26 +116,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error('🔐 [AUTH DEBUG] Profile fetch error:', error);
         // Fallback to auth metadata if profiles table fails
         if (fallbackMeta?.avatar_url) {
-          dispatch({ type: 'UPDATE_USER', payload: {
-            name: fallbackMeta?.name || 'User',
-            bio: '',
-            avatar: fallbackMeta.avatar_url ? {
-              id: 'avatar', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), filename: 'avatar', alt: 'avatar', mimeType: 'image/png', filesize: 0, url: fallbackMeta.avatar_url,
-            } : undefined,
-          }});
+          dispatch({
+            type: 'UPDATE_USER', payload: {
+              name: fallbackMeta?.name || 'User',
+              bio: '',
+              avatar: fallbackMeta.avatar_url ? {
+                id: 'avatar', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), filename: 'avatar', alt: 'avatar', mimeType: 'image/png', filesize: 0, url: fallbackMeta.avatar_url,
+              } : undefined,
+              badges: [],
+            }
+          });
         }
       } else if (prof) {
         console.log('🔐 [AUTH DEBUG] Updating user with profile data:', prof);
-        dispatch({ type: 'UPDATE_USER', payload: {
-          name: prof.name || fallbackMeta?.name || 'User',
-          bio: prof.bio,
-          role: prof.role as any,
-          socialLinks: prof.social_links,
-          stats: { followersCount: prof.followers_count ?? 0, followingCount: prof.following_count ?? 0, articlesCount: 0 },
-          avatar: prof.avatar_url ? {
-            id: 'avatar', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), filename: 'avatar', alt: 'avatar', mimeType: 'image/png', filesize: 0, url: prof.avatar_url,
-          } : undefined,
-        }});
+        dispatch({
+          type: 'UPDATE_USER', payload: {
+            name: prof.name || fallbackMeta?.name || 'User',
+            bio: prof.bio,
+            role: prof.role as any,
+            badges: prof.badges || [],
+            socialLinks: prof.social_links,
+            stats: { followersCount: prof.followers_count ?? 0, followingCount: prof.following_count ?? 0, articlesCount: prof.articles_count ?? 0 },
+            avatar: prof.avatar_url ? {
+              id: 'avatar', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), filename: 'avatar', alt: 'avatar', mimeType: 'image/png', filesize: 0, url: prof.avatar_url,
+            } : undefined,
+          }
+        });
       } else {
         console.log('🔐 [AUTH DEBUG] No profile found for user:', uid);
       }
@@ -169,7 +175,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Set up auth state change listener
       const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
         console.log('Auth state change event:', event, 'Session:', !!session);
-        
+
         // Only respond to SIGNED_OUT events to avoid unnecessary refreshes
         if (event === 'SIGNED_OUT') {
           dispatch({ type: 'LOGOUT' });

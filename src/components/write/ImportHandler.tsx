@@ -82,14 +82,14 @@ const ImportHandler: React.FC<ImportHandlerProps> = ({ onImportComplete, onClose
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto"
       onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-dark-900 border border-dark-800 rounded-xl p-8 max-w-lg w-full"
+        className="bg-dark-900 border border-dark-800 rounded-xl p-4 sm:p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto my-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-center mb-6">
