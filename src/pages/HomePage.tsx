@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import ArticleCard from '../components/ArticleCard';
 import Sidebar from '../components/Sidebar';
 import LoadingSpinner from '../components/LoadingSpinner';
+import MediumStyleArticleCard from '../components/MediumStyleArticleCard';
 import { useApp } from '../contexts/AppContext';
 import { articlesService } from '../services/articlesService';
 import supabase from '../services/supabaseClient';
@@ -81,9 +82,51 @@ const HomePage: React.FC = () => {
     return <LoadingSpinner />;
   }
 
+
+
+
   return (
     <div className="min-h-screen bg-dark-950">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Mobile View */}
+      <div className="md:hidden pb-20 bg-dark-950">
+        {/* Hero Section */}
+        <div className="px-4 pt-6 pb-8 text-center border-b border-dark-800">
+          <h1 className="text-2xl font-bold text-white mb-3 leading-tight">
+            Discover Stories That{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-primary-600">
+              Inspire
+            </span>
+          </h1>
+          <p className="text-sm text-gray-400 leading-relaxed max-w-md mx-auto">
+            Join thousands of readers exploring ideas that matter. From technology to culture,
+            find your next great read on edify community.
+          </p>
+        </div>
+
+        {/* Featured Articles Section */}
+        <div className="sticky top-16 z-30 bg-dark-950 px-4 py-3 border-b border-dark-800">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <svg className="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+            </svg>
+            Featured Articles
+          </h2>
+        </div>
+
+        {/* Featured Articles */}
+        {featuredArticles.length > 0 ? (
+          featuredArticles.map((article) => (
+            <MediumStyleArticleCard key={article.id} article={article} />
+          ))
+        ) : (
+          <div className="text-center py-12 px-4">
+            <p className="text-gray-400">No featured articles yet. Check back soon!</p>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop View */}
+      <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Main Content */}
           <main className="flex-1">
@@ -142,6 +185,7 @@ const HomePage: React.FC = () => {
       </div>
     </div>
   );
+
 };
 
 export default HomePage;

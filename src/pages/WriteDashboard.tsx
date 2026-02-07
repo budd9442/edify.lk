@@ -1,28 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  PenTool,
-  Upload,
-  FileText,
-  TrendingUp,
-  Users,
-  Eye,
-  Save,
-  Send,
-  Type,
-  X
-} from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { PenTool, Type, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Draft } from '../types/payload';
 import { draftService } from '../services/draftService';
 import { organizeContentWithAI } from '../services/aiService';
-import QuillEditor from '../components/write/QuillEditor';
-import QuizAuthoring from '../components/write/QuizAuthoring';
-import ImageUpload from '../components/write/ImageUpload';
-// BlockRenderer is not used in HTML flow
 import ImportHandler from '../components/write/ImportHandler';
-// Removed DraftCard in favor of horizontal list rows
-import { formatDistanceToNow } from 'date-fns';
+import DashboardView from '../components/write/DashboardView';
+import EditorView from '../components/write/EditorView';
+import PreviewView from '../components/write/PreviewView';
 import { useLocation } from 'react-router-dom';
 import { useToast } from '../hooks/useToast';
 
@@ -44,9 +30,6 @@ const WriteDashboard: React.FC = () => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [autoSavedAt, setAutoSavedAt] = useState<string | null>(null);
   const saveTimerRef = useRef<number | null>(null);
-
-  // Mock profile progress
-  // Removed profile progress state
 
   useEffect(() => {
     loadDrafts();
@@ -399,8 +382,6 @@ const WriteDashboard: React.FC = () => {
     }
   };
 
-  // Removed profile progress and badges
-
   if (!authState.isAuthenticated) {
     return (
       <div className="min-h-screen bg-dark-950 flex items-center justify-center">
@@ -414,453 +395,49 @@ const WriteDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-dark-950">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-dark-950 overflow-x-hidden w-full">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         <AnimatePresence mode="wait">
           {activeView === 'options' && (
-            <motion.div
-              key="options"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-            >
-              {/* Header */}
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold text-white mb-2">Write & Create</h1>
-                <p className="text-gray-400">
-                  Share your ideas with the world using our premium writing tools
-                </p>
-              </div>
-
-              <div className="grid lg:grid-cols-3 gap-8">
-                {/* Main Content */}
-                <div className="lg:col-span-2 space-y-8">
-                  {/* Write Options */}
-                  <section>
-                    <h2 className="text-2xl font-bold text-white mb-6">Start Writing</h2>
-                    <div className="grid md:grid-cols-2 gap-6">
-                      {/* Import Document */}
-                      <motion.div
-                        whileHover={{ y: -4 }}
-                        className="bg-dark-900 border border-dark-800 rounded-xl p-6 hover:border-primary-500/50 transition-all duration-300 cursor-pointer"
-                        onClick={() => setShowImportModal(true)}
-                      >
-                        <div className="w-12 h-12 bg-blue-900/30 rounded-lg flex items-center justify-center mb-4">
-                          <Upload className="w-6 h-6 text-blue-400" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-white mb-2">Import Document</h3>
-                        <p className="text-gray-400 mb-4">
-                          Upload a .docx, .md, or .txt file and convert it to our structured format
-                        </p>
-                        <div className="flex items-center space-x-2 text-sm text-blue-400">
-                          <span>Supports Word, Markdown, Text</span>
-                        </div>
-                      </motion.div>
-
-                      {/* Start New */}
-                      <motion.div
-                        whileHover={{ y: -4 }}
-                        className="bg-dark-900 border border-dark-800 rounded-xl p-6 hover:border-primary-500/50 transition-all duration-300 cursor-pointer"
-                        onClick={handleStartNew}
-                      >
-                        <div className="w-12 h-12 bg-primary-900/30 rounded-lg flex items-center justify-center mb-4">
-                          <PenTool className="w-6 h-6 text-primary-400" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-white mb-2">Start New Article</h3>
-                        <p className="text-gray-400 mb-4">
-                          Create a new article from scratch with our rich text editor
-                        </p>
-                        <div className="flex items-center space-x-2 text-sm text-primary-400">
-                          <span>Strapi Blocks Compatible</span>
-                        </div>
-                      </motion.div>
-                    </div>
-                  </section>
-
-                  {/* Drafts Section */}
-                  <section>
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold text-white">Your Articles</h2>
-                      <span className="text-sm text-gray-400">
-                        {drafts.filter(d => d.status === 'draft').length} {drafts.filter(d => d.status === 'draft').length === 1 ? 'draft' : 'drafts'}
-                      </span>
-                    </div>
-
-                    {loading ? (
-                      <div className="grid md:grid-cols-2 gap-6">
-                        {[...Array(4)].map((_, i) => (
-                          <div key={i} className="bg-dark-900 border border-dark-800 rounded-lg p-6 animate-pulse">
-                            <div className="h-6 bg-dark-700 rounded mb-4"></div>
-                            <div className="h-4 bg-dark-700 rounded mb-2"></div>
-                            <div className="h-4 bg-dark-700 rounded w-3/4"></div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : drafts.length > 0 ? (
-                      <div className="space-y-2">
-                        {drafts.map((draft) => {
-                          const textPreview = (draft.contentHtml || '')
-                            .replace(/<style[\s\S]*?<\/style>/gi, '')
-                            .replace(/<script[\s\S]*?<\/script>/gi, '')
-                            .replace(/<[^>]+>/g, ' ')
-                            .replace(/&nbsp;/g, ' ')
-                            .replace(/\s+/g, ' ')
-                            .trim();
-                          const isDraft = draft.status === 'draft';
-                          return (
-                            <div key={draft.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-dark-900 hover:bg-dark-800 rounded-lg border border-dark-800">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4">
-                                  <h3 className="text-white font-medium truncate">{draft.title || 'Untitled Draft'}</h3>
-                                  <span className="text-xs text-gray-400 whitespace-nowrap">
-                                    {formatDistanceToNow(new Date(draft.updatedAt), { addSuffix: true })}
-                                  </span>
-                                </div>
-                                <p className="text-sm text-gray-400 line-clamp-1 mt-1">{textPreview || 'No content yet...'}</p>
-                                <div className="mt-2 flex flex-wrap items-center gap-2">
-                                  <span className={`px-2 py-0.5 text-xs rounded-full border ${draft.status === 'published'
-                                      ? 'text-green-400 bg-green-900/20 border-green-500/50'
-                                      : draft.status === 'submitted'
-                                        ? 'text-yellow-400 bg-yellow-900/20 border-yellow-500/50'
-                                        : 'text-gray-400 bg-gray-900/20 border-gray-500/50'
-                                    }`}>
-                                    {draft.status === 'published' ? 'Published' : draft.status === 'submitted' ? 'Under Review' : 'Draft'}
-                                  </span>
-                                  {draft.tags.slice(0, 2).map((tag, i) => (
-                                    <span key={i} className="px-2 py-0.5 text-xs bg-dark-800 text-gray-300 rounded-full whitespace-nowrap overflow-hidden max-w-full" title={tag}>
-                                      {tag}
-                                    </span>
-                                  ))}
-                                  {draft.tags.length > 2 && (
-                                    <span className="px-2 py-0.5 text-xs bg-dark-800 text-gray-400 rounded-full">+{draft.tags.length - 2} more</span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
-                                {isDraft && (
-                                  <button
-                                    onClick={() => handleEditDraft(draft)}
-                                    className="px-3 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
-                                  >
-                                    Edit
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => handlePreviewDraft(draft)}
-                                  className="px-3 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 bg-dark-800 text-gray-300 rounded-lg hover:bg-dark-700 text-sm"
-                                >
-                                  Preview
-                                </button>
-                                {isDraft && (
-                                  <button
-                                    onClick={() => handleSubmitDraft(draft.id)}
-                                    className="px-3 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-                                  >
-                                    Submit
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => handleDeleteDraft(draft.id)}
-                                  className="px-2 py-2 min-h-[44px] sm:min-h-0 sm:py-1 text-gray-400 hover:text-red-400 flex items-center justify-center"
-                                  aria-label="Delete draft"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12 bg-dark-900 border border-dark-800 rounded-lg">
-                        <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-white mb-2">No drafts yet</h3>
-                        <p className="text-gray-400 mb-6">
-                          Start writing your first article to see it here
-                        </p>
-                        <button
-                          onClick={handleStartNew}
-                          className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors"
-                        >
-                          Create Your First Draft
-                        </button>
-                      </div>
-                    )}
-                  </section>
-                </div>
-
-                {/* Sidebar */}
-                <div className="space-y-6">
-                  {/* Quick Stats */}
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="bg-dark-900 border border-dark-800 rounded-xl p-6"
-                  >
-                    <h3 className="text-lg font-semibold text-white mb-4">Quick Stats</h3>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <FileText className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-400">Drafts</span>
-                        </div>
-                        <span className="text-sm font-medium text-white">
-                          {drafts.filter(d => d.status === 'draft').length}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <TrendingUp className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-400">Published</span>
-                        </div>
-                        <span className="text-sm font-medium text-white">
-                          {drafts.filter(d => d.status === 'published').length}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <Users className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-400">Followers</span>
-                        </div>
-                        <span className="text-sm font-medium text-white">
-                          {(authState.user as any)?.followersCount || 0}
-                        </span>
-                      </div>
-                    </div>
-                    {/* View Published button removed here */}
-                    <div className="mt-6">
-
-                    </div>
-                  </motion.div>
-                </div>
-              </div>
-            </motion.div>
+            <DashboardView
+              drafts={drafts}
+              loading={loading}
+              userFollowersCount={(authState.user as any)?.followersCount || 0}
+              onStartNew={handleStartNew}
+              onImport={() => setShowImportModal(true)}
+              onEditDraft={handleEditDraft}
+              onPreviewDraft={handlePreviewDraft}
+              onSubmitDraft={handleSubmitDraft}
+              onDeleteDraft={handleDeleteDraft}
+            />
           )}
 
           {activeView === 'editor' && currentDraft && (
-            <motion.div
-              key="editor"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-            >
-              {/* Editor Header */}
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
-                <div className="min-w-0">
-                  <button
-                    onClick={() => setActiveView('options')}
-                    className="text-gray-400 hover:text-white transition-colors mb-2 min-h-[44px] sm:min-h-0 flex items-center"
-                  >
-                    ← Back to Dashboard
-                  </button>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-white">Write Article</h1>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                  <button
-                    onClick={() => setActiveView('preview')}
-                    className="flex items-center space-x-2 px-4 py-2 min-h-[44px] bg-dark-800 text-gray-300 rounded-lg hover:bg-dark-700 transition-colors"
-                  >
-                    <Eye className="w-4 h-4" />
-                    <span>Preview</span>
-                  </button>
-                  <button
-                    onClick={handleOrganizeWithAI}
-                    disabled={organizingWithAI || !currentDraft?.contentHtml}
-                    className="flex items-center space-x-2 px-4 py-2 min-h-[44px] bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {organizingWithAI ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Organizing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                        </svg>
-                        <span>Organize with AI</span>
-                      </>
-                    )}
-                  </button>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      onClick={handleSaveDraft}
-                      disabled={saving}
-                      className="flex items-center space-x-2 px-4 py-2 min-h-[44px] bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
-                    >
-                      <Save className="w-4 h-4" />
-                      <span>{saving ? 'Saving...' : 'Save Draft'}</span>
-                    </button>
-                    {autoSavedAt && (
-                      <span className="text-xs text-gray-400">Last saved {new Date(autoSavedAt).toLocaleTimeString()}</span>
-                    )}
-                  </div>
-                  {saveError && (
-                    <div className="text-xs text-red-400 mt-1 w-full basis-full">{saveError}</div>
-                  )}
-                  <button
-                    onClick={handleSubmitForReview}
-                    disabled={currentDraft.status === 'submitted' || !currentDraft.title || currentDraft.title.trim().length === 0}
-                    className="flex items-center space-x-2 px-4 py-2 min-h-[44px] bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span>{currentDraft.status === 'submitted' ? 'Submitted' : 'Submit for Review'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Editor Form */}
-              <div className="bg-dark-900 border border-dark-800 rounded-xl p-4 sm:p-6 lg:p-8">
-                {/* Title */}
-                <div className="mb-6">
-                  <input
-                    type="text"
-                    value={currentDraft.title || ''}
-                    onChange={(e) => setCurrentDraft(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="Article title..."
-                    className={`w-full text-3xl font-bold bg-transparent border-none outline-none text-white placeholder-gray-500 ${!currentDraft.title || currentDraft.title.trim().length === 0
-                        ? 'border-b-2 border-red-500'
-                        : 'border-b border-gray-600'
-                      }`}
-                  />
-                  {(!currentDraft.title || currentDraft.title.trim().length === 0) && (
-                    <p className="text-red-400 text-sm mt-1">Title is required</p>
-                  )}
-                </div>
-
-                {/* Cover Image */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Cover Image
-                  </label>
-                  <ImageUpload
-                    currentImage={currentDraft.coverImage}
-                    onImageChange={(url) => setCurrentDraft(prev => ({ ...prev, coverImage: url }))}
-                    onImageRemove={() => setCurrentDraft(prev => ({ ...prev, coverImage: undefined }))}
-                    placeholder="Upload cover image for your article"
-                    className="mb-4"
-                  />
-                </div>
-
-                {/* Tags */}
-                <div className="mb-6">
-                  <input
-                    type="text"
-                    value={tagsInput}
-                    onChange={(e) => setTagsInput(e.target.value)}
-                    onBlur={() => {
-                      const tags = tagsInput.split(',').map(tag => tag.trim()).filter(Boolean);
-                      setCurrentDraft(prev => ({ ...prev, tags }));
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const tags = tagsInput.split(',').map(tag => tag.trim()).filter(Boolean);
-                        setCurrentDraft(prev => ({ ...prev, tags }));
-                        e.currentTarget.blur();
-                      }
-                    }}
-                    placeholder="Tags (comma separated)..."
-                    className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-gray-300 placeholder-gray-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none"
-                  />
-                </div>
-
-                {/* Content Editor (Quill stores HTML) */}
-                <div className="space-y-4">
-                  <QuillEditor
-                    value={currentDraft.contentHtml || ''}
-                    onChange={(html) => {
-                      setCurrentDraft(prev => ({ ...prev!, contentHtml: html }));
-                    }}
-                    placeholder="Start writing your article..."
-                    readOnly={currentDraft.status === 'submitted'}
-                  />
-                  {/* Quiz authoring below the rich text editor */}
-                  <QuizAuthoring
-                    articleHtml={currentDraft.contentHtml || ''}
-                    maxQuestions={10}
-                    initialQuestions={(currentDraft as any).quizQuestions || []}
-                    onChange={(qs) => {
-                      setCurrentDraft(prev => ({ ...(prev as any), quizQuestions: qs } as any));
-                    }}
-                  />
-                </div>
-              </div>
-            </motion.div>
+            <EditorView
+              currentDraft={currentDraft}
+              onChange={(updates) => setCurrentDraft(prev => ({ ...prev!, ...updates }))}
+              onSave={handleSaveDraft}
+              onSubmit={handleSubmitForReview}
+              onPreview={() => setActiveView('preview')}
+              onBack={() => setActiveView('options')}
+              onOrganize={handleOrganizeWithAI}
+              organizingWithAI={organizingWithAI}
+              saving={saving}
+              autoSavedAt={autoSavedAt}
+              saveError={saveError}
+              tagsInput={tagsInput}
+              setTagsInput={setTagsInput}
+            />
           )}
 
           {activeView === 'preview' && currentDraft && (
-            <motion.div
-              key="preview"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-            >
-              {/* Preview Header */}
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
-                <div className="min-w-0">
-                  <button
-                    onClick={() => setActiveView('editor')}
-                    className="text-gray-400 hover:text-white transition-colors mb-2 min-h-[44px] sm:min-h-0 flex items-center"
-                  >
-                    ← Back to Editor
-                  </button>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-white">Preview</h1>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                  <button
-                    onClick={handleOrganizeWithAI}
-                    disabled={organizingWithAI || !currentDraft?.contentHtml}
-                    className="flex items-center space-x-2 px-4 py-2 min-h-[44px] bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {organizingWithAI ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Organizing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                        </svg>
-                        <span>Organize with AI</span>
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setActiveView('editor')}
-                    className="flex items-center space-x-2 px-4 py-2 min-h-[44px] bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                  >
-                    <PenTool className="w-4 h-4" />
-                    <span>Continue Editing</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Preview Content */}
-              <div className="bg-dark-900 border border-dark-800 rounded-xl p-4 sm:p-6 lg:p-8">
-                <h1 className="text-4xl font-bold text-white mb-6">
-                  {currentDraft.title || 'Untitled Article'}
-                </h1>
-
-                {currentDraft.tags && currentDraft.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-8">
-                    {currentDraft.tags.map((tag, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 bg-primary-900/30 text-primary-300 rounded-full text-sm whitespace-nowrap overflow-hidden"
-                        title={tag}
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                <div className="prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: currentDraft.contentHtml || '' }} />
-              </div>
-            </motion.div>
+            <PreviewView
+              currentDraft={currentDraft}
+              onBack={() => setActiveView('options')}
+              onEdit={() => setActiveView('editor')}
+              onOrganize={handleOrganizeWithAI}
+              organizingWithAI={organizingWithAI}
+            />
           )}
         </AnimatePresence>
 

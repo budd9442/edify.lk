@@ -17,6 +17,8 @@ import WriteDashboard from './pages/WriteDashboard';
 import EditorDashboard from './pages/EditorDashboard';
 import ProfilePage from './pages/ProfilePage';
 import ArticlePreviewPage from './pages/ArticlePreviewPage';
+import BottomNavigation from './components/BottomNavigation';
+import FloatingActionButton from './components/FloatingActionButton';
 
 function App() {
   return (
@@ -43,6 +45,8 @@ function App() {
                   </Route>
                   <Route path="/profile/:userId" element={<ProfilePage />} />
                 </Routes>
+                <BottomNavigation />
+                <FloatingActionButton />
               </div>
             </AuthGate>
           </Router>

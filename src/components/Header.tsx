@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Bell,
@@ -8,7 +8,9 @@ import {
   X,
   PenTool,
   User,
-  LogOut
+  LogOut,
+  Compass,
+  Rss
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
@@ -25,8 +27,33 @@ const Header: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const { state, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { state: appState, dispatch: appDispatch } = useApp();
   const profileRef = useRef<HTMLDivElement>(null);
+
+  // Get page title based on current route
+  const getPageTitle = () => {
+    const path = location.pathname;
+    if (path === '/feed') return (
+      <div className="flex items-center gap-2">
+        <Rss className="w-5 h-5 text-primary-500" />
+        <span>Your Feed</span>
+      </div>
+    );
+    if (path === '/explore') return (
+      <div className="flex items-center gap-2">
+        <Compass className="w-5 h-5 text-primary-500" />
+        <span>Explore</span>
+      </div>
+    );
+    if (path.startsWith('/profile') || path.match(/^\/profile\/[^\/]+$/)) return (
+      <div className="flex items-center gap-2">
+        <User className="w-5 h-5 text-primary-500" />
+        <span>Profile</span>
+      </div>
+    );
+    return null; // Show logo for home and other pages
+  };
 
   useEffect(() => {
     if (!state.isAuthenticated || !state.user?.id) {
@@ -182,14 +209,32 @@ const Header: React.FC = () => {
     <header className="bg-dark-950/80 backdrop-blur-md border-b border-dark-800 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 ">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 focus:outline-none" onClick={() => setIsMenuOpen(false)}>
-            <img
-              src="/logo.png"
-              alt="edify.exposition.lk logo"
-              className="w-36 h-12 sm:w-48 sm:h-16 object-contain max-w-[180px] sm:max-w-none"
-            />
-          </Link>
+          {/* Logo / Page Title */}
+          {/* Logo / Page Title / Custom Content */}
+          <div className="flex items-center space-x-2">
+            {appState.headerMode === 'custom' ? (
+              <div id="header-custom-content" className="flex items-center w-full min-w-[200px] sm:min-w-[400px]" />
+            ) : (
+              <Link to="/" className="flex items-center space-x-2 focus:outline-none" onClick={() => setIsMenuOpen(false)}>
+                {getPageTitle() ? (
+                  <>
+                    <div className="md:hidden text-xl font-bold text-white">{getPageTitle()}</div>
+                    <img
+                      src="/logo.png"
+                      alt="edify.exposition.lk logo"
+                      className="hidden md:block w-36 h-12 sm:w-48 sm:h-16 object-contain max-w-[180px] sm:max-w-none"
+                    />
+                  </>
+                ) : (
+                  <img
+                    src="/logo.png"
+                    alt="edify.exposition.lk logo"
+                    className="w-36 h-12 sm:w-48 sm:h-16 object-contain max-w-[180px] sm:max-w-none"
+                  />
+                )}
+              </Link>
+            )}
+          </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">

@@ -5,7 +5,7 @@ interface BadgeListProps {
     earnedBadgeIds: string[];
 }
 
-const BadgeList: React.FC<BadgeListProps> = ({ earnedBadgeIds = [] }) => {
+const BadgeList: React.FC<BadgeListProps & { scrollable?: boolean }> = ({ earnedBadgeIds = [], scrollable = false }) => {
     // Filter badges that the user has earned
     const earnedBadges = earnedBadgeIds
         .map(id => getBadge(id))
@@ -15,6 +15,29 @@ const BadgeList: React.FC<BadgeListProps> = ({ earnedBadgeIds = [] }) => {
         return (
             <div className="text-gray-400 text-sm py-4">
                 No badges earned yet. Keep engaging to unlock achievements!
+            </div>
+        );
+    }
+
+    if (scrollable) {
+        return (
+            <div className="flex overflow-x-auto pb-4 gap-3 hide-scrollbar snap-x">
+                {earnedBadges.map((badge) => {
+                    if (!badge) return null;
+                    const Icon = badge.icon;
+                    return (
+                        <div
+                            key={badge.id}
+                            className="flex-shrink-0 flex flex-col items-center p-2 bg-dark-800 rounded-lg border border-dark-700 min-w-[72px] snap-start"
+                            title={badge.description}
+                        >
+                            <div className="w-8 h-8 rounded-full bg-primary-900/20 flex items-center justify-center mb-1">
+                                <Icon className="w-4 h-4 text-primary-400" />
+                            </div>
+                            <span className="text-[10px] font-medium text-gray-200 text-center leading-tight line-clamp-2 max-w-[64px]">{badge.name}</span>
+                        </div>
+                    );
+                })}
             </div>
         );
     }
