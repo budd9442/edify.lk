@@ -12,6 +12,7 @@ import {
   Compass,
   Rss
 } from 'lucide-react';
+import Avatar from './common/Avatar';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
 import SearchBar from './SearchBar';
@@ -206,12 +207,13 @@ const Header: React.FC = () => {
   }, [logout, navigate, isLoggingOut]);
 
   return (
-    <header className="bg-dark-950/80 backdrop-blur-md border-b border-dark-800 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 w-full border-b border-dark-800">
+      <div className="absolute inset-0 bg-dark-950/80 backdrop-blur-md" />
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 ">
           {/* Logo / Page Title */}
           {/* Logo / Page Title / Custom Content */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 -ml-3 md:-ml-4">
             {appState.headerMode === 'custom' ? (
               <div id="header-custom-content" className="flex items-center w-full min-w-[200px] sm:min-w-[400px]" />
             ) : (
@@ -279,6 +281,7 @@ const Header: React.FC = () => {
                 {/* Notifications */}
                 <div className="relative">
                   <button
+                    id="notification-trigger"
                     onClick={() => setIsNotificationOpen(!isNotificationOpen)}
                     className="relative p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-300 hover:text-white transition-colors focus:outline-none"
                   >
@@ -300,21 +303,17 @@ const Header: React.FC = () => {
                 </div>
 
                 {/* Profile Menu */}
-                <div className="relative" ref={profileRef}>
+                <div className="relative hidden md:block" ref={profileRef}>
                   <button
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
                     className="flex items-center space-x-2 min-h-[44px] min-w-[44px] md:min-w-0 text-gray-300 hover:text-white transition-colors focus:outline-none"
                   >
-                    <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center overflow-hidden">
-                      {state.user?.avatar ? (
-                        <img
-                          src={state.user.avatar.url}
-                          alt={state.user.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <User className="w-4 h-4 text-white" />
-                      )}
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden ring-2 ring-transparent group-hover:ring-primary-500 transition-all">
+                      <Avatar
+                        src={state.user?.avatar?.url}
+                        alt={state.user?.name || 'User'}
+                        className="w-full h-full"
+                      />
                     </div>
                     <span className="hidden md:block">{state.user?.name?.split(' ')[0]}</span>
                   </button>

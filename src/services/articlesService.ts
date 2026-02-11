@@ -97,8 +97,11 @@ export const articlesService = {
     }));
   },
 
-  async listAll(): Promise<ArticleListItem[]> {
+  async listAll(page = 1, limit = 50): Promise<ArticleListItem[]> {
     const { data, error } = await safeQuery('articles/listAll', async () => {
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
+
       const res = await supabase
         .from('articles')
         .select(`
@@ -118,7 +121,7 @@ export const articlesService = {
         `)
         .eq('status', 'published')
         .order('published_at', { ascending: false })
-        .limit(50);
+        .range(from, to);
       if (res.error) throw res.error;
       return res.data;
     });

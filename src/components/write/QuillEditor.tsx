@@ -8,18 +8,29 @@ interface QuillEditorProps {
   onChange: (html: string) => void;
   placeholder?: string;
   readOnly?: boolean;
+  className?: string;
+  theme?: string;
 }
 
-const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange, placeholder, readOnly = false }) => {
+const QuillEditor: React.FC<QuillEditorProps> = ({
+  value,
+  onChange,
+  placeholder,
+  readOnly = false,
+  className = '',
+  theme = 'bubble'
+}) => {
   const editorRef = useRef<HTMLDivElement | null>(null);
   const quillRef = useRef<Quill | null>(null);
   const hasSetInitialValueRef = useRef(false);
+
+  const lastEmittedValueRef = useRef(value);
 
   useEffect(() => {
     if (editorRef.current && !quillRef.current) {
       // Initialize Quill; we'll handle highlighting ourselves to avoid Quill's Syntax dependency
       quillRef.current = new Quill(editorRef.current, {
-        theme: 'bubble',
+        theme: theme,
         placeholder,
         modules: {
           toolbar: [
@@ -80,6 +91,7 @@ const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange, placeholder,
 
       quillRef.current.on('text-change', () => {
         const html = editorRef.current?.querySelector('.ql-editor')?.innerHTML || '';
+        lastEmittedValueRef.current = html;
         onChange(html);
         applyHighlighting();
       });
@@ -94,14 +106,19 @@ const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange, placeholder,
       // Initial highlight pass
       applyHighlighting();
     }
-  }, [onChange, placeholder]);
+  }, [onChange, placeholder, theme]);
 
   useEffect(() => {
     // Keep external value in sync when changed programmatically
     if (quillRef.current) {
+      if (value === lastEmittedValueRef.current) return;
+
       const currentHtml = editorRef.current?.querySelector('.ql-editor')?.innerHTML || '';
       if (value !== currentHtml) {
+        // Store current selection to restore it if possible, though dangerousPasteHTML usually kills it
+        // For now, simpler check prevents the loop
         quillRef.current.clipboard.dangerouslyPasteHTML(value || '');
+        lastEmittedValueRef.current = value;
       }
     }
   }, [value]);
@@ -113,7 +130,7 @@ const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange, placeholder,
   }, [readOnly]);
 
   return (
-    <div className="bg-transparent editor-wrapper">
+    <div className={`bg-transparent editor-wrapper ${className}`}>
       <style>{`
         .ql-editor {
             font-size: 1.125rem; /* text-lg for better readability */

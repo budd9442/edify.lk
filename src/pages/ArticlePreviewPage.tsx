@@ -121,9 +121,53 @@ const ArticlePreviewPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-dark-950">
-      {/* Editor Controls Header */}
-      <div className="bg-dark-900 border-b border-dark-800 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      {/* Mobile Editor Controls Header */}
+      <div className="md:hidden bg-dark-900 border-b border-dark-800 sticky top-0 z-50">
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <Link
+              to="/editor"
+              className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-sm">Back</span>
+            </Link>
+            <div className="flex items-center space-x-2">
+              <Eye className="w-3 h-3 text-blue-400" />
+              <span className="text-xs text-gray-400">Preview</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-gray-400">
+              <span className="text-yellow-400 font-medium">{draft.status}</span>
+            </span>
+            <div className="flex items-center space-x-2 flex-1 justify-end">
+              <button
+                onClick={handleApprove}
+                disabled={actionLoading}
+                className="flex items-center justify-center space-x-1.5 px-3 py-1.5 bg-green-600/20 text-green-400 border border-green-600/50 rounded-lg hover:bg-green-600/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs flex-1 max-w-[100px]"
+              >
+                <CheckCircle2 className="w-3 h-3" />
+                <span>Approve</span>
+              </button>
+
+              <button
+                onClick={handleReject}
+                disabled={actionLoading}
+                className="flex items-center justify-center space-x-1.5 px-3 py-1.5 bg-red-600/20 text-red-400 border border-red-600/50 rounded-lg hover:bg-red-600/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs flex-1 max-w-[100px]"
+              >
+                <XCircle className="w-3 h-3" />
+                <span>Reject</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop Editor Controls Header */}
+      <div className="hidden md:block bg-dark-900 border-b border-dark-800 sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Link
@@ -138,7 +182,7 @@ const ArticlePreviewPage: React.FC = () => {
                 <span className="text-sm text-gray-400">Preview Mode</span>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3">
               <span className="text-sm text-gray-400">
                 Status: <span className="text-yellow-400 font-medium">{draft.status}</span>
@@ -152,7 +196,7 @@ const ArticlePreviewPage: React.FC = () => {
                   <CheckCircle2 className="w-4 h-4" />
                   <span>{actionLoading ? 'Processing...' : 'Approve'}</span>
                 </button>
-                
+
                 <button
                   onClick={handleReject}
                   disabled={actionLoading}

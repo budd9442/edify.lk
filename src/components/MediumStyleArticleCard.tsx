@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Share2, User } from 'lucide-react';
+import { Heart, Share2 } from 'lucide-react';
 import { Article } from '../types/payload';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
 import { likesService } from '../services/likesService';
-
-const DEFAULT_COVER_IMAGE = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=60';
+import Avatar from './common/Avatar';
 
 interface MediumStyleArticleCardProps {
     article: Article;
@@ -18,7 +17,12 @@ const MediumStyleArticleCard: React.FC<MediumStyleArticleCardProps> = ({ article
     const isLiked = appState.likedArticles.includes(article.id);
     const [likes, setLikes] = useState(article.likes);
     const [imageError, setImageError] = useState(false);
-    const [avatarError, setAvatarError] = useState(false);
+
+    // Initial check for valid cover. 
+    // If it's /logo.png, we treat it as invalid immediately. 
+    // If it errors later, imageError will trigger re-render.
+    const hasValidInitialCover = article.coverImage && article.coverImage !== '/logo.png';
+    const showCover = hasValidInitialCover && !imageError;
 
     const handleBookmark = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -54,15 +58,17 @@ const MediumStyleArticleCard: React.FC<MediumStyleArticleCardProps> = ({ article
             to={`/article/${article.slug}`}
             className="flex gap-4 py-4 px-4 border-b border-dark-800 hover:bg-dark-900/30 transition-colors"
         >
-            {/* Left: Thumbnail */}
-            <div className="flex-shrink-0 w-28 h-28 bg-dark-800 rounded-lg overflow-hidden">
-                <img
-                    src={imageError ? DEFAULT_COVER_IMAGE : (article.coverImage || DEFAULT_COVER_IMAGE)}
-                    alt={article.title}
-                    className="w-full h-full object-cover"
-                    onError={() => setImageError(true)}
-                />
-            </div>
+            {/* Left: Thumbnail - Only render if valid cover exists */}
+            {showCover && (
+                <div className="flex-shrink-0 w-28 h-28 bg-dark-800 rounded-lg overflow-hidden">
+                    <img
+                        src={article.coverImage!}
+                        alt={article.title}
+                        className="w-full h-full object-cover"
+                        onError={() => setImageError(true)}
+                    />
+                </div>
+            )}
 
             {/* Right: Content */}
             <div className="flex-1 flex flex-col justify-between min-w-0">
@@ -73,18 +79,11 @@ const MediumStyleArticleCard: React.FC<MediumStyleArticleCardProps> = ({ article
 
                 {/* Author & Meta */}
                 <div className="flex items-center gap-2 mb-2">
-                    {avatarError || !article.author.avatar ? (
-                        <div className="w-5 h-5 rounded-full bg-dark-700 flex items-center justify-center">
-                            <User className="w-3 h-3 text-gray-400" />
-                        </div>
-                    ) : (
-                        <img
-                            src={article.author.avatar}
-                            alt={article.author.name}
-                            className="w-5 h-5 rounded-full object-cover"
-                            onError={() => setAvatarError(true)}
-                        />
-                    )}
+                    <Avatar
+                        src={article.author.avatar}
+                        alt={article.author.name}
+                        className="w-5 h-5"
+                    />
                     <span className="text-sm text-gray-400 truncate">{article.author.name}</span>
                 </div>
 

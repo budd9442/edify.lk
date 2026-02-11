@@ -1,8 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { FollowButton } from './follow/FollowButton';
+import Avatar from './common/Avatar';
 
 interface Author {
   id: string;
@@ -37,10 +38,10 @@ const AuthorCard: React.FC<AuthorCardProps> = ({
       >
         <div className="flex items-center space-x-3">
           <Link to={`/profile/${author.id}`} className="flex-shrink-0">
-            <img
+            <Avatar
               src={author.avatar}
               alt={author.name}
-              className="w-10 h-10 rounded-full ring-1 ring-dark-700/60 hover:ring-primary-500 transition-all"
+              className="w-10 h-10 ring-1 ring-dark-700/60 hover:ring-primary-500 transition-all"
             />
           </Link>
           <div>
@@ -86,10 +87,10 @@ const AuthorCard: React.FC<AuthorCardProps> = ({
       >
         <div className="text-center">
           <Link to={`/profile/${author.id}`} className="inline-block relative">
-            <img
+            <Avatar
               src={author.avatar}
               alt={author.name}
-              className="w-20 h-20 rounded-full mx-auto mb-4 ring-1 ring-dark-700/60 hover:ring-primary-500 transition-all"
+              className="w-20 h-20 mx-auto mb-4 ring-1 ring-dark-700/60 hover:ring-primary-500 transition-all"
             />
           </Link>
           <div className="flex items-center justify-center space-x-3">
@@ -139,10 +140,10 @@ const AuthorCard: React.FC<AuthorCardProps> = ({
     >
       <div className="flex items-center space-x-3">
         <Link to={`/profile/${author.id}`} className="flex-shrink-0">
-          <img
+          <Avatar
             src={author.avatar}
             alt={author.name}
-            className="w-12 h-12 rounded-full ring-1 ring-dark-700/60 hover:ring-primary-500 transition-all"
+            className="w-12 h-12 ring-1 ring-dark-700/60 hover:ring-primary-500 transition-all"
           />
         </Link>
         <div>

@@ -1,151 +1,70 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, Filter, SortAsc, Calendar, Heart, MessageCircle, Clock, Eye } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import Fuse from 'fuse.js';
-import { articlesService } from '../services/articlesService';
-import supabase from '../services/supabaseClient';
-import { Article } from '../types/payload';
+import { useArticleSearch } from '../hooks/useArticleSearch';
+import MobileSearchView from '../components/search/MobileSearchView';
 import LoaderSkeleton from '../components/LoaderSkeleton';
 import TagPill from '../components/TagPill';
+import AuthorCard from '../components/AuthorCard';
 
 const SearchPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const query = searchParams.get('q') || '';
-  const [sortBy, setSortBy] = useState<'relevance' | 'date' | 'likes'>('relevance');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [searchResults, setSearchResults] = useState<Article[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [articlesLoaded, setArticlesLoaded] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
 
-  // Initialize Fuse.js for search
-  const fuse = useMemo(() => {
-    return new Fuse(articles, {
-      keys: [
-        { name: 'title', weight: 0.4 },
-        { name: 'excerpt', weight: 0.3 },
-        { name: 'author.name', weight: 0.2 },
-        { name: 'tags', weight: 0.1 }
-      ],
-      threshold: 0.4,
-      includeScore: true,
-      minMatchCharLength: 2,
-    });
-  }, [articles]);
+  const {
+    query,
+    setQuery,
+    searchType,
+    setSearchType,
+    sortBy,
+    setSortBy,
+    selectedTags,
+    setSelectedTags,
+    results,
+    isSearching,
+    allTags,
+    isLoading
+  } = useArticleSearch();
 
-  // Load articles for search
-  useEffect(() => {
-    const loadArticles = async () => {
-      if (articlesLoaded) return;
-      
-      try {
-        const items = await articlesService.listAll();
-        
-        if (!items || items.length === 0) {
-          setArticles([]);
-          setArticlesLoaded(true);
-          return;
-        }
-
-        // Enrich with author profiles
-        const authorIds = Array.from(new Set(items.map(i => i.authorId)));
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id,name,avatar_url,bio,followers_count,articles_count')
-          .in('id', authorIds);
-        
-        const idToProfile = new Map((profiles || []).map((p: any) => [p.id, p]));
-        const mapped: Article[] = items.map(item => {
-          const p: any = idToProfile.get(item.authorId);
-          return {
-            id: item.id,
-            title: item.title,
-            slug: item.slug,
-            excerpt: item.excerpt,
-            content: '',
-            author: {
-              id: item.authorId,
-              name: p?.name || 'Anonymous',
-              avatar: p?.avatar_url || '/logo.png',
-              bio: p?.bio || '',
-              followersCount: p?.followers_count ?? 0,
-              articlesCount: p?.articles_count ?? 0,
-            },
-            publishedAt: item.publishedAt || new Date().toISOString(),
-            readingTime: 5,
-            likes: item.likes,
-            views: item.views,
-            comments: Array(item.comments).fill({}),
-            tags: item.tags,
-            featured: item.featured,
-            status: 'published',
-            coverImage: item.coverImage || '/logo.png',
-          };
-        });
-        
-        setArticles(mapped);
-        setArticlesLoaded(true);
-      } catch (error) {
-        console.error('Failed to load articles for search:', error);
-        setArticles([]);
-        setArticlesLoaded(true);
-      }
-    };
-
-    loadArticles();
-  }, [articlesLoaded]);
-
-  // Perform search when query changes
-  useEffect(() => {
-    if (!query.trim() || !articlesLoaded) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
+  // Sync URL with query
+  React.useEffect(() => {
+    if (initialQuery && !query) {
+      setQuery(initialQuery);
     }
+  }, [initialQuery]);
 
-    setIsSearching(true);
-    
-    const searchTimeout = setTimeout(() => {
-      const results = fuse.search(query);
-      setSearchResults(results.map(result => result.item));
-      setIsSearching(false);
-    }, 300);
-
-    return () => clearTimeout(searchTimeout);
-  }, [query, fuse, articlesLoaded]);
-
-  const allTags = Array.from(new Set(articles.flatMap(article => article.tags)));
-
-  const filteredResults = searchResults.filter(article => {
-    if (selectedTags.length === 0) return true;
-    return selectedTags.some(tag => article.tags.includes(tag));
-  });
-
-  const sortedResults = [...filteredResults].sort((a, b) => {
-    switch (sortBy) {
-      case 'date':
-        return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-      case 'likes':
-        return b.likes - a.likes;
-      default:
-        return 0; // Relevance is handled by Fuse.js
+  React.useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (query) {
+      params.set('q', query);
+    } else {
+      params.delete('q');
     }
-  });
+    setSearchParams(params, { replace: true });
+  }, [query]);
 
-  const toggleTag = (tag: string) => {
-    setSelectedTags(prev => 
-      prev.includes(tag) 
-        ? prev.filter(t => t !== tag)
-        : [...prev, tag]
-    );
-  };
-
+  // Mobile View
   return (
     <div className="min-h-screen bg-dark-950">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Breadcrumb */}
+      <div className="md:hidden">
+        <MobileSearchView
+          query={query}
+          setQuery={setQuery}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          searchType={searchType}
+          setSearchType={setSearchType}
+          results={results}
+          isSearching={isSearching}
+          allTags={allTags}
+          isLoading={isLoading}
+        />
+      </div>
+
+      {/* Desktop View */}
+      <div className="hidden md:block max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <nav className="flex items-center space-x-2 text-sm text-gray-400 mb-6">
           <Link to="/" className="hover:text-white transition-colors">Home</Link>
           <span>/</span>
@@ -158,84 +77,100 @@ const SearchPage: React.FC = () => {
           )}
         </nav>
 
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">
             {query ? `Search results for "${query}"` : 'Search'}
           </h1>
-          {!isSearching && (
-            <p className="text-gray-400">
-              {sortedResults.length} {sortedResults.length === 1 ? 'result' : 'results'} found
+          {/* Search Type Toggles for Desktop (Optional but useful given we have mixed results) */}
+          <div className="flex gap-4 mt-4 border-b border-dark-800 pb-1">
+            {(['articles', 'authors', 'tags'] as const).map((type) => (
+              <button
+                key={type}
+                onClick={() => setSearchType(type)}
+                className={`pb-2 px-1 text-sm font-medium transition-colors relative ${searchType === type ? 'text-primary-500' : 'text-gray-400 hover:text-white'
+                  }`}
+              >
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+                {searchType === type && (
+                  <motion.div layoutId="searchTypeUnderline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500" />
+                )}
+              </button>
+            ))}
+          </div>
+          {!isSearching && !isLoading && (
+            <p className="text-gray-400 mt-4">
+              {results.length} {results.length === 1 ? 'result' : 'results'} found
             </p>
           )}
         </div>
 
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Filters Sidebar */}
-          <aside className="lg:w-64 space-y-6">
-            {/* Sort Options */}
-            <div className="bg-dark-900 border border-dark-800 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
-                <SortAsc className="w-5 h-5" />
-                <span>Sort by</span>
-              </h3>
-              <div className="space-y-2">
-                {[
-                  { value: 'relevance', label: 'Relevance' },
-                  { value: 'date', label: 'Most Recent' },
-                  { value: 'likes', label: 'Most Liked' }
-                ].map(option => (
-                  <button
-                    key={option.value}
-                    onClick={() => setSortBy(option.value as any)}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                      sortBy === option.value
+          {searchType === 'articles' && (
+            <aside className="lg:w-64 space-y-6">
+              <div className="bg-dark-900 border border-dark-800 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
+                  <SortAsc className="w-5 h-5" />
+                  <span>Sort by</span>
+                </h3>
+                <div className="space-y-2">
+                  {[
+                    { value: 'relevance', label: 'Relevance' },
+                    { value: 'date', label: 'Most Recent' },
+                    { value: 'likes', label: 'Most Liked' }
+                  ].map(option => (
+                    <button
+                      key={option.value}
+                      onClick={() => setSortBy(option.value as any)}
+                      className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${sortBy === option.value
                         ? 'bg-primary-900/30 text-primary-300 border border-primary-500/50'
                         : 'text-gray-300 hover:bg-dark-800'
-                    }`}
+                        }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-dark-900 border border-dark-800 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
+                  <Filter className="w-5 h-5" />
+                  <span>Filter by topics</span>
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {allTags.slice(0, 15).map(tag => (
+                    <TagPill
+                      key={tag.name}
+                      tag={tag.name}
+                      isActive={selectedTags.includes(tag.name)}
+                      onClick={() => setSelectedTags(
+                        selectedTags.includes(tag.name)
+                          ? selectedTags.filter(t => t !== tag.name)
+                          : [...selectedTags, tag.name]
+                      )}
+                      variant="outline"
+                      size="sm"
+                    />
+                  ))}
+                </div>
+                {selectedTags.length > 0 && (
+                  <button
+                    onClick={() => setSelectedTags([])}
+                    className="mt-3 text-sm text-primary-400 hover:text-primary-300 transition-colors"
                   >
-                    {option.label}
+                    Clear filters
                   </button>
-                ))}
+                )}
               </div>
-            </div>
+            </aside>
+          )}
 
-            {/* Tag Filters */}
-            <div className="bg-dark-900 border border-dark-800 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
-                <Filter className="w-5 h-5" />
-                <span>Filter by tags</span>
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {allTags.map(tag => (
-                  <TagPill
-                    key={tag}
-                    tag={tag}
-                    isActive={selectedTags.includes(tag)}
-                    onClick={() => toggleTag(tag)}
-                    variant="outline"
-                    size="sm"
-                  />
-                ))}
-              </div>
-              {selectedTags.length > 0 && (
-                <button
-                  onClick={() => setSelectedTags([])}
-                  className="mt-3 text-sm text-primary-400 hover:text-primary-300 transition-colors"
-                >
-                  Clear filters
-                </button>
-              )}
-            </div>
-          </aside>
-
-          {/* Results */}
           <main className="flex-1">
-            {isSearching ? (
-              <LoaderSkeleton variant="article" count={3} />
-            ) : sortedResults.length > 0 ? (
-              <div className="space-y-6">
-                {sortedResults.map((article, index) => (
+            {isLoading || isSearching ? (
+              <LoaderSkeleton variant={searchType === 'authors' ? 'author' : 'article'} count={3} />
+            ) : results.length > 0 ? (
+              <div className={searchType === 'authors' ? "grid gap-6 md:grid-cols-2 lg:grid-cols-3" : "space-y-6"}>
+                {searchType === 'articles' && results.map((article: any, index: number) => (
                   <motion.article
                     key={article.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -246,9 +181,8 @@ const SearchPage: React.FC = () => {
                     <Link to={`/article/${article.slug}`}>
                       <div className="flex flex-col sm:flex-row gap-4 min-w-0">
                         <div className="flex-1 min-w-0">
-                          {/* Tags */}
                           <div className="flex items-center space-x-2 mb-3">
-                            {article.tags.slice(0, 3).map(tag => (
+                            {article.tags.slice(0, 3).map((tag: string) => (
                               <TagPill
                                 key={tag}
                                 tag={tag}
@@ -258,17 +192,14 @@ const SearchPage: React.FC = () => {
                             ))}
                           </div>
 
-                          {/* Title */}
                           <h2 className="text-xl font-semibold text-white mb-2 hover:text-primary-400 transition-colors">
                             {article.title}
                           </h2>
 
-                          {/* Excerpt */}
                           <p className="text-gray-400 mb-4 line-clamp-2">
                             {article.excerpt}
                           </p>
 
-                          {/* Meta */}
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                               <div className="flex items-center space-x-2">
@@ -307,7 +238,6 @@ const SearchPage: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Cover Image */}
                         {article.coverImage && (
                           <div className="w-32 h-24 flex-shrink-0">
                             <img
@@ -321,6 +251,34 @@ const SearchPage: React.FC = () => {
                     </Link>
                   </motion.article>
                 ))}
+
+                {searchType === 'authors' && results.map((author: any, index: number) => (
+                  <motion.div
+                    key={author.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <AuthorCard author={author} variant="detailed" />
+                  </motion.div>
+                ))}
+
+                {searchType === 'tags' && (
+                  <div className="flex flex-wrap gap-2">
+                    {results.map((tag: any) => (
+                      <TagPill
+                        key={tag.name}
+                        tag={`${tag.name} (${tag.count})`}
+                        variant="outline"
+                        onClick={() => {
+                          setQuery(tag.name);
+                          setSearchType('articles');
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+
               </div>
             ) : query ? (
               <motion.div
@@ -331,7 +289,7 @@ const SearchPage: React.FC = () => {
                 <Search className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                 <h2 className="text-2xl font-bold text-white mb-2">No results found</h2>
                 <p className="text-gray-400 mb-6">
-                  We couldn't find any articles matching "{query}". Try adjusting your search terms or filters.
+                  We couldn't find any {searchType} matching "{query}". Try adjusting your search terms or filters.
                 </p>
                 <div className="space-y-2 text-sm text-gray-500">
                   <p>• Check your spelling</p>
@@ -358,5 +316,4 @@ const SearchPage: React.FC = () => {
     </div>
   );
 };
-
 export default SearchPage;

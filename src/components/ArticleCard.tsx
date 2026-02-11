@@ -8,8 +8,9 @@ import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import { likesService } from '../services/likesService';
 import { useToast } from '../hooks/useToast';
+import Avatar from './common/Avatar';
 
-const DEFAULT_COVER_IMAGE = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=60';
+
 
 interface ArticleCardProps {
   article: Article;
@@ -22,6 +23,9 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
   const { showError } = useToast();
   const isLiked = state.likedArticles.includes(article.id);
   const [localLikesCount, setLocalLikesCount] = React.useState(article.likes);
+
+  // Helper to validate image
+  const hasValidCover = article.coverImage && article.coverImage !== '/logo.png';
 
   // Update local likes count when article.likes changes
   React.useEffect(() => {
@@ -60,22 +64,26 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
         animate={{ opacity: 1, y: 0 }}
         className="group relative overflow-hidden rounded-xl bg-dark-900 border border-dark-800 hover:border-primary-500/50 transition-all duration-300"
       >
-        <div className="aspect-w-16 aspect-h-9 relative">
+        <div className={`${hasValidCover ? 'aspect-w-16 aspect-h-9' : 'min-h-[200px] flex flex-col justify-end'} relative`}>
           <Link to={`/article/${article.slug}`}>
-            <img
-              src={article.coverImage || DEFAULT_COVER_IMAGE}
-              alt={article.title}
-              className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
-            />
+            {hasValidCover ? (
+              <img
+                src={article.coverImage!}
+                alt={article.title}
+                className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+            ) : (
+              <div className="w-full h-full absolute inset-0 bg-gradient-to-br from-primary-900/40 to-dark-950" />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-dark-950 via-dark-950/20 to-transparent" />
           </Link>
-          <div className="absolute bottom-0 left-0 right-0 p-6 pointer-events-none">
+          <div className={`${hasValidCover ? 'absolute bottom-0 left-0 right-0' : 'relative'} p-6 pointer-events-none`}>
             <div className="flex items-center space-x-2 mb-3 pointer-events-auto">
               <Link to={`/profile/${article.author.id}`} className="flex items-center space-x-2 hover:text-white transition-colors group/author">
-                <img
+                <Avatar
                   src={article.author.avatar}
                   alt={article.author.name}
-                  className="w-8 h-8 rounded-full ring-2 ring-transparent group-hover/author:ring-primary-500 transition-all"
+                  className="w-8 h-8 ring-2 ring-transparent group-hover/author:ring-primary-500 transition-all"
                 />
                 <span className="text-sm text-gray-300 group-hover/author:text-primary-400">{article.author.name}</span>
               </Link>
@@ -134,23 +142,25 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
       className="group bg-dark-900 border border-dark-800 rounded-lg p-4 sm:p-6 hover:border-primary-500/50 transition-all duration-300"
     >
       <div className="flex flex-col sm:flex-row gap-4">
-        <Link
-          to={`/article/${article.slug}`}
-          className="order-1 sm:order-2 w-full aspect-video sm:w-48 sm:h-32 sm:flex-shrink-0 block"
-        >
-          <img
-            src={article.coverImage || DEFAULT_COVER_IMAGE}
-            alt={article.title}
-            className="w-full h-full object-cover rounded-lg group-hover:opacity-90 transition-opacity"
-          />
-        </Link>
+        {hasValidCover && (
+          <Link
+            to={`/article/${article.slug}`}
+            className="order-1 sm:order-2 w-full aspect-video sm:w-48 sm:h-32 sm:flex-shrink-0 block"
+          >
+            <img
+              src={article.coverImage!}
+              alt={article.title}
+              className="w-full h-full object-cover rounded-lg group-hover:opacity-90 transition-opacity"
+            />
+          </Link>
+        )}
         <div className="order-2 sm:order-1 flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-3">
             <Link to={`/profile/${article.author.id}`} className="flex items-center space-x-2 hover:text-white transition-colors group/author">
-              <img
+              <Avatar
                 src={article.author.avatar}
                 alt={article.author.name}
-                className="w-6 h-6 rounded-full ring-2 ring-transparent group-hover/author:ring-primary-500 transition-all flex-shrink-0"
+                className="w-6 h-6 ring-2 ring-transparent group-hover/author:ring-primary-500 transition-all flex-shrink-0"
               />
               <span className="text-sm text-gray-300 group-hover/author:text-primary-400">{article.author.name}</span>
             </Link>

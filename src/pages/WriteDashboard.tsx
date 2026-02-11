@@ -242,9 +242,14 @@ const WriteDashboard: React.FC = () => {
 
   const handleSaveDraft = async () => {
     if (!currentDraft || currentDraft.contentHtml === undefined) return;
-    const hasTitle = !!(currentDraft.title && currentDraft.title.trim().length > 0);
-    const hasContent = !!(currentDraft.contentHtml && currentDraft.contentHtml.trim().length > 0);
-    if (!hasTitle && !hasContent) return;
+
+    // Check if there's actual content (ignoring empty paragraphs/tags, but keeping images)
+    const hasContent = !!(currentDraft.contentHtml && (
+      currentDraft.contentHtml.replace(/<[^>]*>/g, '').trim().length > 0 ||
+      currentDraft.contentHtml.includes('<img')
+    ));
+
+    if (!hasContent) return;
     if (saving) return;
 
     if (!authState.isAuthenticated || !authState.user?.id) {
@@ -257,7 +262,7 @@ const WriteDashboard: React.FC = () => {
       const wasNew = !currentDraft.id;
       const savedDraft = await draftService.saveDraft({
         id: currentDraft.id,
-        title: currentDraft.title!,
+        title: currentDraft.title || 'Untitled', // Default title if only content is present
         contentHtml: currentDraft.contentHtml || '',
         coverImage: currentDraft.coverImage,
         tags: currentDraft.tags || [],
@@ -295,7 +300,14 @@ const WriteDashboard: React.FC = () => {
   useEffect(() => {
     if (!currentDraft) return;
     if (currentDraft.status === 'submitted') return;
-    if (!currentDraft.title && !(currentDraft.contentHtml && currentDraft.contentHtml.trim())) return;
+
+    // Auto-save only if there is content
+    const hasContent = !!(currentDraft.contentHtml && (
+      currentDraft.contentHtml.replace(/<[^>]*>/g, '').trim().length > 0 ||
+      currentDraft.contentHtml.includes('<img')
+    ));
+
+    if (!hasContent) return;
     if (saving) return;
 
     if (saveTimerRef.current) {
