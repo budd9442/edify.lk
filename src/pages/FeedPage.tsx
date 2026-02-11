@@ -63,7 +63,7 @@ const FeedPage: React.FC = () => {
           author: {
             id: row.author_id,
             name: p?.name || 'Anonymous',
-            avatar: p?.avatar_url || '/logo.png',
+            avatar: p?.avatar_url,
             bio: p?.bio || '',
             followersCount: 0,
             articlesCount: 0,
@@ -76,7 +76,8 @@ const FeedPage: React.FC = () => {
           tags: row.tags ?? [],
           featured: !!row.featured,
           status: 'published',
-          coverImage: row.cover_image_url || '/logo.png',
+          coverImage: row.cover_image_url,
+          customAuthor: row.custom_author,
         };
       });
 

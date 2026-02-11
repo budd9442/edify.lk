@@ -9,7 +9,7 @@ interface QuizResultsProps {
   onRetake: () => void;
 }
 
-const QuizResults: React.FC<QuizResultsProps> = ({ onRetake }) => {
+const QuizResults: React.FC<QuizResultsProps> = ({ onRetake: _onRetake }) => {
   const { state, dispatch } = useQuiz();
   const { state: authState } = useAuth();
   const [submitting, setSubmitting] = useState(false);
@@ -24,46 +24,46 @@ const QuizResults: React.FC<QuizResultsProps> = ({ onRetake }) => {
     const submitResults = async () => {
       // Use ref to prevent multiple submissions even in Strict Mode
       if (!state.currentQuiz || !authState.user || state.hasSubmitted || submitting || submissionRef.current) {
-        console.log('Skipping submission - already submitted, submitting, or ref blocked');
+        //console.log('Skipping submission - already submitted, submitting, or ref blocked');
         return;
       }
 
-      console.log('Starting quiz submission...');
+      //console.log('Starting quiz submission...');
       submissionRef.current = true; // Block future submissions
       setSubmitting(true);
-      
+
       try {
         // Add timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => 
+        const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Submission timeout')), 10000)
         );
-        
+
         const submissionPromise = quizService.submitQuizAttempt({
           userId: authState.user.id,
           userName: authState.user.name,
-          userAvatar: authState.user.avatar,
+          userAvatar: authState.user.avatar?.url || null,
           quizId: state.currentQuiz.id,
-          articleId: state.currentQuiz.articleId,
+          articleId: state.currentQuiz.articleId || '',
           score: state.score,
           totalQuestions: state.currentQuiz.questions.length,
           timeSpent
         });
 
-        const attempt = await Promise.race([submissionPromise, timeoutPromise]);
-        console.log('Quiz attempt submitted successfully:', attempt.id);
+        await Promise.race([submissionPromise, timeoutPromise]);
+        //console.log('Quiz attempt submitted successfully:', attempt.id);
         dispatch({ type: 'SUBMIT_COMPLETE' });
 
         // Show badge for perfect score
         if (isPerfectScore) {
           setTimeout(() => setShowBadge(true), 1000);
           // Update leaderboard
-          const leaderboard = await quizService.getLeaderboard(state.currentQuiz.articleId);
+          const leaderboard = await quizService.getLeaderboard(state.currentQuiz.articleId || '');
           dispatch({ type: 'SET_LEADERBOARD', payload: leaderboard });
         }
       } catch (error) {
         console.error('Failed to submit quiz results:', error);
         // Mark as submitted to prevent retry loops, regardless of error type
-        console.log('Marking quiz as submitted to prevent retry loops');
+        //console.log('Marking quiz as submitted to prevent retry loops');
         dispatch({ type: 'SUBMIT_COMPLETE' });
       } finally {
         setSubmitting(false);
@@ -103,13 +103,12 @@ const QuizResults: React.FC<QuizResultsProps> = ({ onRetake }) => {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-          className={`w-24 h-24 rounded-full border-4 flex items-center justify-center mx-auto mb-4 ${
-            isPerfectScore 
-              ? 'border-yellow-500 bg-yellow-500/20' 
-              : percentage >= 60 
-                ? 'border-green-500 bg-green-500/20'
-                : 'border-red-500 bg-red-500/20'
-          }`}
+          className={`w-24 h-24 rounded-full border-4 flex items-center justify-center mx-auto mb-4 ${isPerfectScore
+            ? 'border-yellow-500 bg-yellow-500/20'
+            : percentage >= 60
+              ? 'border-green-500 bg-green-500/20'
+              : 'border-red-500 bg-red-500/20'
+            }`}
         >
           {isPerfectScore ? (
             <Trophy className="w-10 h-10 text-yellow-500" />
@@ -161,24 +160,22 @@ const QuizResults: React.FC<QuizResultsProps> = ({ onRetake }) => {
         <div className="space-y-4">
           {state.currentQuiz.questions.map((question, index) => {
             const userAnswer = state.selectedAnswers[index];
-            const isCorrect = userAnswer === question.correctAnswer;
-            
+            const isCorrect = String(userAnswer) === String(question.correctAnswer);
+
             return (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 1 + index * 0.1 }}
-                className={`p-4 rounded-lg border ${
-                  isCorrect 
-                    ? 'bg-green-900/20 border-green-500/50' 
-                    : 'bg-red-900/20 border-red-500/50'
-                }`}
+                className={`p-4 rounded-lg border ${isCorrect
+                  ? 'bg-green-900/20 border-green-500/50'
+                  : 'bg-red-900/20 border-red-500/50'
+                  }`}
               >
                 <div className="flex items-start space-x-3">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    isCorrect ? 'bg-green-500' : 'bg-red-500'
-                  }`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${isCorrect ? 'bg-green-500' : 'bg-red-500'
+                    }`}>
                     {isCorrect ? (
                       <Check className="w-4 h-4 text-white" />
                     ) : (
@@ -188,11 +185,11 @@ const QuizResults: React.FC<QuizResultsProps> = ({ onRetake }) => {
                   <div className="flex-1">
                     <p className="text-white font-medium mb-2">{question.question}</p>
                     <p className={`text-sm mb-1 ${isCorrect ? 'text-green-300' : 'text-red-300'}`}>
-                      Your answer: {question.options[userAnswer]}
+                      Your answer: {question.options?.[userAnswer]?.text || 'N/A'}
                     </p>
                     {!isCorrect && (
                       <p className="text-sm text-green-300 mb-2">
-                        Correct answer: {question.options[question.correctAnswer]}
+                        Correct answer: {question.options?.find(o => String(o.isCorrect) === 'true' || o.text === question.correctAnswer)?.text || question.correctAnswer}
                       </p>
                     )}
                     {question.explanation && (
@@ -219,7 +216,7 @@ const QuizResults: React.FC<QuizResultsProps> = ({ onRetake }) => {
           <RotateCcw className="w-4 h-4" />
           <span>Quiz Completed</span>
         </div>
-        
+
         {submitting && (
           <div className="flex items-center space-x-2 text-gray-400">
             <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />

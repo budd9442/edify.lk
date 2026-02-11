@@ -1,5 +1,5 @@
 export function logInfo(label: string, message: string, meta?: Record<string, unknown>) {
-  console.log(format('INFO', label, message), meta || '');
+  //console.log(format('INFO', label, message), meta || '');
 }
 
 export function logWarn(label: string, message: string, meta?: Record<string, unknown>) {

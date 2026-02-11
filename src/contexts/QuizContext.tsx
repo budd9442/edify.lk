@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
-import { SimpleQuiz as Quiz, QuizAttempt, LeaderboardEntry } from '../types/payload';
+import { Quiz, LeaderboardEntry } from '../types/payload';
 
 interface QuizState {
   currentQuiz: Quiz | null;
@@ -77,7 +77,9 @@ const quizReducer = (state: QuizState, action: QuizAction): QuizState => {
       };
     case 'SHOW_RESULTS':
       const score = state.currentQuiz?.questions.reduce((acc, question, index) => {
-        return acc + (question.correctAnswer === state.selectedAnswers[index] ? 1 : 0);
+        const userAnswer = state.selectedAnswers[index];
+        const isCorrect = String(question.correctAnswer) === String(userAnswer);
+        return acc + (isCorrect ? 1 : 0);
       }, 0) || 0;
       return { ...state, showResults: true, score };
     case 'RESET_QUIZ':

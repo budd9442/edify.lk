@@ -1,4 +1,4 @@
-export async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+export async function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, label: string): Promise<T> {
   const timeout = new Promise<never>((_, reject) => {
     const id = setTimeout(() => {
       clearTimeout(id);
@@ -14,7 +14,7 @@ export interface RetryOptions {
   retryIf?: (e: unknown) => boolean;
 }
 
-export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions): Promise<T> {
+export async function withRetry<T>(fn: () => PromiseLike<T>, opts: RetryOptions): Promise<T> {
   let attempt = 0;
   while (true) {
     try {
@@ -36,7 +36,7 @@ const DEFAULT_BACKOFF = 500;
 
 export type SafeResult<T> = { data: T | null; error: AppError | null };
 
-export async function safeQuery<T>(label: string, exec: () => Promise<T>): Promise<SafeResult<T>> {
+export async function safeQuery<T>(label: string, exec: () => PromiseLike<T>): Promise<SafeResult<T>> {
   try {
     const result = await withRetry(
       () => withTimeout(exec(), DEFAULT_TIMEOUT, label),

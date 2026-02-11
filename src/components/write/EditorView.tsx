@@ -13,12 +13,13 @@ interface EditorViewProps {
     onSubmit: () => void;
     onPreview: () => void;
     onBack: () => void;
-    onOrganize: () => void;
+    onOrganize: (prompt: string) => void;
     organizingWithAI: boolean;
     saving: boolean;
     autoSavedAt: string | null;
     tagsInput: string;
     setTagsInput: (value: string) => void;
+    saveError: string | null;
 }
 
 const EditorView: React.FC<EditorViewProps> = ({
@@ -34,10 +35,19 @@ const EditorView: React.FC<EditorViewProps> = ({
     autoSavedAt,
     tagsInput,
     setTagsInput,
+    saveError,
 }) => {
     const [activeSettingsSection, setActiveSettingsSection] = useState<'menu' | 'cover' | 'tags' | 'quiz' | null>(null);
+    const [showAiPrompt, setShowAiPrompt] = useState(false);
+    const [aiPrompt, setAiPrompt] = useState('');
     const editorRef = useRef<any>(null);
     const [editorInstance, setEditorInstance] = useState<any>(null);
+
+    const handleAiSubmit = () => {
+        onOrganize(aiPrompt);
+        setShowAiPrompt(false);
+        setAiPrompt('');
+    };
 
     return (
         <motion.div
@@ -73,6 +83,8 @@ const EditorView: React.FC<EditorViewProps> = ({
                                     <Loader2 className="w-2.5 h-2.5 animate-spin" />
                                     Saving changes...
                                 </span>
+                            ) : saveError ? (
+                                <span className="text-red-400 font-medium">Error: {saveError}</span>
                             ) : autoSavedAt ? (
                                 <span>Draft saved {new Date(autoSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             ) : null}
@@ -118,14 +130,43 @@ const EditorView: React.FC<EditorViewProps> = ({
                             <Eye className="w-5 h-5" />
                         </button>
 
-                        <button
-                            onClick={onOrganize}
-                            disabled={organizingWithAI || !currentDraft?.contentHtml}
-                            className={`p-2 rounded-lg transition-colors ${organizingWithAI ? 'text-purple-400 bg-purple-900/10' : 'text-gray-400 hover:text-purple-400 hover:bg-dark-800'}`}
-                            title="AI Organize"
-                        >
-                            {organizingWithAI ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                        </button>
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowAiPrompt(!showAiPrompt)}
+                                disabled={organizingWithAI || !currentDraft?.contentHtml}
+                                className={`p-2 rounded-lg transition-colors ${organizingWithAI || showAiPrompt ? 'text-purple-400 bg-purple-900/10' : 'text-gray-400 hover:text-purple-400 hover:bg-dark-800'}`}
+                                title="AI Organize"
+                            >
+                                {organizingWithAI ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                            </button>
+
+                            {/* Inline AI Prompt Popover */}
+                            {showAiPrompt && (
+                                <div className="fixed top-[70px] right-4 md:right-8 w-80 bg-dark-900 border border-dark-700 rounded-xl shadow-2xl p-4 z-[100]">
+                                    <textarea
+                                        value={aiPrompt}
+                                        onChange={(e) => setAiPrompt(e.target.value)}
+                                        placeholder="E.g. Fix headings, improve spacing... (Optional)"
+                                        className="w-full h-24 bg-dark-950 border border-dark-800 rounded-lg p-2 text-sm text-white placeholder-dark-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 resize-none mb-3"
+                                        autoFocus
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                        <button
+                                            onClick={() => setShowAiPrompt(false)}
+                                            className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={handleAiSubmit}
+                                            className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Run AI
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
                         <div className="w-px h-6 bg-dark-800 mx-1 flex-shrink-0" />
 

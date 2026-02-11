@@ -103,14 +103,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         profilesService.ensureProfileExists(uid, fallbackMeta?.name || 'User').catch(() => { });
       }
 
-      console.log('🔐 [AUTH DEBUG] Enriching profile for user:', uid);
+      //console.log('🔐 [AUTH DEBUG] Enriching profile for user:', uid);
       const { data: prof, error } = await supabase
         .from('profiles')
         .select('role, name, bio, avatar_url, social_links, followers_count, following_count, articles_count, badges')
         .eq('id', uid)
         .maybeSingle();
 
-      console.log('🔐 [AUTH DEBUG] Profile data:', { prof, error });
+      //console.log('🔐 [AUTH DEBUG] Profile data:', { prof, error });
 
       if (error) {
         console.error('🔐 [AUTH DEBUG] Profile fetch error:', error);
@@ -128,7 +128,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           });
         }
       } else if (prof) {
-        console.log('🔐 [AUTH DEBUG] Updating user with profile data:', prof);
+        //console.log('🔐 [AUTH DEBUG] Updating user with profile data:', prof);
         dispatch({
           type: 'UPDATE_USER', payload: {
             name: prof.name || fallbackMeta?.name || 'User',
@@ -143,7 +143,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
         });
       } else {
-        console.log('🔐 [AUTH DEBUG] No profile found for user:', uid);
+        //console.log('🔐 [AUTH DEBUG] No profile found for user:', uid);
       }
     } catch (error) {
       console.error('🔐 [AUTH DEBUG] Profile enrichment error:', error);
@@ -158,13 +158,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          console.log('🔐 [AUTH DEBUG] Found session via getSession');
+          //console.log('🔐 [AUTH DEBUG] Found session via getSession');
           const minimal = mapMinimalUser(session.user);
-          console.log('🔐 [AUTH DEBUG] Initial minimal user:', minimal);
+          //console.log('🔐 [AUTH DEBUG] Initial minimal user:', minimal);
           dispatch({ type: 'LOGIN_SUCCESS', payload: minimal });
           enrichUserFromProfile(session.user.id, { name: session.user.user_metadata?.name, avatar_url: session.user.user_metadata?.avatar_url });
         } else {
-          console.log('🔐 [AUTH DEBUG] No session found, setting AUTH_READY');
+          //console.log('🔐 [AUTH DEBUG] No session found, setting AUTH_READY');
           dispatch({ type: 'AUTH_READY' });
         }
       } catch (error) {
@@ -174,7 +174,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // Set up auth state change listener
       const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('Auth state change event:', event, 'Session:', !!session);
+        //console.log('Auth state change event:', event, 'Session:', !!session);
 
         // Only respond to SIGNED_OUT events to avoid unnecessary refreshes
         if (event === 'SIGNED_OUT') {
@@ -183,7 +183,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Ignore SIGNED_IN events that happen after login (they're redundant)
         // Only respond to SIGNED_IN if we don't already have a user
         else if (event === 'SIGNED_IN' && !state.user && session?.user) {
-          console.log('🔐 [AUTH DEBUG] Handling SIGNED_IN event');
+          //console.log('🔐 [AUTH DEBUG] Handling SIGNED_IN event');
           const minimal = mapMinimalUser(session.user);
           dispatch({ type: 'LOGIN_SUCCESS', payload: minimal });
           enrichUserFromProfile(session.user.id, { name: session.user.user_metadata?.name, avatar_url: session.user.user_metadata?.avatar_url });

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Article } from '../types/payload';
-import MediumStyleArticleCard from './MediumStyleArticleCard';
+import ArticleCardMobile from './ArticleCardMobile';
 
 interface MobileFeedViewProps {
     articles: Article[];
@@ -12,12 +12,12 @@ const MobileFeedView: React.FC<MobileFeedViewProps> = ({ articles, loading, onRe
     return (
         <div className="md:hidden min-h-screen bg-dark-950 pb-20">
             {/* Article List */}
-            <div className="bg-dark-950">
+            <div className="bg-dark-950 px-4 pt-4">
                 {loading ? (
                     <div className="text-center text-gray-400 py-10">Loading articles...</div>
                 ) : articles.length > 0 ? (
-                    articles.map(article => (
-                        <MediumStyleArticleCard key={article.id} article={article} />
+                    articles.map((article, index) => (
+                        <ArticleCardMobile key={article.id} article={article} index={index} />
                     ))
                 ) : (
                     <div className="text-center text-gray-400 py-10 px-4">

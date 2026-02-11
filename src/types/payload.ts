@@ -9,7 +9,7 @@ export interface BaseDocument {
 export interface User extends BaseDocument {
   name: string;
   email: string;
-  avatar?: Media;
+  avatar?: Media | null;
   bio?: string;
   role: 'user' | 'author' | 'editor' | 'admin';
   verified: boolean;
@@ -39,7 +39,7 @@ export interface Article {
   author: {
     id: string;
     name: string;
-    avatar: string;
+    avatar?: string | null;
     bio: string;
     followersCount: number;
     articlesCount: number;
@@ -52,7 +52,8 @@ export interface Article {
   tags: string[];
   featured: boolean;
   status: 'draft' | 'published' | 'pending';
-  coverImage: string;
+  coverImage?: string | null;
+  customAuthor?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -113,6 +114,7 @@ export interface Quiz extends BaseDocument {
   settings: QuizSettings;
   stats: QuizStats;
   tags?: Tag[];
+  articleId?: string;
 }
 
 export interface QuizQuestion {
@@ -163,20 +165,21 @@ export interface QuizAttempt {
   id: string;
   userId: string;
   userName: string;
-  userAvatar: string;
+  userAvatar: string | null;
   quizId: string;
   articleId: string;
   score: number;
   totalQuestions: number;
   completedAt: string;
   timeSpent: number; // in seconds
+  answers?: any;
 }
 
 export interface LeaderboardEntry {
   id: string;
   userId: string;
   userName: string;
-  userAvatar: string;
+  userAvatar: string | null;
   score: number;
   totalQuestions: number;
   timeSpent: number;
@@ -261,17 +264,6 @@ export interface StrapiTextNode {
   code?: boolean;
 }
 
-export interface StrapiBlock {
-  type: 'paragraph' | 'heading' | 'quote' | 'list' | 'list-item' | 'code' | 'image' | 'link';
-  level?: number; // for headings (1-6)
-  format?: 'ordered' | 'unordered'; // for lists
-  url?: string; // for images and links
-  alt?: string; // for images
-  caption?: string; // for images
-  language?: string; // for code blocks
-  children: (StrapiTextNode | StrapiBlock)[];
-}
-
 export interface Draft {
   id: string;
   title: string;
@@ -279,6 +271,7 @@ export interface Draft {
   coverImage?: string;
   tags: string[];
   status: 'draft' | 'submitted' | 'published';
+  customAuthor?: string;
   createdAt: string;
   updatedAt: string;
   wordCount: number;

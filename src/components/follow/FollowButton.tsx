@@ -18,9 +18,9 @@ export const FollowButton: React.FC<Props> = ({ authorId, compact, onChange }) =
     let cancelled = false;
     (async () => {
       if (!currentUserId || isSelf) return;
-      console.log('👤 [FOLLOW DEBUG] Checking follow state', { currentUserId, authorId });
+      //console.log('👤 [FOLLOW DEBUG] Checking follow state', { currentUserId, authorId });
       const following = await followsService.isFollowing(currentUserId, authorId);
-      console.log('👤 [FOLLOW DEBUG] isFollowing result:', following);
+      //console.log('👤 [FOLLOW DEBUG] isFollowing result:', following);
       if (!cancelled) setIsFollowing(!!following);
     })();
     return () => { cancelled = true; };
@@ -35,19 +35,19 @@ export const FollowButton: React.FC<Props> = ({ authorId, compact, onChange }) =
     if (loading) return;
     setLoading(true);
     const next = !isFollowing;
-    console.log('👤 [FOLLOW DEBUG] Toggling follow', { currentUserId, authorId, from: isFollowing, to: next });
+    //console.log('👤 [FOLLOW DEBUG] Toggling follow', { currentUserId, authorId, from: isFollowing, to: next });
     setIsFollowing(next);
     try {
       if (next) {
         const res = await followsService.follow(currentUserId, authorId);
-        console.log('👤 [FOLLOW DEBUG] Follow success:', res);
+        //console.log('👤 [FOLLOW DEBUG] Follow success:', res);
         onChange?.(true);
-        try { window.dispatchEvent(new CustomEvent('follow:changed', { detail: { authorId, following: true } })); } catch {}
+        try { window.dispatchEvent(new CustomEvent('follow:changed', { detail: { authorId, following: true } })); } catch { }
       } else {
         const res = await followsService.unfollow(currentUserId, authorId);
-        console.log('👤 [FOLLOW DEBUG] Unfollow success:', res);
+        //console.log('👤 [FOLLOW DEBUG] Unfollow success:', res);
         onChange?.(false);
-        try { window.dispatchEvent(new CustomEvent('follow:changed', { detail: { authorId, following: false } })); } catch {}
+        try { window.dispatchEvent(new CustomEvent('follow:changed', { detail: { authorId, following: false } })); } catch { }
       }
     } catch (e) {
       console.error('👤 [FOLLOW DEBUG] Toggle failed, rolling back', e);
@@ -56,7 +56,7 @@ export const FollowButton: React.FC<Props> = ({ authorId, compact, onChange }) =
       // also rollback parent notification
       onChange?.(!next);
     } finally {
-      console.log('👤 [FOLLOW DEBUG] Toggle complete');
+      //console.log('👤 [FOLLOW DEBUG] Toggle complete');
       setLoading(false);
     }
   };

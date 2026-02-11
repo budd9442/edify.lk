@@ -4,6 +4,7 @@ import { X, Image as ImageIcon, Tag, HelpCircle, ChevronRight, PieChart } from '
 import { Draft } from '../../types/payload';
 import ImageUpload from './ImageUpload';
 import QuizAuthoring from './QuizAuthoring';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface EditorSettingsDrawerProps {
     activeSection: 'menu' | 'cover' | 'tags' | 'quiz' | null;
@@ -22,6 +23,9 @@ const EditorSettingsDrawer: React.FC<EditorSettingsDrawerProps> = ({
     tagsInput,
     setTagsInput
 }) => {
+    const { state: authState } = useAuth();
+    const isCompetitionUser = authState.user?.email === 'edify@exposition.lk';
+
     // Only render if activeSection is present
     if (!activeSection) return null;
 
@@ -80,6 +84,26 @@ const EditorSettingsDrawer: React.FC<EditorSettingsDrawerProps> = ({
                                     className="w-full"
                                 />
                             </div>
+
+                            {/* Custom Author for Competition User */}
+                            {currentDraft && isCompetitionUser && (
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-medium text-gray-300">
+                                        External Author (Competition)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={currentDraft.customAuthor || ''}
+                                        onChange={(e) => onChange({ customAuthor: e.target.value })}
+                                        placeholder="Original Author Name"
+                                        className="w-full bg-dark-950 border border-dark-700 rounded-xl px-4 py-3 text-white placeholder-dark-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"
+                                    />
+                                    <p className="text-xs text-gray-500">
+                                        This name will appear as the author instead of your profile.
+                                    </p>
+                                </div>
+                            )}
+
                             <div className="flex items-start gap-3 p-4 bg-primary-900/10 rounded-lg border border-primary-500/10">
                                 <ImageIcon className="w-5 h-5 text-primary-400 mt-0.5 flex-shrink-0" />
                                 <div>

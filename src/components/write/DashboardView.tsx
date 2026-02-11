@@ -103,9 +103,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                                     <p className="text-gray-400 mb-4">
                                         Create a new article from scratch with our rich text editor
                                     </p>
-                                    <div className="flex items-center space-x-2 text-sm text-primary-400">
-                                        <span>Strapi Blocks Compatible</span>
-                                    </div>
+
                                 </motion.div>
                             </div>
                         </div>

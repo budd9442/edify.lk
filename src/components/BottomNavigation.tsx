@@ -7,6 +7,11 @@ const BottomNavigation: React.FC = () => {
     const location = useLocation();
     const { state } = useAuth();
 
+    // Hide on login and registration pages
+    if (location.pathname === '/login' || location.pathname === '/register') {
+        return null;
+    }
+
     const navItems = [
         { path: '/', icon: Home, label: 'Home' },
         { path: '/explore', icon: Search, label: 'Explore' },

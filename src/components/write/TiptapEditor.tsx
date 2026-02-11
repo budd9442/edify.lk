@@ -89,12 +89,10 @@ const TiptapEditor: React.FC<TiptapEditorProps> = ({
         if (editor && value !== editor.getHTML()) {
             // Check if meaningful change to avoid cursor jump? 
             // Tiptap handles this better, but we should be careful.
-            // For now, only update if completely different logic or initial load.
-            // Actually, with collaboration or external updates, we might need this.
-            // But for a single user, `value` update usually comes from `onUpdate`, so this loop is dangerous.
-            // We should trust `editor` state as truth while active.
-            // Only update if the value is drastically different (e.g. loaded draft).
-            if (editor.getText() === '' && value) {
+            // For now, only update if content is actually different to avoid cursor jumps.
+            if (value && value !== editor.getHTML()) {
+                // If content is completely different (e.g. AI rewrite), update it.
+                // We compare against getHTML() to avoid updating if our local state is already ahead/in-sync
                 editor.commands.setContent(value);
             }
         }

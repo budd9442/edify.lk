@@ -27,7 +27,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ articleId }) => {
           dispatch({ type: 'SET_QUIZ', payload: quiz });
           const leaderboard = await quizService.getLeaderboard(articleId);
           dispatch({ type: 'SET_LEADERBOARD', payload: leaderboard });
-          
+
           // Check if user has already attempted this quiz
           if (authState.user) {
             const attempt = await quizService.getUserAttempt(articleId, authState.user.id);
@@ -69,7 +69,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ articleId }) => {
 
   const handleRetakeQuiz = () => {
     // Disabled - users cannot retake quizzes
-    console.log('Quiz retaking is disabled');
+    //console.log('Quiz retaking is disabled');
   };
 
   if (state.loading) {
@@ -133,12 +133,12 @@ const QuizCard: React.FC<QuizCardProps> = ({ articleId }) => {
                       <h4 className="text-lg font-semibold text-white mb-2">
                         {hasExistingAttempt ? 'Quiz Completed!' : 'Ready to test your knowledge?'}
                       </h4>
-      <p className="text-gray-400 mb-4">
-        {hasExistingAttempt 
-          ? `You scored ${existingAttempt?.score || 0}/${existingAttempt?.total_questions || state.currentQuiz.questions.length} • ${Math.floor((existingAttempt?.time_spent || 0) / 60)}:${String((existingAttempt?.time_spent || 0) % 60).padStart(2, '0')}`
-          : `${state.currentQuiz.questions.length} questions • Multiple choice`
-        }
-      </p>
+                      <p className="text-gray-400 mb-4">
+                        {hasExistingAttempt
+                          ? `You scored ${existingAttempt?.score || 0}/${existingAttempt?.total_questions || state.currentQuiz.questions.length} • ${Math.floor((existingAttempt?.time_spent || 0) / 60)}:${String((existingAttempt?.time_spent || 0) % 60).padStart(2, '0')}`
+                          : `${state.currentQuiz.questions.length} questions • Multiple choice`
+                        }
+                      </p>
                       {!hasExistingAttempt && (
                         <div className="flex items-center justify-center space-x-4 text-sm text-gray-500">
                           <div className="flex items-center space-x-1">
@@ -174,7 +174,7 @@ const QuizCard: React.FC<QuizCardProps> = ({ articleId }) => {
 
         {/* Leaderboard Widget */}
         <div className="lg:w-80">
-          <LeaderboardWidget articleId={articleId} limit={3} />
+          <LeaderboardWidget articleId={articleId} limit={5} />
         </div>
       </div>
     </div>

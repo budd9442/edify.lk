@@ -1,11 +1,10 @@
 import React, { useRef } from 'react';
-import { Search, Filter, X, Clock, Heart, MessageCircle, Loader2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Search, Filter, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { formatDistanceToNow } from 'date-fns';
 import { Article } from '../../types/payload';
 import TagPill from '../TagPill';
 import LoaderSkeleton from '../LoaderSkeleton';
+import ArticleCardMobile from '../ArticleCardMobile';
 import AuthorCard from '../AuthorCard';
 import type { SearchType, Tag, Author } from '../../hooks/useArticleSearch';
 
@@ -77,8 +76,8 @@ const MobileSearchView: React.FC<MobileSearchViewProps> = ({
                             key={type}
                             onClick={() => setSearchType(type)}
                             className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all capitalize ${searchType === type
-                                    ? 'bg-primary-600 text-white shadow-sm'
-                                    : 'text-gray-400 hover:text-gray-300'
+                                ? 'bg-primary-600 text-white shadow-sm'
+                                : 'text-gray-400 hover:text-gray-300'
                                 }`}
                         >
                             {type}
@@ -92,8 +91,8 @@ const MobileSearchView: React.FC<MobileSearchViewProps> = ({
                         <button
                             onClick={() => setShowFilters(!showFilters)}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${showFilters || sortBy !== 'relevance'
-                                    ? 'bg-primary-900/20 border-primary-500/50 text-primary-400'
-                                    : 'bg-dark-900 border-dark-800 text-gray-400'
+                                ? 'bg-primary-900/20 border-primary-500/50 text-primary-400'
+                                : 'bg-dark-900 border-dark-800 text-gray-400'
                                 }`}
                         >
                             <Filter className="w-3.5 h-3.5" />
@@ -126,8 +125,8 @@ const MobileSearchView: React.FC<MobileSearchViewProps> = ({
                                             key={option.value}
                                             onClick={() => setSortBy(option.value as any)}
                                             className={`px-4 py-2 rounded-lg text-sm border transition-colors ${sortBy === option.value
-                                                    ? 'bg-primary-600 text-white border-primary-500'
-                                                    : 'bg-dark-800 text-gray-400 border-dark-700'
+                                                ? 'bg-primary-600 text-white border-primary-500'
+                                                : 'bg-dark-800 text-gray-400 border-dark-700'
                                                 }`}
                                         >
                                             {option.label}
@@ -172,56 +171,7 @@ const MobileSearchView: React.FC<MobileSearchViewProps> = ({
                         {results.length > 0 ? (
                             <div className="space-y-4">
                                 {searchType === 'articles' && results.map((article: Article, index: number) => (
-                                    <motion.article
-                                        key={article.id}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: index * 0.05 }}
-                                        className="bg-dark-900/50 border border-dark-800 rounded-xl p-4 active:scale-[0.99] transition-transform"
-                                    >
-                                        <Link to={`/article/${article.slug}`}>
-                                            <div className="flex gap-4">
-                                                <div className="flex-1 min-w-0 space-y-2">
-                                                    {/* Author */}
-                                                    <div className="flex items-center gap-2">
-                                                        <img src={article.author.avatar} alt="" className="w-5 h-5 rounded-full" />
-                                                        <span className="text-xs text-gray-300 truncate">{article.author.name}</span>
-                                                        <span className="text-xs text-gray-600">•</span>
-                                                        <span className="text-xs text-gray-500">{formatDistanceToNow(new Date(article.publishedAt))} ago</span>
-                                                    </div>
-
-                                                    {/* Title */}
-                                                    <h3 className="text-base font-semibold text-white leading-snug line-clamp-2">
-                                                        {article.title}
-                                                    </h3>
-
-                                                    {/* Snippet */}
-                                                    <p className="text-sm text-gray-400 line-clamp-2">
-                                                        {article.excerpt}
-                                                    </p>
-
-                                                    {/* Meta */}
-                                                    <div className="flex items-center gap-4 text-xs text-gray-500 pt-1">
-                                                        <span className="flex items-center gap-1">
-                                                            <Clock className="w-3 h-3" /> {article.readingTime}m
-                                                        </span>
-                                                        <span className="flex items-center gap-1">
-                                                            <Heart className="w-3 h-3" /> {article.likes}
-                                                        </span>
-                                                        <span className="flex items-center gap-1">
-                                                            <MessageCircle className="w-3 h-3" /> {article.comments.length}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                {/* Image */}
-                                                {article.coverImage && (
-                                                    <div className="w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-dark-800">
-                                                        <img src={article.coverImage} alt="" className="w-full h-full object-cover" />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </Link>
-                                    </motion.article>
+                                    <ArticleCardMobile key={article.id} article={article} index={index} />
                                 ))}
 
                                 {searchType === 'authors' && results.map((author: Author, index: number) => (

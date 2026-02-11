@@ -1,35 +1,35 @@
-import { SimpleQuiz as Quiz, QuizAttempt, LeaderboardEntry } from '../types/payload';
+import { Quiz, QuizAttempt, LeaderboardEntry, User } from '../types/payload';
 import supabase from './supabaseClient';
 import { safeQuery } from './supabaseUtils';
 import { badgesService } from './badgesService';
 
 class QuizService {
   async getQuizByArticleId(articleId: string): Promise<Quiz | null> {
-    console.log('Fetching quiz for article:', articleId);
+    //console.log('Fetching quiz for article:', articleId);
 
     const { data, error } = await safeQuery('quizzes/getByArticle', () =>
       supabase
         .from('quizzes')
-        .select('id, article_id, title, questions_json')
+        .select('id, article_id, title, questions_json, created_at, updated_at')
         .eq('article_id', articleId)
         .maybeSingle()
         .then((res: any) => { if (res.error) throw res.error; return res.data; })
     );
 
     if (error) {
-      console.log('Quiz fetch error:', error);
+      //console.log('Quiz fetch error:', error);
       // For table not found or permission errors, return null instead of throwing
       if (error.message?.includes('relation "quizzes" does not exist') ||
         error.message?.includes('permission denied') ||
         error.message?.includes('406')) {
-        console.log('Quizzes table not available, returning null');
+        //console.log('Quizzes table not available, returning null');
         return null;
       }
       throw error;
     }
 
     if (!data) {
-      console.log('No quiz found for article:', articleId);
+      //console.log('No quiz found for article:', articleId);
       return null;
     }
     const questions = ((data as any).questions_json || []).map((q: any) => ({
@@ -42,6 +42,8 @@ class QuizService {
     }));
     const quiz: Quiz = {
       id: (data as any).id,
+      createdAt: (data as any).created_at || new Date().toISOString(),
+      updatedAt: (data as any).updated_at || new Date().toISOString(),
       title: (data as any).title,
       description: '',
       author: {
@@ -53,19 +55,19 @@ class QuizService {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         role: 'user',
-      } as any,
+      } as User,
       status: 'published',
       questions,
       settings: { passingScore: 0, allowRetakes: true, showResults: true, randomizeQuestions: false },
       stats: { attempts: 0, averageScore: 0, completionRate: 0 },
       tags: [],
+      articleId: (data as any).article_id
     };
-    (quiz as any).articleId = (data as any).article_id;
     return quiz;
   }
 
   async submitQuizAttempt(attempt: Omit<QuizAttempt, 'id' | 'completedAt'>): Promise<QuizAttempt> {
-    console.log('Submitting quiz attempt for user:', attempt.userId, 'quiz:', attempt.quizId);
+    //console.log('Submitting quiz attempt for user:', attempt.userId, 'quiz:', attempt.quizId);
 
     try {
       // First check if user already has an attempt for this quiz
@@ -75,12 +77,12 @@ class QuizService {
           .select('id, created_at')
           .eq('quiz_id', attempt.quizId)
           .eq('user_id', attempt.userId)
-          .single()
+          .maybeSingle()
           .then((res: any) => { if (res.error) throw res.error; return res.data; })
       );
 
       if (existingAttempt) {
-        console.log('User already has an attempt for this quiz, returning existing:', existingAttempt.id);
+        //console.log('User already has an attempt for this quiz, returning existing:', existingAttempt.id);
         return {
           ...attempt,
           id: existingAttempt.id,
@@ -90,7 +92,7 @@ class QuizService {
 
       // If check failed due to table issues, try to insert anyway
       if (checkError && !checkError.message.includes('No rows found')) {
-        console.log('Check failed, attempting direct insert:', checkError.message);
+        //console.log('Check failed, attempting direct insert:', checkError.message);
       }
 
       // Try to insert with minimal required fields first
@@ -118,21 +120,21 @@ class QuizService {
       if (error) {
         console.error('Failed to submit quiz attempt:', error);
 
-        // If it's a duplicate constraint error, try to fetch existing attempt
-        if (error.code === '23505' && error.message.includes('unique constraint')) {
-          console.log('Duplicate constraint detected, fetching existing attempt...');
+        // If it's a conflict (duplicate) constraint error, try to fetch existing attempt
+        if (error.code === 'conflict' || (error.message && error.message.includes('unique constraint'))) {
+          //console.log('Duplicate constraint detected, fetching existing attempt...');
           const { data: existingData } = await safeQuery('quiz_attempts/getExistingAfterDuplicate', () =>
             supabase
               .from('quiz_attempts')
               .select('id, created_at')
               .eq('quiz_id', attempt.quizId)
               .eq('user_id', attempt.userId)
-              .single()
+              .maybeSingle()
               .then((res: any) => { if (res.error) throw res.error; return res.data; })
           );
 
           if (existingData) {
-            console.log('Found existing attempt:', existingData.id);
+            //console.log('Found existing attempt:', existingData.id);
             return {
               ...attempt,
               id: existingData.id,
@@ -143,7 +145,7 @@ class QuizService {
 
         // If it's a column error, try with even fewer fields
         if (error.message.includes('column') || error.message.includes('schema')) {
-          console.log('Retrying with minimal fields...');
+          //console.log('Retrying with minimal fields...');
           const { data: minimalData, error: minimalError } = await safeQuery('quiz_attempts/insertMinimal', () =>
             supabase
               .from('quiz_attempts')
@@ -170,18 +172,18 @@ class QuizService {
         throw error;
       }
 
-      console.log('Quiz attempt submitted successfully:', data.id);
+      //console.log('Quiz attempt submitted successfully:', data.id);
 
       // Check for quiz badges
       // Get rank
-      const { data: rankData } = await supabase
+      const { count } = await supabase
         .from('quiz_attempts')
         .select('*', { count: 'exact', head: true })
         .eq('quiz_id', attempt.quizId)
         .gte('score', attempt.score)
         .lte('time_spent', attempt.timeSpent || 999999);
 
-      badgesService.checkQuizBadges(attempt.userId, (rankData?.count || 0) + 1);
+      badgesService.checkQuizBadges(attempt.userId, (count || 0) + 1);
 
       return {
         ...attempt,
@@ -201,7 +203,7 @@ class QuizService {
   }
 
   async getUserAttempt(articleId: string, userId: string): Promise<any | null> {
-    console.log('Checking for existing attempt:', articleId, userId);
+    //console.log('Checking for existing attempt:', articleId, userId);
 
     try {
       // First get the quiz ID for this article
@@ -215,7 +217,7 @@ class QuizService {
       );
 
       if (!quiz) {
-        console.log('No quiz found for article');
+        //console.log('No quiz found for article');
         return null;
       }
 
@@ -236,11 +238,11 @@ class QuizService {
       }
 
       if (!attempt) {
-        console.log('No existing attempt found');
+        //console.log('No existing attempt found');
         return null;
       }
 
-      console.log('Found existing attempt:', attempt.id);
+      //console.log('Found existing attempt:', attempt.id);
       return attempt;
     } catch (error) {
       console.error('Failed to check for existing attempt:', error);
@@ -261,11 +263,11 @@ class QuizService {
       );
 
       if (!quiz) {
-        console.log('No quiz found for article');
+        //console.log('No quiz found for article');
         return [];
       }
 
-      // Get quiz attempts first
+      // Get quiz attempts first, ordered by score then speed
       const { data: attempts, error } = await safeQuery('quiz_attempts/listForLeaderboard', () =>
         supabase
           .from('quiz_attempts')
@@ -273,7 +275,7 @@ class QuizService {
           .eq('quiz_id', (quiz as any).id)
           .order('score', { ascending: false })
           .order('time_spent', { ascending: true })
-          .limit(limit)
+          .limit(limit * 2) // Fetch a bit more to ensure we find perfect scores
           .then((res: any) => { if (res.error) throw res.error; return res.data; })
       );
 
@@ -282,8 +284,10 @@ class QuizService {
         return [];
       }
 
-      // Filter for perfect scores only
-      const perfectAttempts = (attempts || []).filter((r: any) => r.score === r.total_questions);
+      // Filter for perfect scores only and limit to the requested amount
+      const perfectAttempts = (attempts || [])
+        .filter((r: any) => r.score === r.total_questions)
+        .slice(0, limit);
 
       if (perfectAttempts.length === 0) {
         return [];
@@ -308,7 +312,7 @@ class QuizService {
           id: r.id,
           userId: r.user_id,
           userName: 'Anonymous',
-          userAvatar: '/logo.png',
+          userAvatar: null,
           articleId: articleId,
           articleTitle: '',
           score: r.score,
@@ -332,7 +336,7 @@ class QuizService {
           id: r.id,
           userId: r.user_id,
           userName: profile?.name || 'Anonymous',
-          userAvatar: profile?.avatar_url || '/logo.png',
+          userAvatar: profile?.avatar_url || null,
           articleId: articleId,
           articleTitle: '',
           score: r.score,
@@ -363,7 +367,7 @@ class QuizService {
       quizId: r.quiz_id,
       userId: r.user_id,
       userName: 'User',
-      userAvatar: '/logo.png',
+      userAvatar: null,
       articleId: r.article_id,
       score: r.score,
       totalQuestions: r.total_questions,

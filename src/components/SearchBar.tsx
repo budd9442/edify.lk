@@ -8,6 +8,7 @@ import { searchService } from '../services/searchService';
 import { articlesService } from '../services/articlesService';
 import supabase from '../services/supabaseClient';
 import { Article } from '../types/payload';
+import Avatar from './common/Avatar';
 
 interface SearchBarProps {
   className?: string;
@@ -44,10 +45,10 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
   useEffect(() => {
     const loadArticles = async () => {
       if (articlesLoaded) return;
-      
+
       try {
         const items = await articlesService.listAll();
-        
+
         if (!items || items.length === 0) {
           setArticles([]);
           setArticlesLoaded(true);
@@ -60,7 +61,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
           .from('profiles')
           .select('id,name,avatar_url,bio,followers_count,articles_count')
           .in('id', authorIds);
-        
+
         const idToProfile = new Map((profiles || []).map((p: any) => [p.id, p]));
         const mapped: Article[] = items.map(item => {
           const p: any = idToProfile.get(item.authorId);
@@ -73,7 +74,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
             author: {
               id: item.authorId,
               name: p?.name || 'Anonymous',
-              avatar: p?.avatar_url || '/logo.png',
+              avatar: p?.avatar_url || null,
               bio: p?.bio || '',
               followersCount: p?.followers_count ?? 0,
               articlesCount: p?.articles_count ?? 0,
@@ -86,10 +87,10 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
             tags: item.tags,
             featured: item.featured,
             status: 'published',
-            coverImage: item.coverImage || '/logo.png',
+            coverImage: item.coverImage || null,
           };
         });
-        
+
         setArticles(mapped);
         setArticlesLoaded(true);
       } catch (error) {
@@ -109,7 +110,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
       const trending = await searchService.getTrendingSearches();
       setTrendingSearches(trending);
     };
-    
+
     loadSearchData();
   }, []);
 
@@ -122,7 +123,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
     }
 
     setIsSearching(true);
-    
+
     const searchTimeout = setTimeout(() => {
       const results = fuse.search(query);
       setSearchResults(results.map(result => result.item));
@@ -147,7 +148,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
       const trending = await searchService.getTrendingSearches();
       setTrendingSearches(trending);
     };
-    
+
     loadSearchData();
   }, []);
 
@@ -166,11 +167,11 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
     if (searchQuery.trim()) {
       // Add to search history
       searchService.addToHistory(searchQuery.trim());
-      
+
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
       setIsOpen(false);
       setQuery('');
-      
+
       // Refresh recent searches
       setRecentSearches(searchService.getRecentSearches());
     }
@@ -225,17 +226,16 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
                           setIsOpen(false);
                           setQuery('');
                         }}
-                        className={`w-full text-left px-3 py-3 rounded-lg transition-colors ${
-                          selectedIndex === index
-                            ? 'bg-primary-900/30 text-primary-300'
-                            : 'hover:bg-dark-800 text-gray-300'
-                        }`}
+                        className={`w-full text-left px-3 py-3 rounded-lg transition-colors ${selectedIndex === index
+                          ? 'bg-primary-900/30 text-primary-300'
+                          : 'hover:bg-dark-800 text-gray-300'
+                          }`}
                       >
                         <div className="flex items-start space-x-3">
-                          <img
+                          <Avatar
                             src={article.author.avatar}
                             alt={article.author.name}
-                            className="w-8 h-8 rounded-full flex-shrink-0"
+                            className="w-8 h-8 flex-shrink-0"
                           />
                           <div className="flex-1 min-w-0">
                             <h4 className="font-medium text-sm line-clamp-1">

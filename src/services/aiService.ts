@@ -125,7 +125,8 @@ export async function generateQuizFromHtml(html: string, numQuestions: number = 
   return normalized;
 }
 
-export async function organizeContentWithAI(html: string): Promise<{ optimizedHtml: string; suggestedTags?: string[] }> {
+// Strict mode AI formatting service
+export async function organizeContentWithAI(html: string, userPrompt?: string): Promise<{ optimizedHtml: string; suggestedTags?: string[] }> {
   const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (globalThis as any).VITE_GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('Missing VITE_GEMINI_API_KEY');
@@ -133,51 +134,40 @@ export async function organizeContentWithAI(html: string): Promise<{ optimizedHt
 
   const plain = extractPlainTextFromHtml(html);
   if (!plain) {
+    console.warn('[AI] Extracted plain text is empty');
     return { optimizedHtml: html };
   }
 
+  //console.log('[AI] Starting organization. Content length:', plain.length, 'Prompt:', userPrompt || '(default)');
+
   const prompt = [
-    'You are a helpful assistant that rewrites HTML content with proper Quill.js formatting and structure.',
+    'You are a strict HTML formatter and content organizer.',
+    'Your ONLY job is to improve the structure, spacing, and readability of the provided HTML.',
+    'DO NOT change the tone, style, or actual words of the content.',
+    'DO NOT summarize or rewrite the content.',
     'Analyze the provided content and return ONLY valid JSON with the complete rewritten HTML and suggested tags.',
     'Return ONLY valid JSON matching this TypeScript type (no markdown, no code fences):',
     '{ "rewrittenHtml": string; "suggestedTags": string[] }',
     '',
-    'Instructions for rewriting HTML:',
-    '- Rewrite the entire HTML content with improved structure and formatting',
-    '- Use proper Quill.js classes for all formatting',
-    '- Apply consistent spacing and typography',
-    '- Improve readability and visual hierarchy',
-    '- Do not change the actual text content, only structure and formatting',
+    'User Instructions:',
+    userPrompt ? `- ${userPrompt}` : '- Improve headings, spacing, and structure.',
+    '',
+    'Formatting Rules (STRICT):',
+    '- Use proper HTML5 semantic tags (h1, h2, h3, p, ul, ol, blockquote)',
+    '- Ensure proper heading hierarchy (h1 > h2 > h3)',
+    '- Split long paragraphs for better readability',
+    '- Add visual breaks between major sections using <hr> or spacing',
+    '- Format lists properly',
+    '- Ensure code blocks are wrapped in <pre><code>',
     '- CRITICAL: Preserve ALL images, videos, and media elements exactly as they are',
     '- CRITICAL: Keep all <img> tags with their src, alt, class, and style attributes intact',
-    '- CRITICAL: Preserve all <figure> and <figcaption> elements if present',
-    '- CRITICAL: Maintain the original positioning of media elements within the content',
+    '- CRITICAL: Do NOT change the meaning or tone of the text',
     '',
-    'Quill.js Classes to Use:',
-    '- Headers: <h1 class="ql-header ql-header-1">, <h2 class="ql-header ql-header-2">, etc.',
-    '- Lists: <ul class="ql-list"><li class="ql-list-item">, <ol class="ql-list"><li class="ql-list-item">',
-    '- Blockquotes: <blockquote class="ql-blockquote">',
-    '- Code: <code class="ql-code">, <pre class="ql-code-block">',
-    '- Dividers: <hr class="ql-divider">',
-    '- Bold: <strong class="ql-bold">',
-    '- Italic: <em class="ql-italic">',
-    '- Paragraphs: <p> with proper spacing',
-    '',
-    'Formatting Rules:',
-    '- Add proper spacing between paragraphs (use <br><br> sparingly)',
-    '- Use consistent heading hierarchy (h1 > h2 > h3)',
-    '- Add visual breaks between major sections',
-    '- Format lists properly with good spacing',
-    '- Make blockquotes stand out',
-    '- Ensure code blocks are properly formatted',
-    '- Apply emphasis where appropriate',
-    '',
-    'For suggestedTags:',
+    'Suggested Tags:',
     '- Generate 3-5 relevant tags based on content (lowercase, no spaces, use hyphens)',
-    '- Focus on main topics, themes, and categories',
     '',
-    'Content to rewrite (includes all HTML structure and media elements):',
-    html.slice(0, 20000), // Use full HTML instead of plain text
+    'Content to format:',
+    html.slice(0, 20000),
   ].join('\n');
 
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
@@ -241,15 +231,26 @@ export async function organizeContentWithAI(html: string): Promise<{ optimizedHt
   }
   if (!parsed) {
     console.error('🧠 [AI DEBUG] Failed to parse AI JSON:', lastError);
-    return { optimizedHtml: html };
+    // Throw error so UI can report it instead of failing silently with original content
+    throw new Error('Failed to parse AI response. Please try again.');
   }
 
-  const rewrittenHtml = parsed?.rewrittenHtml || html;
+  const rewrittenHtml = parsed?.rewrittenHtml;
+  if (!rewrittenHtml || typeof rewrittenHtml !== 'string') {
+    console.error('🧠 [AI DEBUG] AI JSON missing rewrittenHtml:', parsed);
+    throw new Error('AI returned invalid content structure.');
+  }
+
+  if (rewrittenHtml === html) {
+    console.warn('🧠 [AI DEBUG] AI returned identical HTML');
+    // We can optionally throw or just let it pass, but user wanted "changes".
+  }
+
   const suggestedTags = Array.isArray(parsed?.suggestedTags) ? parsed.suggestedTags : [];
-  
-  return { 
-    optimizedHtml: rewrittenHtml, 
-    suggestedTags: suggestedTags.length > 0 ? suggestedTags : undefined 
+
+  return {
+    optimizedHtml: rewrittenHtml,
+    suggestedTags: suggestedTags.length > 0 ? suggestedTags : undefined
   };
 }
 

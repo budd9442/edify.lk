@@ -5,36 +5,36 @@ export const sessionService = {
   async monitorSession(): Promise<boolean> {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
-      
+
       if (error) {
         console.warn('Session monitoring error:', error);
         return false;
       }
-      
+
       if (!session) {
-        console.log('No active session found');
+        //console.log('No active session found');
         return false;
       }
-      
+
       // Check if session is close to expiring (within 2 minutes)
       const expiresAt = new Date(session.expires_at! * 1000);
       const now = new Date();
       const timeUntilExpiry = expiresAt.getTime() - now.getTime();
       const twoMinutes = 2 * 60 * 1000;
-      
+
       if (timeUntilExpiry < twoMinutes) {
-        console.log('Session expiring soon, attempting refresh...');
+        //console.log('Session expiring soon, attempting refresh...');
         const { error: refreshError } = await supabase.auth.refreshSession();
-        
+
         if (refreshError) {
           console.error('Failed to refresh session:', refreshError);
           return false;
         }
-        
-        console.log('Session refreshed successfully');
+
+        //console.log('Session refreshed successfully');
         return true;
       }
-      
+
       // Session is healthy, no need to refresh
       return true;
     } catch (error) {
@@ -58,11 +58,11 @@ export const sessionService = {
   async getSessionInfo() {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
-      
+
       if (error || !session) {
         return null;
       }
-      
+
       return {
         user: session.user,
         expiresAt: new Date(session.expires_at! * 1000),
@@ -79,13 +79,13 @@ export const sessionService = {
   async refreshSession(): Promise<boolean> {
     try {
       const { error } = await supabase.auth.refreshSession();
-      
+
       if (error) {
         console.error('Session refresh failed:', error);
         return false;
       }
-      
-      console.log('Session refreshed successfully');
+
+      //console.log('Session refreshed successfully');
       return true;
     } catch (error) {
       console.error('Session refresh error:', error);
@@ -105,15 +105,15 @@ export const sessionService = {
           document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
         }
       });
-      
+
       // Clear localStorage
       Object.keys(localStorage).forEach(key => {
         if (key.startsWith('sb-')) {
           localStorage.removeItem(key);
         }
       });
-      
-      console.log('Session data cleared');
+
+      //console.log('Session data cleared');
     } catch (error) {
       console.error('Failed to clear session data:', error);
     }

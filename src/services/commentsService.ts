@@ -15,7 +15,7 @@ export interface CommentWithAuthor {
   author: {
     id: string;
     name: string;
-    avatar: string;
+    avatar: string | null;
   };
   createdAt: string;
 }
@@ -57,7 +57,7 @@ export const commentsService = {
           author: {
             id: comment.user_id,
             name: 'Anonymous',
-            avatar: '/logo.png',
+            avatar: null,
           },
           createdAt: comment.created_at,
         }));
@@ -78,7 +78,7 @@ export const commentsService = {
           author: {
             id: comment.user_id,
             name: profile?.name || 'Anonymous',
-            avatar: profile?.avatar_url || '/logo.png',
+            avatar: profile?.avatar_url || null,
           },
           createdAt: comment.created_at,
         };

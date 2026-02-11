@@ -5,8 +5,8 @@ import { Plus } from 'lucide-react';
 const FloatingActionButton: React.FC = () => {
     const location = useLocation();
 
-    // Hide on write dashboard to avoid clutter
-    if (location.pathname === '/write') {
+    // Hide on write dashboard, login, and registration pages
+    if (location.pathname === '/write' || location.pathname === '/login' || location.pathname === '/register') {
         return null;
     }
 

@@ -32,6 +32,7 @@ const Header: React.FC = () => {
   const { state: appState, dispatch: appDispatch } = useApp();
   const profileRef = useRef<HTMLDivElement>(null);
 
+
   // Get page title based on current route
   const getPageTitle = () => {
     const path = location.pathname;
@@ -64,7 +65,7 @@ const Header: React.FC = () => {
     let cancelled = false;
     const loadUnread = async () => {
       try {
-        const { data, error, count } = await supabase
+        const { count } = await supabase
           .from('notifications')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', state.user!.id)
@@ -136,7 +137,7 @@ const Header: React.FC = () => {
           }
         }
       )
-      .subscribe((status) => {
+      .subscribe(() => {
         // Optionally log status
       });
 
@@ -206,6 +207,11 @@ const Header: React.FC = () => {
     }
   }, [logout, navigate, isLoggingOut]);
 
+  // Hide header on login and registration pages
+  if (location.pathname === '/login' || location.pathname === '/register') {
+    return null;
+  }
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-dark-800">
       <div className="absolute inset-0 bg-dark-950/80 backdrop-blur-md" />
@@ -213,7 +219,7 @@ const Header: React.FC = () => {
         <div className="flex items-center justify-between h-16 ">
           {/* Logo / Page Title */}
           {/* Logo / Page Title / Custom Content */}
-          <div className="flex items-center space-x-2 -ml-3 md:-ml-4">
+          <div className="flex items-center space-x-2 ml-1 md:-ml-4">
             {appState.headerMode === 'custom' ? (
               <div id="header-custom-content" className="flex items-center w-full min-w-[200px] sm:min-w-[400px]" />
             ) : (
@@ -345,7 +351,7 @@ const Header: React.FC = () => {
                           }`}
                         type="button"
                       >
-                        <LogOut className={`w-4 h-4 ${isLoggingOut ? 'animate-spin' : ''}`} />
+                        <LogOut className="w-4 h-4" />
                         <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
                       </button>
                     </motion.div>
@@ -483,7 +489,7 @@ const Header: React.FC = () => {
                             }`}
                           type="button"
                         >
-                          <LogOut className={`w-4 h-4 flex-shrink-0 ${isLoggingOut ? 'animate-spin' : ''}`} />
+                          <LogOut className="w-4 h-4 flex-shrink-0" />
                           <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
                         </button>
                       </div>

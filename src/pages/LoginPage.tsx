@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
+
 import { useNavigate, Link } from "react-router-dom";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
@@ -45,13 +45,7 @@ const LoginPage: React.FC = () => {
         <div className="w-full max-w-sm mx-auto space-y-8">
           {/* Header */}
           <div className="text-center space-y-4">
-            <div className="flex justify-center">
-              <img
-                src="/logo.png"
-                alt="edify.exposition.lk logo"
-                className="h-12 object-contain brightness-110 drop-shadow-[0_0_15px_rgba(172,131,79,0.3)]"
-              />
-            </div>
+
             <h1 className="text-2xl font-bold text-white tracking-tight">
               Welcome Back
             </h1>
@@ -95,6 +89,7 @@ const LoginPage: React.FC = () => {
                   value={formData.password}
                   onChange={handleInputChange}
                   required
+                  minLength={8}
                   className="w-full bg-dark-900/50 border border-dark-800 rounded-xl px-4 py-3.5 pr-12 text-white placeholder-dark-500 focus:outline-none focus:ring-1 focus:ring-primary-500/50 focus:border-primary-500 transition-all shadow-inner"
                   placeholder="Enter your password"
                 />
@@ -134,59 +129,33 @@ const LoginPage: React.FC = () => {
               </Link>
             </p>
           </div>
+          <p className="mt-8 text-[10px] text-dark-500 text-center opacity-50 uppercase tracking-widest">
+            Copyright Exposition. 2026
+          </p>
         </div>
       </div>
 
       {/* Desktop View - Split Screen */}
       <div className="hidden md:flex min-h-screen">
-        {/* Left Side - Hero/Branding */}
-        <div className="w-1/2 bg-dark-900 relative overflow-hidden flex flex-col justify-between p-12">
-          <div className="absolute inset-0 z-0">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary-900/20 to-dark-900 z-10" />
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary-500/50 to-transparent" />
-            {/* Abstract decorative elements */}
-            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-600/10 rounded-full blur-3xl" />
-            <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl" />
-          </div>
+        <div className="hidden lg:block w-1/2 relative overflow-hidden">
+          <img
+            src="/auth-hero.jpg"
+            alt="Authentication Hero"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-dark-950/60 to-transparent z-10" />
+          <div className="absolute inset-0 bg-gradient-to-t from-dark-950/80 via-transparent to-dark-950/20 z-10" />
 
-          <div className="relative z-20">
-            <img
-              src="/logo.png"
-              alt="edify.exposition.lk logo"
-              className="w-48 h-16 object-contain mb-8"
-            />
-            <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-6">
+          <div className="relative z-20 h-full flex flex-col justify-end p-12">
+            <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-6 drop-shadow-lg">
               Connect, Share, <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-blue-400">
+              <span className="text-primary-400">
                 and Inspire.
               </span>
             </h1>
-            <p className="text-xl text-gray-400 max-w-lg">
-              Join a community of thought leaders and writers sharing their knowledge with the world.
+            <p className="text-xs text-gray-500 uppercase tracking-widest opacity-60">
+              Exposition Issue 21 | 2026
             </p>
-          </div>
-
-          <div className="relative z-20 space-y-6">
-            <div className="bg-dark-800/50 backdrop-blur-sm p-6 rounded-xl border border-dark-700 lg:mr-12">
-              <p className="text-lg text-gray-300 italic mb-4">
-                "Edify has completely transformed how I share my technical insights. The community features are unmatched."
-              </p>
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-blue-500 flex items-center justify-center text-white font-bold">
-                  JD
-                </div>
-                <div>
-                  <div className="font-semibold text-white">John Doe</div>
-                  <div className="text-sm text-gray-400">Senior Developer</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-4 text-sm text-gray-500">
-              <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-              <span>•</span>
-              <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-            </div>
           </div>
         </div>
 
@@ -234,6 +203,7 @@ const LoginPage: React.FC = () => {
                     value={formData.password}
                     onChange={handleInputChange}
                     required
+                    minLength={8}
                     className="w-full bg-dark-900 border border-dark-800 rounded-lg px-4 py-3.5 pr-12 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all"
                     placeholder="Enter your password"
                   />

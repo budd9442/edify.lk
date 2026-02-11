@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import ArticleCard from '../components/ArticleCard';
 import Sidebar from '../components/Sidebar';
 import LoadingSpinner from '../components/LoadingSpinner';
-import MediumStyleArticleCard from '../components/MediumStyleArticleCard';
+import ArticleCardMobile from '../components/ArticleCardMobile';
 import { useApp } from '../contexts/AppContext';
 import { articlesService } from '../services/articlesService';
 import supabase from '../services/supabaseClient';
@@ -19,7 +19,6 @@ const HomePage: React.FC = () => {
   const mobileLoadMoreRef = React.useRef<HTMLDivElement>(null);
 
   const [featuredItems, setFeaturedItems] = React.useState<Article[]>([]);
-  const [loadingFeatured, setLoadingFeatured] = React.useState(true);
 
   // Initial load
   useEffect(() => {
@@ -49,7 +48,7 @@ const HomePage: React.FC = () => {
               author: {
                 id: item.authorId,
                 name: p?.name || 'Anonymous',
-                avatar: p?.avatar_url || '/logo.png',
+                avatar: p?.avatar_url,
                 bio: p?.bio || '',
                 followersCount: p?.followers_count ?? 0,
                 articlesCount: p?.articles_count ?? 0,
@@ -62,14 +61,14 @@ const HomePage: React.FC = () => {
               tags: item.tags,
               featured: true,
               status: 'published',
-              coverImage: item.coverImage || '/logo.png',
+              coverImage: item.coverImage,
+              customAuthor: item.customAuthor,
             };
           });
           setFeaturedItems(mappedFeatured);
         } else {
           setFeaturedItems([]);
         }
-        setLoadingFeatured(false);
 
         // Fetch Recent Articles
         const items = await articlesService.listAll(1, 10);
@@ -102,7 +101,7 @@ const HomePage: React.FC = () => {
             author: {
               id: item.authorId,
               name: p?.name || 'Anonymous',
-              avatar: p?.avatar_url || '/logo.png',
+              avatar: p?.avatar_url,
               bio: p?.bio || '',
               followersCount: p?.followers_count ?? 0,
               articlesCount: p?.articles_count ?? 0,
@@ -115,7 +114,8 @@ const HomePage: React.FC = () => {
             tags: item.tags,
             featured: item.featured,
             status: 'published',
-            coverImage: item.coverImage || '/logo.png',
+            coverImage: item.coverImage,
+            customAuthor: item.customAuthor,
           };
         });
         dispatch({ type: 'SET_ARTICLES', payload: mapped });
@@ -169,7 +169,7 @@ const HomePage: React.FC = () => {
           author: {
             id: item.authorId,
             name: p?.name || 'Anonymous',
-            avatar: p?.avatar_url || '/logo.png',
+            avatar: p?.avatar_url,
             bio: p?.bio || '',
             followersCount: p?.followers_count ?? 0,
             articlesCount: p?.articles_count ?? 0,
@@ -182,7 +182,8 @@ const HomePage: React.FC = () => {
           tags: item.tags,
           featured: item.featured,
           status: 'published',
-          coverImage: item.coverImage || '/logo.png',
+          coverImage: item.coverImage,
+          customAuthor: item.customAuthor,
         };
       });
 
@@ -265,9 +266,11 @@ const HomePage: React.FC = () => {
 
         {/* Featured Articles */}
         {featuredArticles.length > 0 ? (
-          featuredArticles.map((article) => (
-            <MediumStyleArticleCard key={article.id} article={article} />
-          ))
+          <div className="px-4">
+            {featuredArticles.map((article, index) => (
+              <ArticleCardMobile key={article.id} article={article} index={index} />
+            ))}
+          </div>
         ) : (
           <div className="text-center py-12 px-4">
             <p className="text-gray-400">No featured articles yet. Check back soon!</p>
@@ -284,10 +287,10 @@ const HomePage: React.FC = () => {
           </h2>
         </div>
 
-        <div className="pb-4">
+        <div className="px-4 pb-4">
           {regularArticles.length > 0 ? (
-            regularArticles.map((article) => (
-              <MediumStyleArticleCard key={article.id} article={article} />
+            regularArticles.map((article, index) => (
+              <ArticleCardMobile key={article.id} article={article} index={index} />
             ))
           ) : (
             <div className="text-center py-12 px-4">
@@ -298,38 +301,10 @@ const HomePage: React.FC = () => {
 
         {/* Mobile Load More Trigger */}
         {(hasMore || loadingMore) && (
-          <div className="py-8 flex justify-center">
+          <div ref={mobileLoadMoreRef} className="py-8 flex justify-center">
             {loadingMore ? (
               <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
             ) : (
-              // We can reuse the same ref if it's attached. 
-              // However, React refs usually attach to one instance. 
-              // Since mobile/desktop are mutually exclusive (display:none), 
-              // we might need separate refs or ensure only one renders.
-              // But usually `md:hidden` just hides it with CSS, node still exists? 
-              // No, usually it's just CSS. If both render, ref might be claimed by last one.
-              // Let's check if we can use a callback ref or different ref.
-              // Actually `loadMoreRef` is attached to a div. If I attach it here too, React might complain or override.
-              // Safe bet: Use a separate ref for mobile or rely on the fact that only one is visible for IntersectionObserver? 
-              // Actually, if I attach `ref={loadMoreRef}` to two elements, current will point to the last one rendered.
-              // Since both exist in DOM (just hidden via class), this is risky.
-              // Let's create `mobileLoadMoreRef` in the component body first? 
-              // Wait, I can't edit component body in this `replace_file_content` call easily without a huge replace.
-              // I'll reuse `loadMoreRef` here. If it fails, I'll refactor. 
-              // Actually, `hidden md:block` means it IS in the DOM. 
-              // The observer checks `isIntersecting`. A hidden element is not intersecting.
-              // So I should probably have TWO refs, one for mobile, one for desktop? 
-              // Or I can just render ONE trigger at the bottom of the page, outside the mobile/desktop split?
-              // The Layout is: Mobile Div, then Desktop Div.
-              // I can put the `loadMoreRef` div OUTSIDE the split if it works for both.
-              // But Mobile View has `pb-20` and structure is different.
-              // I will replace this block without the ref for now, and then move the ref or add a new one in a separate step if needed. 
-              // Actually, I can use the same ref if I ensure the desktop one is NOT rendered when on mobile? 
-              // No, CSS media queries don't stop rendering in React.
-              // I will add a `mobileLoadMoreRef` in a separate step. For now, let's just add the UI.
-              // Wait, user wants it to load more. So I MUST implement the trigger.
-              // I'll assume I can add `mobileLoadMoreRef` logic. 
-              // Let's add the UI first, and I'll add the Ref logic in next step.
               <div className="h-8" />
             )}
           </div>

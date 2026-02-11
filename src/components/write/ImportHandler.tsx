@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, FileText, Download, AlertCircle, CheckCircle } from 'lucide-react';
+import { Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
 import { draftService } from '../../services/draftService';
 
 interface ImportHandlerProps {
@@ -28,7 +28,7 @@ const ImportHandler: React.FC<ImportHandlerProps> = ({ onImportComplete, onClose
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFile(e.dataTransfer.files[0]);
     }
@@ -42,20 +42,21 @@ const ImportHandler: React.FC<ImportHandlerProps> = ({ onImportComplete, onClose
 
   const handleFile = async (file: File) => {
     setError(null);
-    
+
     // Validate file type
     const allowedTypes = [
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
       'application/msword', // .doc
       'text/markdown', // .md
-      'text/plain' // .txt
+      'text/plain', // .txt
+      'application/pdf' // .pdf
     ];
-    
-    const allowedExtensions = ['.docx', '.doc', '.md', '.txt'];
+
+    const allowedExtensions = ['.docx', '.doc', '.md', '.txt', '.pdf'];
     const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
-    
+
     if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
-      setError('Please upload a .docx, .doc, .md, or .txt file');
+      setError('Please upload a .docx, .doc, .md, .txt, or .pdf file');
       return;
     }
 
@@ -66,7 +67,7 @@ const ImportHandler: React.FC<ImportHandlerProps> = ({ onImportComplete, onClose
     }
 
     setImporting(true);
-    
+
     try {
       const result = await draftService.importFromDocument(file);
       onImportComplete(result.contentHtml, result.title);
@@ -104,11 +105,10 @@ const ImportHandler: React.FC<ImportHandlerProps> = ({ onImportComplete, onClose
 
         {/* Upload Area */}
         <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            dragActive 
-              ? 'border-primary-500 bg-primary-900/20' 
-              : 'border-dark-700 hover:border-primary-500/50'
-          }`}
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${dragActive
+            ? 'border-primary-500 bg-primary-900/20'
+            : 'border-dark-700 hover:border-primary-500/50'
+            }`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
@@ -159,6 +159,11 @@ const ImportHandler: React.FC<ImportHandlerProps> = ({ onImportComplete, onClose
               <CheckCircle className="w-4 h-4 text-green-500" />
               <span>Plain Text (.txt)</span>
             </div>
+
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span>PDF (.pdf)</span>
+            </div>
             <div className="flex items-center space-x-2">
               <CheckCircle className="w-4 h-4 text-green-500" />
               <span>Max size: 10MB</span>
@@ -192,7 +197,7 @@ const ImportHandler: React.FC<ImportHandlerProps> = ({ onImportComplete, onClose
         <input
           ref={fileInputRef}
           type="file"
-          accept=".docx,.doc,.md,.txt"
+          accept=".docx,.doc,.md,.txt,.pdf"
           onChange={handleFileInput}
           className="hidden"
         />

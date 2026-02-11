@@ -107,6 +107,7 @@ export const editorService = {
           tags,
           cover_image_url,
           author_id,
+          custom_author,
           comments:comments(count)
         `)
         .eq('status', 'published')
@@ -135,6 +136,7 @@ export const editorService = {
             name: author?.name || 'Unknown Author',
             avatar: author?.avatar_url
           },
+          customAuthor: article.custom_author,
           status: 'published' as const,
           featured: !!article.featured,
           publishedAt: article.published_at,
@@ -221,6 +223,7 @@ export const editorService = {
           created_at,
           updated_at,
           user_id,
+          custom_author,
           quiz_questions_json
         `)
         .eq('status', 'submitted')
@@ -249,6 +252,7 @@ export const editorService = {
           ...draft,
           excerpt: this.extractExcerpt(draft.content_html || ''),
           quiz_questions: draft.quiz_questions_json || [],
+          customAuthor: draft.custom_author,
           author: {
             id: draft.user_id,
             name: author?.name || 'Unknown Author',
@@ -321,6 +325,7 @@ export const editorService = {
         cover_image_url: draft.cover_image_url,
         tags: draft.tags || [],
         author_id: draft.user_id,
+        custom_author: draft.custom_author,
         status: 'published',
         featured: false,
         likes: 0,

@@ -28,6 +28,7 @@ import { articlesService } from '../services/articlesService';
 import { FollowButton } from '../components/follow/FollowButton';
 import BadgeList from '../components/badges/BadgeList'; // Import BadgeList
 import MediumStyleArticleCard from '../components/MediumStyleArticleCard';
+import Avatar from '../components/common/Avatar';
 
 const DEFAULT_COVER_IMAGE = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=60';
 
@@ -123,7 +124,7 @@ const ProfilePage: React.FC = () => {
             author: {
               id: profileUser.id,
               name: profileUser.name,
-              avatar: profileUser.avatar?.url || '/logo.png'
+              avatar: profileUser.avatar?.url
             }
           }));
 
@@ -167,7 +168,7 @@ const ProfilePage: React.FC = () => {
       }
 
       // Skip avatar changes - they are auto-saved immediately
-      console.log('Skipping avatar change check - avatars are auto-saved');
+      //console.log('Skipping avatar change check - avatars are auto-saved');
 
       // Check if social links changed
       const socialLinksChanged =
@@ -183,9 +184,9 @@ const ProfilePage: React.FC = () => {
 
       // Only update if there are changes
       if (Object.keys(updateData).length > 0) {
-        console.log('Updating profile with data:', updateData);
+        //console.log('Updating profile with data:', updateData);
         await profilesService.updateProfile(updateData);
-        console.log('Profile updated successfully');
+        //console.log('Profile updated successfully');
 
         // Update the AuthContext with only the changed fields (excluding avatar - auto-saved)
         const userUpdates: Partial<User> = {};
@@ -195,10 +196,10 @@ const ProfilePage: React.FC = () => {
           userUpdates.socialLinks = editedUser.socialLinks;
         }
 
-        console.log('Updating AuthContext with:', userUpdates);
+        //console.log('Updating AuthContext with:', userUpdates);
         updateUser(userUpdates);
       } else {
-        console.log('No changes detected');
+        //console.log('No changes detected');
       }
 
       setIsEditing(false);
@@ -211,7 +212,7 @@ const ProfilePage: React.FC = () => {
   };
 
   const handleAvatarChange = async (url: string) => {
-    console.log('handleAvatarChange called with URL:', url);
+    //console.log('handleAvatarChange called with URL:', url);
     if (!editedUser) return;
 
     const newEditedUser = {
@@ -228,18 +229,18 @@ const ProfilePage: React.FC = () => {
       }
     };
 
-    console.log('Setting editedUser with new avatar:', newEditedUser.avatar);
+    //console.log('Setting editedUser with new avatar:', newEditedUser.avatar);
     setEditedUser(newEditedUser);
 
     // Auto-save the avatar change immediately
     try {
-      console.log('Auto-saving avatar change...');
+      //console.log('Auto-saving avatar change...');
       await profilesService.updateProfile({ avatar_url: url });
 
       // Update the AuthContext immediately
       updateUser({ avatar: newEditedUser.avatar });
 
-      console.log('Avatar saved successfully!');
+      //console.log('Avatar saved successfully!');
     } catch (error) {
       console.error('Failed to auto-save avatar:', error);
       alert('Failed to save avatar. Please try again.');
@@ -258,13 +259,13 @@ const ProfilePage: React.FC = () => {
 
     // Auto-save the avatar removal immediately
     try {
-      console.log('Auto-saving avatar removal...');
-      await profilesService.updateProfile({ avatar_url: null });
+      //console.log('Auto-saving avatar removal...');
+      await profilesService.updateProfile({ avatar_url: undefined } as any);
 
       // Update the AuthContext immediately
       updateUser({ avatar: undefined });
 
-      console.log('Avatar removed successfully!');
+      //console.log('Avatar removed successfully!');
     } catch (error) {
       console.error('Failed to auto-save avatar removal:', error);
       alert('Failed to remove avatar. Please try again.');
@@ -350,17 +351,11 @@ const ProfilePage: React.FC = () => {
                     </>
                   )
                 ) : (
-                  user.avatar?.url ? (
-                    <img
-                      src={user.avatar.url}
-                      alt={user.name}
-                      className="w-20 h-20 rounded-full object-cover border-2 border-primary-500"
-                    />
-                  ) : (
-                    <div className="w-20 h-20 rounded-full bg-dark-800 border-2 border-dark-700 flex items-center justify-center">
-                      <UserIcon className="w-10 h-10 text-gray-400" />
-                    </div>
-                  )
+                  <Avatar
+                    src={user.avatar?.url}
+                    alt={user.name}
+                    className="w-20 h-20 border-2 border-primary-500"
+                  />
                 )}
               </div>
 
@@ -467,7 +462,6 @@ const ProfilePage: React.FC = () => {
                         }
                       }) : null);
                     }}
-                    className="w-full justify-center"
                   />
                 </div>
               )}
@@ -557,17 +551,11 @@ const ProfilePage: React.FC = () => {
                     )
                   ) : (
                     // Public profile view - show avatar or default icon
-                    user.avatar?.url ? (
-                      <img
-                        src={user.avatar.url}
-                        alt={user.name}
-                        className="w-20 h-20 rounded-full object-cover border-2 border-primary-500"
-                      />
-                    ) : (
-                      <div className="w-20 h-20 rounded-full bg-dark-800 border-2 border-dark-700 flex items-center justify-center">
-                        <UserIcon className="w-10 h-10 text-gray-400" />
-                      </div>
-                    )
+                    <Avatar
+                      src={user.avatar?.url}
+                      alt={user.name}
+                      className="w-20 h-20 border-2 border-primary-500"
+                    />
                   )}
                 </div>
                 <div className="flex-1">

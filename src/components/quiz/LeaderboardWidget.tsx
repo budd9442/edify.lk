@@ -5,13 +5,14 @@ import { Trophy, Crown, Medal, Clock, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useQuiz } from '../../contexts/QuizContext';
 import { quizService } from '../../services/quizService';
+import Avatar from '../common/Avatar';
 
 interface LeaderboardWidgetProps {
   articleId: string;
   limit?: number;
 }
 
-const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ articleId, limit = 10 }) => {
+const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ articleId, limit = 5 }) => {
   const { state, dispatch } = useQuiz();
 
   useEffect(() => {
@@ -60,13 +61,13 @@ const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ articleId, limit 
       className="bg-dark-900 border border-dark-800 rounded-xl overflow-hidden"
     >
       {/* Header */}
-      <div className="bg-gradient-to-r from-yellow-900/20 to-yellow-800/20 border-b border-yellow-800/30 p-4">
+      <div className="bg-gradient-to-r from-primary-900/20 to-primary-800/20 border-b border-primary-800/30 p-4">
         <div className="flex items-center space-x-2">
-          <Trophy className="w-5 h-5 text-yellow-500" />
-          <h3 className="font-bold text-white">First Blood Leaderboard</h3>
+          <Trophy className="w-5 h-5 text-primary-500" />
+          <h3 className="font-bold text-white">Quiz Leaderboard</h3>
         </div>
         <p className="text-xs text-gray-400 mt-1">
-          First 10 users with perfect scores
+          Top 5 fastest perfect scores
         </p>
       </div>
 
@@ -74,7 +75,7 @@ const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ articleId, limit 
       <div className="p-4">
         {state.leaderboard.length > 0 ? (
           <div className="space-y-3">
-            {state.leaderboard.slice(0, 10).map((entry, index) => (
+            {state.leaderboard.map((entry, index) => (
               <motion.div
                 key={entry.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -88,10 +89,10 @@ const LeaderboardWidget: React.FC<LeaderboardWidgetProps> = ({ articleId, limit 
                   </div>
 
                   <Link to={`/profile/${entry.userId}`} className="flex items-center space-x-3 flex-1 min-w-0 group cursor-pointer">
-                    <img
+                    <Avatar
                       src={entry.userAvatar}
                       alt={entry.userName}
-                      className="w-8 h-8 rounded-full ring-2 ring-transparent group-hover:ring-primary-500 transition-all"
+                      className="w-8 h-8 flex-shrink-0 ring-2 ring-transparent group-hover:ring-primary-500 transition-all"
                     />
 
                     <div className="flex-1 min-w-0">

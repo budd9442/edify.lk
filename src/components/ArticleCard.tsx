@@ -23,6 +23,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
   const { showError } = useToast();
   const isLiked = state.likedArticles.includes(article.id);
   const [localLikesCount, setLocalLikesCount] = React.useState(article.likes);
+  //console.log('[CARD DEBUG]', article.title, 'CA:', article.customAuthor);
 
   // Helper to validate image
   const hasValidCover = article.coverImage && article.coverImage !== '/logo.png';
@@ -79,14 +80,23 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
           </Link>
           <div className={`${hasValidCover ? 'absolute bottom-0 left-0 right-0' : 'relative'} p-6 pointer-events-none`}>
             <div className="flex items-center space-x-2 mb-3 pointer-events-auto">
-              <Link to={`/profile/${article.author.id}`} className="flex items-center space-x-2 hover:text-white transition-colors group/author">
-                <Avatar
-                  src={article.author.avatar}
-                  alt={article.author.name}
-                  className="w-8 h-8 ring-2 ring-transparent group-hover/author:ring-primary-500 transition-all"
-                />
-                <span className="text-sm text-gray-300 group-hover/author:text-primary-400">{article.author.name}</span>
-              </Link>
+              {article.customAuthor ? (
+                <span className="flex items-center space-x-2">
+                  <div className="w-8 h-8 rounded-full bg-dark-800 flex items-center justify-center text-xs font-bold text-gray-400 border border-dark-700">
+                    {article.customAuthor.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-sm text-gray-300 font-medium">{article.customAuthor}</span>
+                </span>
+              ) : (
+                <Link to={`/profile/${article.author.id}`} className="flex items-center space-x-2 hover:text-white transition-colors group/author">
+                  <Avatar
+                    src={article.author.avatar}
+                    alt={article.author.name}
+                    className="w-8 h-8 ring-2 ring-transparent group-hover/author:ring-primary-500 transition-all"
+                  />
+                  <span className="text-sm text-gray-300 group-hover/author:text-primary-400">{article.author.name}</span>
+                </Link>
+              )}
               <span className="text-gray-500">•</span>
               <span className="text-sm text-gray-400">
                 {formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true })}
@@ -156,14 +166,23 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
         )}
         <div className="order-2 sm:order-1 flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-3">
-            <Link to={`/profile/${article.author.id}`} className="flex items-center space-x-2 hover:text-white transition-colors group/author">
-              <Avatar
-                src={article.author.avatar}
-                alt={article.author.name}
-                className="w-6 h-6 ring-2 ring-transparent group-hover/author:ring-primary-500 transition-all flex-shrink-0"
-              />
-              <span className="text-sm text-gray-300 group-hover/author:text-primary-400">{article.author.name}</span>
-            </Link>
+            {article.customAuthor ? (
+              <span className="flex items-center space-x-2">
+                <div className="w-6 h-6 rounded-full bg-dark-800 flex items-center justify-center text-[10px] font-bold text-gray-400 border border-dark-700">
+                  {article.customAuthor.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-sm text-gray-300 font-medium">{article.customAuthor}</span>
+              </span>
+            ) : (
+              <Link to={`/profile/${article.author.id}`} className="flex items-center space-x-2 hover:text-white transition-colors group/author">
+                <Avatar
+                  src={article.author.avatar}
+                  alt={article.author.name}
+                  className="w-6 h-6 ring-2 ring-transparent group-hover/author:ring-primary-500 transition-all flex-shrink-0"
+                />
+                <span className="text-sm text-gray-300 group-hover/author:text-primary-400">{article.author.name}</span>
+              </Link>
+            )}
             <span className="text-gray-500">•</span>
             <span className="text-sm text-gray-400">
               {formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true })}

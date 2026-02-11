@@ -79,12 +79,23 @@ const MediumStyleArticleCard: React.FC<MediumStyleArticleCardProps> = ({ article
 
                 {/* Author & Meta */}
                 <div className="flex items-center gap-2 mb-2">
-                    <Avatar
-                        src={article.author.avatar}
-                        alt={article.author.name}
-                        className="w-5 h-5"
-                    />
-                    <span className="text-sm text-gray-400 truncate">{article.author.name}</span>
+                    {article.customAuthor ? (
+                        <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 rounded-full bg-dark-800 flex items-center justify-center text-[10px] font-bold text-gray-400 border border-dark-700">
+                                {article.customAuthor.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-sm text-gray-400 truncate font-medium">{article.customAuthor}</span>
+                        </div>
+                    ) : (
+                        <>
+                            <Avatar
+                                src={article.author.avatar}
+                                alt={article.author.name}
+                                className="w-5 h-5"
+                            />
+                            <span className="text-sm text-gray-400 truncate">{article.author.name}</span>
+                        </>
+                    )}
                 </div>
 
                 {/* Bottom Row: Date + Reading Time + Actions */}

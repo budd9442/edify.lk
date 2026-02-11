@@ -6,6 +6,7 @@ import { useApp } from '../contexts/AppContext';
 import supabase from '../services/supabaseClient';
 import { FollowButton } from './follow/FollowButton';
 import { useAuth } from '../contexts/AuthContext';
+import Avatar from './common/Avatar';
 
 const Sidebar: React.FC = () => {
   const { state, dispatch } = useApp();
@@ -68,7 +69,7 @@ const Sidebar: React.FC = () => {
           .map((p: any) => ({
             id: p.id,
             name: p.name,
-            avatar: p.avatar_url || '/logo.png',
+            avatar: p.avatar_url,
             followersCount: p.followers_count ?? 0,
           }));
         setTopAuthors(ordered);
@@ -134,10 +135,10 @@ const Sidebar: React.FC = () => {
                   to={`/profile/${user.id}`}
                   className="flex items-center space-x-3 group cursor-pointer"
                 >
-                  <img
+                  <Avatar
                     src={user.avatar}
                     alt={user.name}
-                    className="w-10 h-10 rounded-full ring-2 ring-transparent group-hover:ring-primary-500 transition-all"
+                    className="w-10 h-10 ring-2 ring-transparent group-hover:ring-primary-500 transition-all flex-shrink-0"
                   />
                   <div>
                     <h4 className="text-sm font-medium text-white group-hover:text-primary-400 transition-colors">

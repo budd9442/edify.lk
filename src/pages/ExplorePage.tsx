@@ -71,7 +71,7 @@ const ExplorePage: React.FC = () => {
               author: {
                 id: item.authorId,
                 name: p?.name || 'Anonymous',
-                avatar: p?.avatar_url || '/logo.png',
+                avatar: p?.avatar_url,
                 bio: p?.bio || '',
                 followersCount: p?.followers_count ?? 0,
                 articlesCount: p?.articles_count ?? 0,
@@ -84,7 +84,8 @@ const ExplorePage: React.FC = () => {
               tags: item.tags,
               featured: item.featured,
               status: 'published',
-              coverImage: item.coverImage || '/logo.png',
+              coverImage: item.coverImage,
+              customAuthor: item.customAuthor,
             };
           });
           setArticles(mapped);
@@ -151,7 +152,7 @@ const ExplorePage: React.FC = () => {
         setTopAuthors(authorsDetailed.map((p: any) => ({
           id: p.id,
           name: p.name,
-          avatar: p.avatar_url || '/logo.png',
+          avatar: p.avatar_url,
           bio: p.bio || '',
           followersCount: p.followers_count ?? 0,
           articlesCount: p._publishedCount ?? (authorCounts.get(p.id) || 0),

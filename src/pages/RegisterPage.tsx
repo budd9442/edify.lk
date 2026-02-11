@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
+
 import { useNavigate, Link } from "react-router-dom";
 import { ArrowRight, Eye, EyeOff, User, Mail, Lock } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
@@ -12,6 +12,7 @@ const RegisterPage: React.FC = () => {
     password: "",
     bio: "",
   });
+  const [localError, setLocalError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { register, state } = useAuth();
@@ -24,6 +25,27 @@ const RegisterPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLocalError(null);
+
+    // Password Validation
+    const password = formData.password;
+    if (password.length < 8) {
+      setLocalError("Password must be at least 8 characters long");
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      setLocalError("Password must contain at least one uppercase letter");
+      return;
+    }
+    if (!/[a-z]/.test(password)) {
+      setLocalError("Password must contain at least one lowercase letter");
+      return;
+    }
+    if (!/[0-9]/.test(password) && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      setLocalError("Password must contain at least one number or special character");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -47,23 +69,17 @@ const RegisterPage: React.FC = () => {
         <div className="w-full max-w-sm mx-auto space-y-8">
           {/* Header */}
           <div className="text-center space-y-4">
-            <div className="flex justify-center">
-              <img
-                src="/logo.png"
-                alt="edify.exposition.lk logo"
-                className="h-12 object-contain brightness-110 drop-shadow-[0_0_15px_rgba(172,131,79,0.3)]"
-              />
-            </div>
+
             <h1 className="text-2xl font-bold text-white tracking-tight">
               Create Account
             </h1>
           </div>
 
           {/* Error Message */}
-          {state.error && (
+          {(state.error || localError) && (
             <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-3">
               <div className="w-1.5 h-1.5 bg-red-500 rounded-full shrink-0" />
-              <p className="text-red-400 text-xs font-medium">{state.error}</p>
+              <p className="text-red-400 text-xs font-medium">{localError || state.error}</p>
             </div>
           )}
 
@@ -71,7 +87,7 @@ const RegisterPage: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <label htmlFor="name_mobile" className="text-xs font-medium text-primary-500 uppercase tracking-wider ml-1">
-                Full Name
+                Name
               </label>
               <div className="relative">
                 <input
@@ -82,7 +98,7 @@ const RegisterPage: React.FC = () => {
                   onChange={handleInputChange}
                   required
                   className="w-full bg-dark-900/50 border border-dark-800 rounded-xl px-4 py-3.5 text-white placeholder-dark-500 focus:outline-none focus:ring-1 focus:ring-primary-500/50 focus:border-primary-500 transition-all shadow-inner"
-                  placeholder="Enter your full name"
+                  placeholder="Enter your name"
                 />
               </div>
             </div>
@@ -117,7 +133,7 @@ const RegisterPage: React.FC = () => {
                   value={formData.password}
                   onChange={handleInputChange}
                   required
-                  minLength={6}
+                  minLength={8}
                   className="w-full bg-dark-900/50 border border-dark-800 rounded-xl px-4 py-3.5 pr-12 text-white placeholder-dark-500 focus:outline-none focus:ring-1 focus:ring-primary-500/50 focus:border-primary-500 transition-all shadow-inner"
                   placeholder="Create password"
                 />
@@ -154,9 +170,8 @@ const RegisterPage: React.FC = () => {
                 Sign In
               </Link>
             </p>
-
-            <p className="text-[10px] text-dark-500 leading-tight px-4 opacity-50">
-              By joining, you agree to our Terms of Service and Privacy Policy.
+            <p className="mt-4 text-[10px] text-dark-500 text-center opacity-50 uppercase tracking-widest">
+              Exposition Issue 21 | 2026
             </p>
           </div>
         </div>
@@ -164,50 +179,25 @@ const RegisterPage: React.FC = () => {
 
       {/* Desktop View - Split Screen */}
       <div className="hidden md:flex min-h-screen">
-        {/* Left Side - Hero/Branding */}
-        <div className="w-1/2 bg-dark-900 relative overflow-hidden flex flex-col justify-between p-12">
-          <div className="absolute inset-0 z-0">
-            <div className="absolute inset-0 bg-gradient-to-bl from-blue-900/20 to-dark-900 z-10" />
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent" />
-            {/* Abstract decorative elements */}
-            <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl" />
-            <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-primary-600/10 rounded-full blur-3xl" />
-          </div>
+        <div className="hidden lg:block w-1/2 relative overflow-hidden">
+          <img
+            src="/auth-hero.jpg"
+            alt="Authentication Hero"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-dark-950/60 to-transparent z-10" />
+          <div className="absolute inset-0 bg-gradient-to-t from-dark-950/80 via-transparent to-dark-950/20 z-10" />
 
-          <div className="relative z-20">
-            <img
-              src="/logo.png"
-              alt="edify.exposition.lk logo"
-              className="w-48 h-16 object-contain mb-8"
-            />
-            <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-6">
+          <div className="relative z-20 h-full flex flex-col justify-end p-12">
+            <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-6 drop-shadow-lg">
               Start Your <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+              <span className="text-primary-400">
                 Writing Journey.
               </span>
             </h1>
-            <p className="text-xl text-gray-400 max-w-lg">
-              Create your portfolio, build an audience, and establish your voice in the tech community.
+            <p className="text-xs text-gray-500 uppercase tracking-widest opacity-60">
+              Exposition Issue 21 | 2026
             </p>
-          </div>
-
-          <div className="relative z-20 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-dark-800/50 backdrop-blur-sm p-4 rounded-xl border border-dark-700">
-                <div className="text-2xl font-bold text-white mb-1">5K+</div>
-                <div className="text-sm text-gray-400">Active Writers</div>
-              </div>
-              <div className="bg-dark-800/50 backdrop-blur-sm p-4 rounded-xl border border-dark-700">
-                <div className="text-2xl font-bold text-white mb-1">1M+</div>
-                <div className="text-sm text-gray-400">Monthly Readers</div>
-              </div>
-            </div>
-
-            <div className="flex gap-4 text-sm text-gray-500">
-              <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-              <span>•</span>
-              <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-            </div>
           </div>
         </div>
 
@@ -219,17 +209,17 @@ const RegisterPage: React.FC = () => {
               <p className="text-gray-400">Enter your details to get started.</p>
             </div>
 
-            {state.error && (
+            {(state.error || localError) && (
               <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-3">
                 <div className="w-2 h-2 bg-red-500 rounded-full" />
-                <p className="text-red-400 text-sm">{state.error}</p>
+                <p className="text-red-400 text-sm">{localError || state.error}</p>
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="name_desktop" className="block text-sm font-medium text-gray-300 mb-2">
-                  Full Name
+                  Name
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
@@ -241,7 +231,7 @@ const RegisterPage: React.FC = () => {
                     onChange={handleInputChange}
                     required
                     className="w-full bg-dark-900 border border-dark-800 rounded-lg pl-10 pr-4 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all"
-                    placeholder="Enter your full name"
+                    placeholder="Enter your name"
                   />
                 </div>
               </div>
@@ -278,9 +268,9 @@ const RegisterPage: React.FC = () => {
                     value={formData.password}
                     onChange={handleInputChange}
                     required
-                    minLength={6}
+                    minLength={8}
                     className="w-full bg-dark-900 border border-dark-800 rounded-lg pl-10 pr-12 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all"
-                    placeholder="Create a password (min 6 characters)"
+                    placeholder="Create a password (min 8 characters)"
                   />
                   <button
                     type="button"
@@ -336,25 +326,7 @@ const RegisterPage: React.FC = () => {
               </p>
             </div>
 
-            {/* Terms Desktop */}
-            <div className="mt-6 text-center">
-              <p className="text-xs text-gray-500">
-                By creating an account, you agree to our{" "}
-                <a
-                  href="#"
-                  className="text-primary-400 hover:text-primary-300 transition-colors"
-                >
-                  Terms of Service
-                </a>{" "}
-                and{" "}
-                <a
-                  href="#"
-                  className="text-primary-400 hover:text-primary-300 transition-colors"
-                >
-                  Privacy Policy
-                </a>
-              </p>
-            </div>
+
           </div>
         </div>
       </div>

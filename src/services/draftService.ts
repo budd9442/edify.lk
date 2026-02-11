@@ -1,8 +1,14 @@
 import { marked } from 'marked';
 import mammoth from 'mammoth';
 import supabase from './supabaseClient';
-import { withTimeout, safeQuery } from './supabaseUtils';
+import { safeQuery } from './supabaseUtils';
 import { Draft } from '../types/payload';
+import * as pdfjsLib from 'pdfjs-dist';
+// @ts-ignore
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 class DraftService {
   private extractMetricsFromHtml(html: string) {
@@ -29,7 +35,7 @@ class DraftService {
     const { data, error } = await safeQuery('drafts/list', () =>
       supabase
         .from('drafts')
-        .select('id,title,content_html,cover_image_url,tags,status,created_at,updated_at,quiz_questions_json')
+        .select('id,title,content_html,cover_image_url,tags,status,created_at,updated_at,quiz_questions_json,custom_author')
         .eq('user_id', userId)
         .order('updated_at', { ascending: false })
         .then((res: any) => {
@@ -48,6 +54,7 @@ class DraftService {
         coverImage: row.cover_image_url || undefined,
         tags: row.tags || [],
         status: row.status || 'draft',
+        customAuthor: row.custom_author || undefined,
         createdAt: row.created_at || new Date().toISOString(),
         updatedAt: row.updated_at || new Date().toISOString(),
         wordCount: metrics.wordCount,
@@ -63,7 +70,7 @@ class DraftService {
     const { data, error } = await safeQuery('drafts/get', () =>
       supabase
         .from('drafts')
-        .select('id,title,content_html,cover_image_url,tags,status,created_at,updated_at,quiz_questions_json')
+        .select('id,title,content_html,cover_image_url,tags,status,created_at,updated_at,quiz_questions_json,custom_author')
         .eq('id', id)
         .single()
         .then((res: any) => {
@@ -84,6 +91,7 @@ class DraftService {
       coverImage: (data as any).cover_image_url || undefined,
       tags: (data as any).tags || [],
       status: (data as any).status || 'draft',
+      customAuthor: (data as any).custom_author || undefined,
       createdAt: (data as any).created_at || new Date().toISOString(),
       updatedAt: (data as any).updated_at || new Date().toISOString(),
       wordCount: metrics.wordCount,
@@ -101,6 +109,7 @@ class DraftService {
       cover_image_url: draft.coverImage || null,
       tags: draft.tags || [],
       status: draft.status || 'draft',
+      custom_author: draft.customAuthor || null,
       // Optional: persist quiz questions if column exists
       quiz_questions_json: (draft as any).quizQuestions ?? undefined,
     };
@@ -146,6 +155,7 @@ class DraftService {
       coverImage: saved.cover_image_url || undefined,
       tags: saved.tags || [],
       status: saved.status || 'draft',
+      customAuthor: saved.custom_author || undefined,
       createdAt: saved.created_at || new Date().toISOString(),
       updatedAt: saved.updated_at || new Date().toISOString(),
       wordCount: metrics.wordCount,
@@ -162,31 +172,41 @@ class DraftService {
   }
 
   async deleteDraftAndArticle(draftId: string, userId: string, title: string): Promise<boolean> {
-    console.log('Attempting to delete draft and associated article:', title);
+    // 1. Try to find the article
+    // We try ID first (for articles linked by ID), then author+title (for legacy articles)
+    let articleIdToDelete: string | null = null;
 
-    // 1. Try to find and delete the published article first
-    // Since we don't store article_id on drafts, we fuzzy match by author and title
-    // This is a best-effort approach given current schema limitations
-    const { data: article } = await supabase
-      .from('articles')
-      .select('id')
-      .eq('author_id', userId)
-      .eq('title', title)
-      .maybeSingle();
+    const { data: byId } = await supabase.from('articles').select('id').eq('id', draftId).maybeSingle();
+    if (byId) {
+      articleIdToDelete = byId.id;
+    } else {
+      const { data: byFuzzy } = await supabase
+        .from('articles')
+        .select('id')
+        .eq('author_id', userId)
+        .eq('title', title)
+        .maybeSingle();
+      if (byFuzzy) articleIdToDelete = byFuzzy.id;
+    }
 
-    if (article) {
-      console.log('Found associated article, deleting:', article.id);
+    if (articleIdToDelete) {
+      // Delete associated quizzes first
+      await supabase.from('quizzes').delete().eq('article_id', articleIdToDelete);
+
+      // Delete associated likes
+      await supabase.from('likes').delete().eq('article_id', articleIdToDelete);
+
+      // Delete associated comments
+      await supabase.from('comments').delete().eq('article_id', articleIdToDelete);
+
       const { error: articleError } = await supabase
         .from('articles')
         .delete()
-        .eq('id', article.id);
+        .eq('id', articleIdToDelete);
 
       if (articleError) {
         console.error('Failed to delete associated article:', articleError);
-        // Continue to delete draft anyway, but log error
       }
-    } else {
-      console.log('No associated published article found for this draft');
     }
 
     // 2. Delete the draft
@@ -205,7 +225,7 @@ class DraftService {
   async getSubmittedDrafts(): Promise<Draft[]> {
     const { data, error } = await supabase
       .from('drafts')
-      .select('id,title,content_html,cover_image_url,tags,status,created_at,updated_at,user_id')
+      .select('id,title,content_html,cover_image_url,tags,status,created_at,updated_at,user_id,custom_author')
       .in('status', ['submitted', 'published', 'rejected'])
       .order('updated_at', { ascending: false });
     if (error) throw error;
@@ -219,6 +239,7 @@ class DraftService {
         coverImage: row.cover_image_url || undefined,
         tags: row.tags || [],
         status: row.status || 'draft',
+        customAuthor: row.custom_author || undefined,
         createdAt: row.created_at || new Date().toISOString(),
         updatedAt: row.updated_at || new Date().toISOString(),
         wordCount: metrics.wordCount,
@@ -228,7 +249,7 @@ class DraftService {
   }
 
   async approveDraft(id: string): Promise<boolean> {
-    console.log('Approving draft:', id);
+    //console.log('Approving draft:', id);
 
     // Get the draft first
     const { data: draft, error: fetchError } = await supabase
@@ -243,7 +264,7 @@ class DraftService {
     }
     if (!draft) throw new Error('Draft not found');
 
-    console.log('Draft found:', draft.title);
+    //console.log('Draft found:', draft.title);
 
     // Validate title is not empty
     if (!draft.title || draft.title.trim().length === 0) {
@@ -260,7 +281,7 @@ class DraftService {
 
     // Create article from draft
     const articleData = {
-      id: crypto.randomUUID(),
+      id: draft.id, // Use draft ID as article ID for direct linking
       title: draft.title,
       slug: slug,
       excerpt: this.extractExcerpt(draft.content_html || ''),
@@ -268,6 +289,7 @@ class DraftService {
       cover_image_url: draft.cover_image_url,
       tags: draft.tags || [],
       author_id: draft.user_id,
+      custom_author: draft.custom_author,
       status: 'published',
       featured: false,
       likes: 0,
@@ -276,7 +298,7 @@ class DraftService {
       updated_at: new Date().toISOString()
     };
 
-    console.log('Inserting article:', articleData.title);
+    //console.log('Inserting article:', articleData.title);
 
     const { error: articleError } = await supabase
       .from('articles')
@@ -287,7 +309,7 @@ class DraftService {
       throw articleError;
     }
 
-    console.log('Article inserted successfully');
+    //console.log('Article inserted successfully');
 
     // If the draft has quiz questions, attempt to create a quiz for this article
     try {
@@ -308,7 +330,7 @@ class DraftService {
         if (quizError) {
           console.warn('Quiz creation failed (non-fatal):', quizError);
         } else {
-          console.log('Quiz created for article');
+          //console.log('Quiz created for article');
         }
       }
     } catch (qerr) {
@@ -326,7 +348,7 @@ class DraftService {
       throw updateError;
     }
 
-    console.log('Draft status updated to published');
+    //console.log('Draft status updated to published');
     return true;
   }
 
@@ -385,6 +407,11 @@ class DraftService {
           contentHtml = this.convertTextToHtml(docText);
           break;
 
+        case '.pdf':
+          const pdfText = await this.parsePdf(file);
+          contentHtml = this.convertTextToHtml(pdfText);
+          break;
+
         default:
           throw new Error(`Unsupported file format: ${fileExtension}`);
       }
@@ -421,6 +448,27 @@ class DraftService {
       .filter(paragraph => paragraph.length > 0)
       .map(paragraph => `<p>${paragraph.replace(/\n/g, '<br>')}</p>`)
       .join('');
+  }
+  private async parsePdf(file: File): Promise<string> {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = '';
+
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+        fullText += pageText + '\n\n';
+      }
+
+      return fullText;
+    } catch (error) {
+      console.error('PDF parsing error:', error);
+      throw new Error('Failed to parse PDF file');
+    }
   }
 }
 

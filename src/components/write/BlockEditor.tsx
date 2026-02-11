@@ -1,21 +1,17 @@
 import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Bold, 
-  Italic, 
-  Code, 
-  Quote, 
-  List, 
-  ListOrdered, 
-  Heading1, 
-  Heading2, 
-  Heading3,
-  Image,
-  Link,
+import {
+  Code,
+  Quote,
+  List,
+  Heading1,
+  Heading2,
   Type
 } from 'lucide-react';
 import { StrapiBlock, StrapiTextNode } from '../../types/payload';
-import { StrapiBlockUtils } from '../../services/strapiBlockUtils';
+
+const isTextNode = (node: any): node is StrapiTextNode => 'text' in node;
+const isBlockNode = (node: any): node is StrapiBlock => 'children' in node;
 
 interface BlockEditorProps {
   content: StrapiBlock[];
@@ -23,13 +19,12 @@ interface BlockEditorProps {
   placeholder?: string;
 }
 
-const BlockEditor: React.FC<BlockEditorProps> = ({ 
-  content, 
-  onChange, 
-  placeholder = "Start writing your article..." 
+const BlockEditor: React.FC<BlockEditorProps> = ({
+  content,
+  onChange,
+  placeholder = "Start writing your article..."
 }) => {
   const [selectedBlockIndex, setSelectedBlockIndex] = useState<number | null>(null);
-  const [showToolbar, setShowToolbar] = useState(false);
 
   const addBlock = useCallback((type: StrapiBlock['type'], index?: number) => {
     const newBlock: StrapiBlock = {
@@ -61,10 +56,11 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
   }, [content, onChange]);
 
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+    const firstChild = content[index].children[0];
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       addBlock('paragraph', index);
-    } else if (e.key === 'Backspace' && content[index].children[0]?.text === '') {
+    } else if (e.key === 'Backspace' && isTextNode(firstChild) && firstChild.text === '') {
       e.preventDefault();
       deleteBlock(index);
     }
@@ -72,7 +68,7 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
 
   const renderBlock = (block: StrapiBlock, index: number) => {
     const isSelected = selectedBlockIndex === index;
-    
+
     return (
       <motion.div
         key={index}
@@ -154,7 +150,8 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
   };
 
   const renderBlockContent = (block: StrapiBlock, index: number) => {
-    const textContent = block.children[0]?.text || '';
+    const firstChild = block.children[0];
+    const textContent = isTextNode(firstChild) ? firstChild.text : '';
 
     const handleTextChange = (newText: string) => {
       const updatedBlock = {
@@ -168,11 +165,10 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
       case 'heading':
         const HeadingTag = `h${block.level || 2}` as keyof JSX.IntrinsicElements;
         return (
-          <HeadingTag className={`font-bold text-white ${
-            block.level === 1 ? 'text-3xl' : 
-            block.level === 2 ? 'text-2xl' : 
-            block.level === 3 ? 'text-xl' : 'text-lg'
-          }`}>
+          <HeadingTag className={`font-bold text-white ${block.level === 1 ? 'text-3xl' :
+            block.level === 2 ? 'text-2xl' :
+              block.level === 3 ? 'text-xl' : 'text-lg'
+            }`}>
             <input
               type="text"
               value={textContent}
@@ -214,27 +210,32 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
       case 'list':
         return (
           <div className="space-y-2">
-            {block.children.map((item, itemIndex) => (
-              <div key={itemIndex} className="flex items-start space-x-2">
-                <span className="text-gray-400 mt-1">
-                  {block.format === 'ordered' ? `${itemIndex + 1}.` : '•'}
-                </span>
-                <input
-                  type="text"
-                  value={item.children?.[0]?.text || ''}
-                  onChange={(e) => {
-                    const newChildren = [...block.children];
-                    newChildren[itemIndex] = {
-                      type: 'list-item',
-                      children: [{ text: e.target.value }]
-                    };
-                    updateBlock(index, { ...block, children: newChildren });
-                  }}
-                  className="flex-1 bg-transparent border-none outline-none text-gray-300"
-                  placeholder="List item..."
-                />
-              </div>
-            ))}
+            {block.children.map((item: StrapiTextNode | StrapiBlock, itemIndex: number) => {
+              if (!isBlockNode(item)) return null;
+              const subChild = item.children?.[0];
+              const subText = isTextNode(subChild) ? subChild.text : '';
+              return (
+                <div key={itemIndex} className="flex items-start space-x-2">
+                  <span className="text-gray-400 mt-1">
+                    {block.format === 'ordered' ? `${itemIndex + 1}.` : '•'}
+                  </span>
+                  <input
+                    type="text"
+                    value={subText}
+                    onChange={(e) => {
+                      const newChildren = [...block.children];
+                      newChildren[itemIndex] = {
+                        type: 'list-item',
+                        children: [{ text: e.target.value }]
+                      } as StrapiBlock;
+                      updateBlock(index, { ...block, children: newChildren });
+                    }}
+                    className="flex-1 bg-transparent border-none outline-none text-gray-300"
+                    placeholder="List item..."
+                  />
+                </div>
+              );
+            })}
           </div>
         );
 
@@ -261,7 +262,7 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
   return (
     <div className="space-y-4">
       {content.map((block, index) => renderBlock(block, index))}
-      
+
       {/* Add first block button */}
       {content.length === 0 && (
         <button

@@ -57,6 +57,8 @@ const WriteDashboard: React.FC = () => {
   }, [currentDraft?.tags]);
 
   // Revalidate on route focus/popstate and window focus
+  // Removed aggressive window focus revalidation to prevent spam
+  /*
   useEffect(() => {
     const onFocus = () => {
       if (location.pathname === '/write') {
@@ -66,6 +68,7 @@ const WriteDashboard: React.FC = () => {
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, [location.pathname]);
+  */
 
   useEffect(() => {
     // React Router updates location.key on back/forward
@@ -107,7 +110,6 @@ const WriteDashboard: React.FC = () => {
   const loadDrafts = async () => {
     if (loadInFlightRef.current) return;
     loadInFlightRef.current = true;
-    console.log('[WriteDashboard] Loading drafts...');
     setLoading(true);
     try {
       if (!authState.isAuthenticated || !authState.user?.id) {
@@ -121,7 +123,6 @@ const WriteDashboard: React.FC = () => {
       showError('Failed to load drafts');
     } finally {
       loadInFlightRef.current = false;
-      console.log('[WriteDashboard] Loading drafts complete');
       setLoading(false);
     }
   };
@@ -149,12 +150,18 @@ const WriteDashboard: React.FC = () => {
     setActiveView('editor');
   };
 
-  const handleOrganizeWithAI = async () => {
-    if (!currentDraft?.contentHtml) return;
+  const handleAiOrganize = async (prompt: string) => {
+    //console.log('[WriteDashboard] handleAiOrganize called. Prompt:', prompt);
+    if (!currentDraft?.contentHtml) {
+      console.warn('[WriteDashboard] contentHtml is missing');
+      return;
+    }
 
     setOrganizingWithAI(true);
     try {
-      const result = await organizeContentWithAI(currentDraft.contentHtml);
+      //console.log('[WriteDashboard] Calling organizeContentWithAI...');
+      const result = await organizeContentWithAI(currentDraft.contentHtml, prompt);
+      //console.log('[WriteDashboard] organizeContentWithAI completed. Result tags:', result.suggestedTags);
 
       // Update content with optimized HTML
       const updatedDraft = {
@@ -172,7 +179,7 @@ const WriteDashboard: React.FC = () => {
 
       setCurrentDraft(updatedDraft);
     } catch (error) {
-      console.error('AI organization failed:', error);
+      console.error('[WriteDashboard] AI organization failed:', error);
       showError('Failed to organize with AI. Please try again.');
     } finally {
       setOrganizingWithAI(false);
@@ -260,17 +267,20 @@ const WriteDashboard: React.FC = () => {
     setSaveError(null);
     try {
       const wasNew = !currentDraft.id;
+      //console.log('[WRITE DEBUG] saving draft with CA:', currentDraft.customAuthor);
       const savedDraft = await draftService.saveDraft({
         id: currentDraft.id,
         title: currentDraft.title || 'Untitled', // Default title if only content is present
         contentHtml: currentDraft.contentHtml || '',
         coverImage: currentDraft.coverImage,
         tags: currentDraft.tags || [],
+        customAuthor: currentDraft.customAuthor,
         status: 'draft',
         userId: authState.user?.id,
         // include quiz questions so they persist
         quizQuestions: (currentDraft as any).quizQuestions || []
       });
+      //console.log('[WRITE DEBUG] saved draft response CA:', savedDraft.customAuthor);
 
       setDrafts(prev => {
         const existing = prev.find(d => d.id === savedDraft.id);
@@ -362,6 +372,7 @@ const WriteDashboard: React.FC = () => {
         contentHtml: currentDraft.contentHtml || '',
         coverImage: currentDraft.coverImage,
         tags: currentDraft.tags || [],
+        customAuthor: currentDraft.customAuthor,
         status: 'draft', // Keep as draft initially during save
         userId: authState.user.id,
         quizQuestions: (currentDraft as any).quizQuestions || []
@@ -426,13 +437,13 @@ const WriteDashboard: React.FC = () => {
 
           {activeView === 'editor' && currentDraft && (
             <EditorView
-              currentDraft={currentDraft}
+              currentDraft={currentDraft as Draft}
               onChange={(updates) => setCurrentDraft(prev => ({ ...prev!, ...updates }))}
               onSave={handleSaveDraft}
               onSubmit={handleSubmitForReview}
               onPreview={() => setActiveView('preview')}
               onBack={() => setActiveView('options')}
-              onOrganize={handleOrganizeWithAI}
+              onOrganize={handleAiOrganize}
               organizingWithAI={organizingWithAI}
               saving={saving}
               autoSavedAt={autoSavedAt}
@@ -444,14 +455,16 @@ const WriteDashboard: React.FC = () => {
 
           {activeView === 'preview' && currentDraft && (
             <PreviewView
-              currentDraft={currentDraft}
+              currentDraft={currentDraft as Draft}
               onBack={() => setActiveView('options')}
               onEdit={() => setActiveView('editor')}
-              onOrganize={handleOrganizeWithAI}
+              onOrganize={() => handleAiOrganize('')}
               organizingWithAI={organizingWithAI}
             />
           )}
         </AnimatePresence>
+
+
 
         {/* Import Modal */}
         <AnimatePresence>

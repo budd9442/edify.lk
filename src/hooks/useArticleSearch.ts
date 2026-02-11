@@ -108,7 +108,7 @@ export const useArticleSearch = () => {
                         author: {
                             id: item.authorId,
                             name: p?.name || 'Anonymous',
-                            avatar: p?.avatar_url || '/logo.png',
+                            avatar: p?.avatar_url || null,
                             bio: p?.bio || '',
                             followersCount: p?.followers_count ?? 0,
                             articlesCount: p?.articles_count ?? 0,
@@ -121,7 +121,7 @@ export const useArticleSearch = () => {
                         tags: item.tags || [],
                         featured: item.featured,
                         status: 'published',
-                        coverImage: item.coverImage || '/logo.png',
+                        coverImage: item.coverImage || null,
                     };
                 });
                 setArticles(mapped);
@@ -134,12 +134,14 @@ export const useArticleSearch = () => {
         loadArticles();
     }, []);
 
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
     // Perform Search
     useEffect(() => {
         if (isLoading) return;
 
-        // If no query, we don't use searchResults (handled by useMemo below)
-        if (!query.trim()) {
+        // If no query and no tags, we don't use searchResults (handled by useMemo below)
+        if (!query.trim() && selectedTags.length === 0) {
             setIsSearching(false);
             return;
         }
@@ -148,7 +150,18 @@ export const useArticleSearch = () => {
         const timeout = setTimeout(() => {
             let res: any[] = [];
             if (searchType === 'articles') {
-                res = fuseArticles.search(query).map(r => r.item);
+                // If there's a query, use fuse. If not, start with all articles.
+                let baseArticles = query.trim()
+                    ? fuseArticles.search(query).map(r => r.item)
+                    : articles;
+
+                // Then filter by selected tags
+                if (selectedTags.length > 0) {
+                    baseArticles = baseArticles.filter(article =>
+                        selectedTags.every(tag => article.tags.includes(tag))
+                    );
+                }
+                res = baseArticles;
             } else if (searchType === 'authors') {
                 res = fuseAuthors.search(query).map(r => r.item);
             } else if (searchType === 'tags') {
@@ -160,12 +173,12 @@ export const useArticleSearch = () => {
         }, 300);
 
         return () => clearTimeout(timeout);
-    }, [query, searchType, articles, authors, tags, fuseArticles, fuseAuthors, fuseTags, isLoading]);
+    }, [query, searchType, articles, authors, tags, fuseArticles, fuseAuthors, fuseTags, isLoading, selectedTags]);
 
     // Compute Final Results
     // This logic ensures 'results' always matches 'searchType', preventing type mismatches during transitions.
     const results = useMemo(() => {
-        if (!query.trim()) {
+        if (!query.trim() && selectedTags.length === 0) {
             switch (searchType) {
                 case 'authors': return authors;
                 case 'tags': return tags;
@@ -173,14 +186,14 @@ export const useArticleSearch = () => {
             }
         }
 
-        // If we have a query, but the search results are for a different type (stale), return empty
+        // If we have a query/tags, but the search results are for a different type (stale), return empty
         // This avoids passing Article[] to a component expecting Author[]
         if (searchResultsType !== searchType) {
             return [];
         }
 
         return searchResults;
-    }, [query, searchType, articles, authors, tags, searchResults, searchResultsType]);
+    }, [query, searchType, articles, authors, tags, searchResults, searchResultsType, selectedTags]);
 
     // Sort Results
     const sortedResults = useMemo(() => {
@@ -207,12 +220,12 @@ export const useArticleSearch = () => {
         sortBy,
         setSortBy,
         results: sortedResults,
-        isSearching: isSearching || (!!query.trim() && searchResultsType !== searchType), // Show loading if searching or outdated
+        isSearching: isSearching || ((!!query.trim() || selectedTags.length > 0) && searchResultsType !== searchType), // Show loading if searching or outdated
         isLoading,
         allArticles: articles,
         allAuthors: authors,
         allTags: tags,
-        selectedTags: [],
-        setSelectedTags: () => { }
+        selectedTags,
+        setSelectedTags
     };
 };

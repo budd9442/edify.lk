@@ -8,7 +8,7 @@ interface BlockRendererProps {
 
 const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks, className = '' }) => {
   const renderBlock = (block: StrapiBlock, index: number) => {
-    const textContent = block.children.map(child => 
+    const textContent = block.children.map(child =>
       'text' in child ? child.text : ''
     ).join('');
 
@@ -23,7 +23,7 @@ const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks, className = '' })
           5: 'text-base font-bold text-white mb-2 mt-4',
           6: 'text-sm font-bold text-white mb-2 mt-4'
         };
-        
+
         return (
           <HeadingTag key={index} className={headingClasses[block.level as keyof typeof headingClasses] || headingClasses[2]}>
             {renderInlineContent(block.children)}
@@ -55,15 +55,15 @@ const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks, className = '' })
 
       case 'list':
         const ListTag = block.format === 'ordered' ? 'ol' : 'ul';
-        const listClasses = block.format === 'ordered' 
+        const listClasses = block.format === 'ordered'
           ? 'list-decimal list-inside space-y-2 mb-4 text-gray-300'
           : 'list-disc list-inside space-y-2 mb-4 text-gray-300';
-        
+
         return (
           <ListTag key={index} className={listClasses}>
             {block.children.map((item, itemIndex) => (
               <li key={itemIndex} className="leading-relaxed">
-                {renderInlineContent(item.children)}
+                {renderInlineContent((item as any).children)}
               </li>
             ))}
           </ListTag>
@@ -98,7 +98,7 @@ const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks, className = '' })
     return children.map((child, index) => {
       if ('text' in child) {
         let element = child.text;
-        
+
         if (child.bold) {
           element = <strong key={index} className="font-semibold text-white">{element}</strong>;
         }
@@ -114,7 +114,7 @@ const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks, className = '' })
         if (child.strikethrough) {
           element = <s key={index}>{element}</s>;
         }
-        
+
         return element;
       }
       return null;

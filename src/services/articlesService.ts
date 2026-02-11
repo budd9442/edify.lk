@@ -15,6 +15,7 @@ export interface ArticleListItem {
   comments: number;
   tags: string[];
   authorId: string;
+  customAuthor?: string;
 }
 
 export interface ArticleDetail extends ArticleListItem {
@@ -36,7 +37,7 @@ export const articlesService = {
       const res = await supabase
         .from('articles')
         .select(`
-          id, author_id, title, slug, excerpt, cover_image_url, tags, featured, status, likes, views, published_at, reading_time, created_at,
+          id, author_id, title, slug, excerpt, cover_image_url, tags, featured, status, likes, views, published_at, reading_time, created_at, custom_author,
           comments:comments(count)
         `)
         .eq('status', 'published')
@@ -49,10 +50,12 @@ export const articlesService = {
         ...row,
         slug: row.slug || row.id, // Fallback to ID if slug is null/undefined
         readingTime: row.reading_time || 5,
+        customAuthor: row.custom_author || undefined,
         comments: row.comments?.[0]?.count ?? 0,
       }));
     });
   },
+
   async listFeatured(): Promise<ArticleListItem[]> {
     const { data, error } = await safeQuery('articles/listFeatured', async () => {
       const res = await supabase
@@ -70,6 +73,7 @@ export const articlesService = {
           views,
           tags,
           author_id,
+          custom_author,
           comments:comments(count)
         `)
         .eq('status', 'published')
@@ -77,6 +81,7 @@ export const articlesService = {
         .order('published_at', { ascending: false })
         .limit(12);
       if (res.error) throw res.error;
+      //console.log('[DEBUG] listFeatured raw result:', res.data.map((r: any) => ({ t: r.title, ca: r.custom_author })));
       return res.data;
     });
     if (error) throw error;
@@ -94,6 +99,7 @@ export const articlesService = {
       comments: row.comments?.[0]?.count ?? 0,
       tags: row.tags ?? [],
       authorId: row.author_id,
+      customAuthor: row.custom_author || undefined,
     }));
   },
 
@@ -117,12 +123,14 @@ export const articlesService = {
           views,
           tags,
           author_id,
+          custom_author,
           comments:comments(count)
         `)
         .eq('status', 'published')
         .order('published_at', { ascending: false })
         .range(from, to);
       if (res.error) throw res.error;
+      //console.log('[DEBUG] listAll raw result:', res.data.map((r: any) => ({ t: r.title, ca: r.custom_author })));
       return res.data;
     });
     if (error) throw error;
@@ -139,6 +147,7 @@ export const articlesService = {
       views: row.views ?? 0,
       comments: row.comments?.[0]?.count ?? 0,
       tags: row.tags ?? [],
+      customAuthor: row.custom_author || undefined,
       authorId: row.author_id,
     }));
   },
@@ -160,6 +169,7 @@ export const articlesService = {
           views,
           tags,
           author_id,
+          custom_author,
           comments:comments(count)
         `)
         .eq('author_id', authorId)
@@ -183,6 +193,7 @@ export const articlesService = {
       comments: row.comments?.[0]?.count ?? 0,
       tags: row.tags ?? [],
       authorId: row.author_id,
+      customAuthor: row.custom_author || undefined,
     }));
   },
 
@@ -203,12 +214,14 @@ export const articlesService = {
           views,
           tags,
           author_id,
+          custom_author,
           comments:comments(count)
         `)
         .eq('slug', slug)
         .eq('status', 'published')
         .single();
       if (res.error) throw res.error;
+      //console.log('[DEBUG] getBySlug raw result:', { id: res.data.id, t: res.data.title, ca: res.data.custom_author });
       return res.data;
     });
     if (error) {
@@ -230,6 +243,7 @@ export const articlesService = {
       comments: row.comments?.[0]?.count ?? 0,
       tags: row.tags ?? [],
       authorId: row.author_id,
+      customAuthor: row.custom_author || undefined,
     };
   },
 
@@ -250,11 +264,13 @@ export const articlesService = {
           views,
           tags,
           author_id,
+          custom_author,
           comments:comments(count)
         `)
         .eq('id', id)
         .single();
       if (res.error) throw res.error;
+      //console.log('[DEBUG] getById raw result:', { id: res.data.id, t: res.data.title, ca: res.data.custom_author });
       return res.data;
     });
     if (error) {
@@ -276,9 +292,9 @@ export const articlesService = {
       comments: row.comments?.[0]?.count ?? 0,
       tags: row.tags ?? [],
       authorId: row.author_id,
+      customAuthor: row.custom_author || undefined,
     };
   },
 };
 
 export default articlesService;
-
