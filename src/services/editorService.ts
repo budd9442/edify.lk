@@ -383,6 +383,15 @@ export const editorService = {
 
       if (draftError) throw draftError;
 
+      // Notify the author that their article was approved
+      await supabase.rpc('notify_draft_author', {
+        p_draft_id: draftId,
+        p_type: 'article_approved',
+        p_title: 'Article approved',
+        p_message: `Your article "${draft.title}" has been approved and published.`,
+        p_action_url: `/article/${slug}`,
+      });
+
       // Check for writer badges (async)
       // Retrieve current article count for author
       const { count } = await supabase
@@ -404,16 +413,39 @@ export const editorService = {
   // Reject a draft
   async rejectDraft(draftId: string, reason?: string): Promise<void> {
     const { error } = await safeQuery('editor/rejectDraft', async () => {
-      const { error } = await supabase
+      // Fetch draft first to get title for notification
+      const { data: draft, error: fetchError } = await supabase
+        .from('drafts')
+        .select('id, title, user_id')
+        .eq('id', draftId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!draft) throw new Error('Draft not found');
+
+      const { error: updateError } = await supabase
         .from('drafts')
         .update({
           status: 'rejected',
-          rejection_reason: reason,
+          rejection_reason: reason || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', draftId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // Notify the author that their article was rejected
+      const message = reason && reason.trim()
+        ? `Your article "${draft.title}" was rejected. Reason: ${reason.trim()}`
+        : `Your article "${draft.title}" was rejected. You can edit and resubmit it.`;
+      await supabase.rpc('notify_draft_author', {
+        p_draft_id: draftId,
+        p_type: 'article_rejected',
+        p_title: 'Article rejected',
+        p_message: message,
+        p_action_url: '/write',
+      });
+
       return true;
     });
 

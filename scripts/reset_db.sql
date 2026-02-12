@@ -5,7 +5,7 @@
 -- 1. Disable triggers to prevent side effects (like auto-creating profiles)
 SET session_replication_role = 'replica';
 
--- 2. Clean up all application data
+-- 2. Clean up all application data (public schema only)
 -- USING CASCADE to ensure dependent records are handled
 TRUNCATE TABLE 
     public.article_views,
@@ -20,13 +20,13 @@ TRUNCATE TABLE
     public.quizzes
 RESTART IDENTITY CASCADE;
 
--- 3. Clear auth users
--- This will delete all users from the authentication system.
--- Foreign keys to public.profiles (if any) will be handled by the truncate above or cascading.
-DELETE FROM auth.users;
-
--- 4. Re-enable triggers
+-- 3. Re-enable triggers BEFORE touching auth.*
+--    Supabase expects its auth triggers to run when modifying auth.users.
 SET session_replication_role = 'origin';
+
+-- 4. Clear auth users using the supported path
+--    This will cascade via Supabase's own auth triggers.
+DELETE FROM auth.users;
 
 -- 5. Verify cleanup (Optional)
 -- SELECT count(*) FROM public.profiles;

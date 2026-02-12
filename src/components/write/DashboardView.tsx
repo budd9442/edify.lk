@@ -167,7 +167,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                                         .replace(/&nbsp;/g, ' ')
                                         .replace(/\s+/g, ' ')
                                         .trim();
-                                    const isDraft = draft.status === 'draft';
+                                    const isEditableOrRejected = draft.status === 'draft' || draft.status === 'rejected';
                                     return (
                                         <React.Fragment key={draft.id}>
                                             {/* Desktop Card */}
@@ -180,29 +180,36 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                                                         </span>
                                                     </div>
                                                     <p className="text-sm text-gray-400 line-clamp-1 mt-1 mb-2">{textPreview || 'No content yet...'}</p>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={`px-2 py-0.5 text-xs rounded-full border ${draft.status === 'published'
-                                                            ? 'text-green-400 bg-green-900/20 border-green-500/50'
-                                                            : draft.status === 'submitted'
-                                                                ? 'text-yellow-400 bg-yellow-900/20 border-yellow-500/50'
-                                                                : 'text-gray-400 bg-gray-900/20 border-gray-500/50'
-                                                            }`}>
-                                                            {draft.status === 'published' ? 'Published' : draft.status === 'submitted' ? 'Under Review' : 'Draft'}
-                                                        </span>
-                                                        {draft.tags.slice(0, 3).map((tag, i) => (
-                                                            <span key={i} className="px-2 py-0.5 text-xs bg-dark-800 text-gray-300 rounded-full border border-dark-700">
-                                                                #{tag}
+                                                    <div className="flex flex-col gap-1">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className={`px-2 py-0.5 text-xs rounded-full border ${draft.status === 'published'
+                                                                ? 'text-green-400 bg-green-900/20 border-green-500/50'
+                                                                : draft.status === 'submitted'
+                                                                    ? 'text-yellow-400 bg-yellow-900/20 border-yellow-500/50'
+                                                                    : draft.status === 'rejected'
+                                                                        ? 'text-red-400 bg-red-900/20 border-red-500/50'
+                                                                        : 'text-gray-400 bg-gray-900/20 border-gray-500/50'
+                                                                }`}>
+                                                                {draft.status === 'published' ? 'Published' : draft.status === 'submitted' ? 'Under Review' : draft.status === 'rejected' ? 'Rejected' : 'Draft'}
                                                             </span>
-                                                        ))}
+                                                            {draft.tags.slice(0, 3).map((tag, i) => (
+                                                                <span key={i} className="px-2 py-0.5 text-xs bg-dark-800 text-gray-300 rounded-full border border-dark-700">
+                                                                    #{tag}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                        {draft.status === 'rejected' && draft.rejectionReason && (
+                                                            <span className="text-xs text-red-300/80 line-clamp-1" title={draft.rejectionReason}>{draft.rejectionReason}</span>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2 flex-shrink-0">
-                                                    {isDraft && (
+                                                    {isEditableOrRejected && (
                                                         <button onClick={() => onEditDraft(draft)} className="p-2 text-primary-400 hover:bg-primary-900/20 rounded-lg text-sm font-medium">Edit</button>
                                                     )}
                                                     <button onClick={() => onPreviewDraft(draft)} className="p-2 text-gray-400 hover:bg-dark-700 rounded-lg text-sm font-medium">Preview</button>
-                                                    {isDraft && (
-                                                        <button onClick={() => onSubmitDraft(draft.id)} className="p-2 text-green-400 hover:bg-green-900/20 rounded-lg text-sm font-medium">Submit</button>
+                                                    {isEditableOrRejected && (
+                                                        <button onClick={() => onSubmitDraft(draft.id)} className="p-2 text-green-400 hover:bg-green-900/20 rounded-lg text-sm font-medium">{draft.status === 'rejected' ? 'Resubmit' : 'Submit'}</button>
                                                     )}
                                                     <button onClick={() => onDeleteDraft(draft.id)} className="p-2 text-red-400 hover:bg-red-900/20 rounded-lg text-sm font-medium">Delete</button>
                                                 </div>
@@ -212,16 +219,18 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                                             <div className="md:hidden bg-dark-900 rounded-xl border border-dark-800 overflow-hidden shadow-sm">
                                                 <div
                                                     className="p-4 border-b border-dark-800/50 active:bg-dark-800/50 transition-colors"
-                                                    onClick={() => isDraft ? onEditDraft(draft) : onPreviewDraft(draft)}
+                                                    onClick={() => isEditableOrRejected ? onEditDraft(draft) : onPreviewDraft(draft)}
                                                 >
                                                     <div className="flex justify-between items-start mb-2">
                                                         <span className={`px-2 py-1 text-[10px] uppercase tracking-wider font-bold rounded-md ${draft.status === 'published'
                                                             ? 'text-green-400 bg-green-900/20'
                                                             : draft.status === 'submitted'
                                                                 ? 'text-yellow-400 bg-yellow-900/20'
-                                                                : 'text-gray-400 bg-dark-800'
+                                                                : draft.status === 'rejected'
+                                                                    ? 'text-red-400 bg-red-900/20'
+                                                                    : 'text-gray-400 bg-dark-800'
                                                             }`}>
-                                                            {draft.status === 'published' ? 'PUBLISHED' : draft.status === 'submitted' ? 'PENDING' : 'DRAFT'}
+                                                            {draft.status === 'published' ? 'PUBLISHED' : draft.status === 'submitted' ? 'PENDING' : draft.status === 'rejected' ? 'REJECTED' : 'DRAFT'}
                                                         </span>
                                                         <span className="text-xs text-gray-500">
                                                             {formatDistanceToNow(new Date(draft.updatedAt))} ago
@@ -233,7 +242,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
 
                                                 {/* Mobile Action Bar */}
                                                 <div className="grid grid-cols-4 divide-x divide-dark-800/50 bg-dark-800/30 border-t border-dark-800/50">
-                                                    {isDraft ? (
+                                                    {isEditableOrRejected ? (
                                                         <button
                                                             onClick={() => onEditDraft(draft)}
                                                             className="py-3.5 flex flex-col gap-1 items-center justify-center text-primary-400 active:bg-primary-900/10 transition-colors"
@@ -256,13 +265,13 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                                                         <span className="text-[10px] font-medium">Preview</span>
                                                     </button>
 
-                                                    {isDraft ? (
+                                                    {isEditableOrRejected ? (
                                                         <button
                                                             onClick={() => onSubmitDraft(draft.id)}
                                                             className="py-3.5 flex flex-col gap-1 items-center justify-center text-green-400 active:bg-green-900/10 transition-colors"
                                                         >
                                                             <Send className="w-5 h-5" />
-                                                            <span className="text-[10px] font-medium">Submit</span>
+                                                            <span className="text-[10px] font-medium">{draft.status === 'rejected' ? 'Resubmit' : 'Submit'}</span>
                                                         </button>
                                                     ) : (
                                                         <div className="py-3.5 flex flex-col gap-1 items-center justify-center text-dark-700 opacity-50 cursor-not-allowed">

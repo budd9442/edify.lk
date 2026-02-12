@@ -26,14 +26,25 @@ const ArticleCardMobile: React.FC<ArticleCardMobileProps> = ({ article, index = 
                     <div className="flex-1 min-w-0 space-y-2">
                         {/* Author */}
                         <div className="flex items-center gap-2">
-                            {article.author.avatar ? (
-                                <img src={article.author.avatar} alt="" className="w-5 h-5 rounded-full" />
+                            {article.customAuthor ? (
+                                <>
+                                    <div className="w-5 h-5 rounded-full bg-dark-800 flex items-center justify-center text-[8px] font-bold text-gray-500">
+                                        {article.customAuthor.charAt(0).toUpperCase()}
+                                    </div>
+                                    <span className="text-xs text-gray-300 truncate">{article.customAuthor}</span>
+                                </>
                             ) : (
-                                <div className="w-5 h-5 rounded-full bg-dark-800 flex items-center justify-center text-[8px] font-bold text-gray-500">
-                                    {article.author.name.charAt(0).toUpperCase()}
-                                </div>
+                                <>
+                                    {article.author.avatar ? (
+                                        <img src={article.author.avatar} alt="" className="w-5 h-5 rounded-full" />
+                                    ) : (
+                                        <div className="w-5 h-5 rounded-full bg-dark-800 flex items-center justify-center text-[8px] font-bold text-gray-500">
+                                            {article.author.name.charAt(0).toUpperCase()}
+                                        </div>
+                                    )}
+                                    <span className="text-xs text-gray-300 truncate">{article.author.name}</span>
+                                </>
                             )}
-                            <span className="text-xs text-gray-300 truncate">{article.author.name}</span>
                             <span className="text-xs text-gray-600">•</span>
                             <span className="text-xs text-gray-500">{formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true })}</span>
                         </div>

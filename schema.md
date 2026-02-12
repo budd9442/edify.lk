@@ -11,6 +11,8 @@ create table if not exists public.profiles (
   name text not null,
   avatar_url text,
   bio text,
+  social_links jsonb,
+  badges jsonb not null default '[]'::jsonb,
   role text not null default 'user', -- 'user' | 'author' | 'editor' | 'admin'
   followers_count integer not null default 0,
   following_count integer not null default 0,
@@ -109,6 +111,19 @@ on public.articles for delete
 to authenticated
 using (author_id = auth.uid());
 
+-- Editors & admins can manage all articles
+create policy "Editors manage articles (all actions)"
+on public.articles for all
+to authenticated
+using (exists (
+  select 1 from public.profiles p
+  where p.id = auth.uid() and p.role in ('editor','admin')
+))
+with check (exists (
+  select 1 from public.profiles p
+  where p.id = auth.uid() and p.role in ('editor','admin')
+));
+
 -- DRAFTS
 create table if not exists public.drafts (
   id uuid primary key default gen_random_uuid(),
@@ -151,6 +166,27 @@ create policy "Owner can delete drafts"
 on public.drafts for delete
 to authenticated
 using (user_id = auth.uid());
+
+-- Editors & admins can review all drafts
+create policy "Editors manage drafts (review workflow)"
+on public.drafts for select
+to authenticated
+using (exists (
+  select 1 from public.profiles p
+  where p.id = auth.uid() and p.role in ('editor','admin')
+));
+
+create policy "Editors update drafts (approve/reject)"
+on public.drafts for update
+to authenticated
+using (exists (
+  select 1 from public.profiles p
+  where p.id = auth.uid() and p.role in ('editor','admin')
+))
+with check (exists (
+  select 1 from public.profiles p
+  where p.id = auth.uid() and p.role in ('editor','admin')
+));
 
 -- COMMENTS
 create table if not exists public.comments (
@@ -292,6 +328,12 @@ create policy "User marks own notifications read"
 on public.notifications for update
 to authenticated
 using (user_id = auth.uid())
+with check (user_id = auth.uid());
+
+-- Allow authenticated users to create their own notifications (used for some client-side badge flows)
+create policy "User inserts own notifications"
+on public.notifications for insert
+to authenticated
 with check (user_id = auth.uid());
 
 -- Optionally restrict inserts to service role only:
