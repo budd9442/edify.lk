@@ -35,6 +35,8 @@ const DraftCard: React.FC<DraftCardProps> = ({
         return 'text-green-400 bg-green-900/20 border-green-500/50';
       case 'submitted':
         return 'text-yellow-400 bg-yellow-900/20 border-yellow-500/50';
+      case 'rejected':
+        return 'text-red-400 bg-red-900/20 border-red-500/50';
       default:
         return 'text-gray-400 bg-gray-900/20 border-gray-500/50';
     }
@@ -46,6 +48,8 @@ const DraftCard: React.FC<DraftCardProps> = ({
         return 'Published';
       case 'submitted':
         return 'Under Review';
+      case 'rejected':
+        return 'Rejected';
       default:
         return 'Draft';
     }
@@ -85,8 +89,18 @@ const DraftCard: React.FC<DraftCardProps> = ({
         </div>
         
         {/* Status Badge */}
-        <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor()}`}>
-          {getStatusText()}
+        <div className="flex flex-col items-end gap-1">
+          <div
+            className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor()}`}
+            title={draft.status === 'rejected' && draft.rejectionReason ? draft.rejectionReason : undefined}
+          >
+            {getStatusText()}
+          </div>
+          {draft.status === 'rejected' && draft.rejectionReason && (
+            <span className="text-xs text-red-300/80 max-w-[200px] text-right line-clamp-2" title={draft.rejectionReason}>
+              {draft.rejectionReason}
+            </span>
+          )}
         </div>
       </div>
 
@@ -161,13 +175,13 @@ const DraftCard: React.FC<DraftCardProps> = ({
         </div>
 
         <div className="flex items-center space-x-2">
-          {draft.status === 'draft' && (
+          {(draft.status === 'draft' || draft.status === 'rejected') && (
             <button
               onClick={() => onSubmit(draft.id)}
               className="flex items-center space-x-1 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
             >
               <Send className="w-4 h-4" />
-              <span>Submit</span>
+              <span>{draft.status === 'rejected' ? 'Resubmit' : 'Submit'}</span>
             </button>
           )}
           

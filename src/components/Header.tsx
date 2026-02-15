@@ -246,20 +246,30 @@ const Header: React.FC = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link to="/" className="text-gray-300 hover:text-white transition-colors focus:outline-none">
-              Home
-            </Link>
-            <Link to="/feed" className="text-gray-300 hover:text-white transition-colors focus:outline-none">
-              Feed
-            </Link>
-            <Link to="/explore" className="text-gray-300 hover:text-white transition-colors focus:outline-none">
-              Explore
-            </Link>
-            {state.isAuthenticated && (state.user?.role === 'editor' || state.user?.role === 'admin') && (
-              <Link to="/editor" className="text-primary-400 hover:text-primary-300 transition-colors focus:outline-none">
-                Editor
-              </Link>
-            )}
+            {(() => {
+              const isActive = (path: string) =>
+                path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
+              const navLink = (to: string, label: string) => {
+                const active = isActive(to);
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    className={`transition-colors focus:outline-none ${active ? 'text-primary-500' : 'text-gray-300 hover:text-white'}`}
+                  >
+                    {label}
+                  </Link>
+                );
+              };
+              return (
+                <>
+                  {navLink('/', 'Home')}
+                  {navLink('/feed', 'Feed')}
+                  {navLink('/explore', 'Explore')}
+                  {state.isAuthenticated && (state.user?.role === 'editor' || state.user?.role === 'admin') && navLink('/editor', 'Editor')}
+                </>
+              );
+            })()}
           </nav>
 
           {/* Search Bar */}
@@ -426,36 +436,31 @@ const Header: React.FC = () => {
                     <SearchBar className="w-full" />
                   </div>
                   <nav className="flex flex-col gap-1">
-                    <Link
-                      to="/"
-                      className="px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-dark-800 transition-colors"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Home
-                    </Link>
-                    <Link
-                      to="/feed"
-                      className="px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-dark-800 transition-colors"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Feed
-                    </Link>
-                    <Link
-                      to="/explore"
-                      className="px-4 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-dark-800 transition-colors"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Explore
-                    </Link>
-                    {state.isAuthenticated && (state.user?.role === 'editor' || state.user?.role === 'admin') && (
-                      <Link
-                        to="/editor"
-                        className="px-4 py-3 rounded-lg text-primary-400 hover:text-primary-300 hover:bg-dark-800 transition-colors"
-                        onClick={() => setIsMenuOpen(false)}
-                      >
-                        Editor
-                      </Link>
-                    )}
+                    {(() => {
+                      const isActive = (path: string) =>
+                        path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
+                      const navLink = (to: string, label: string) => {
+                        const active = isActive(to);
+                        return (
+                          <Link
+                            key={to}
+                            to={to}
+                            className={`px-4 py-3 rounded-lg transition-colors ${active ? 'text-primary-500 bg-dark-800' : 'text-gray-300 hover:text-white hover:bg-dark-800'}`}
+                            onClick={() => setIsMenuOpen(false)}
+                          >
+                            {label}
+                          </Link>
+                        );
+                      };
+                      return (
+                        <>
+                          {navLink('/', 'Home')}
+                          {navLink('/feed', 'Feed')}
+                          {navLink('/explore', 'Explore')}
+                          {state.isAuthenticated && (state.user?.role === 'editor' || state.user?.role === 'admin') && navLink('/editor', 'Editor')}
+                        </>
+                      );
+                    })()}
                   </nav>
                   {state.isAuthenticated ? (
                     <>

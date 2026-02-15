@@ -270,8 +270,9 @@ export interface Draft {
   contentHtml: string;
   coverImage?: string;
   tags: string[];
-  status: 'draft' | 'submitted' | 'published';
+  status: 'draft' | 'submitted' | 'published' | 'rejected';
   customAuthor?: string;
+  rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
   wordCount: number;

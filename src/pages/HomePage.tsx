@@ -266,7 +266,7 @@ const HomePage: React.FC = () => {
 
         {/* Featured Articles */}
         {featuredArticles.length > 0 ? (
-          <div className="px-4">
+          <div className="px-4 mt-4">
             {featuredArticles.map((article, index) => (
               <ArticleCardMobile key={article.id} article={article} index={index} />
             ))}
@@ -287,7 +287,7 @@ const HomePage: React.FC = () => {
           </h2>
         </div>
 
-        <div className="px-4 pb-4">
+        <div className="px-4 pb-4 mt-4">
           {regularArticles.length > 0 ? (
             regularArticles.map((article, index) => (
               <ArticleCardMobile key={article.id} article={article} index={index} />

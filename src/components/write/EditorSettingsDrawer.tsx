@@ -24,7 +24,7 @@ const EditorSettingsDrawer: React.FC<EditorSettingsDrawerProps> = ({
     setTagsInput
 }) => {
     const { state: authState } = useAuth();
-    const isCompetitionUser = authState.user?.email === 'edify@exposition.lk';
+    const canUseCustomAuthor = authState.user?.role === 'editor' || authState.user?.role === 'admin';
 
     // Only render if activeSection is present
     if (!activeSection) return null;
@@ -85,8 +85,8 @@ const EditorSettingsDrawer: React.FC<EditorSettingsDrawerProps> = ({
                                 />
                             </div>
 
-                            {/* Custom Author for Competition User */}
-                            {currentDraft && isCompetitionUser && (
+                            {/* Custom Author - allowed for editor/admin roles */}
+                            {currentDraft && canUseCustomAuthor && (
                                 <div className="space-y-2">
                                     <label className="block text-sm font-medium text-gray-300">
                                         External Author (Competition)

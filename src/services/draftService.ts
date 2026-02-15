@@ -4,11 +4,10 @@ import supabase from './supabaseClient';
 import { safeQuery } from './supabaseUtils';
 import { Draft } from '../types/payload';
 import * as pdfjsLib from 'pdfjs-dist';
-// @ts-ignore
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+// Configure PDF.js worker using unpkg CDN (matches the package layout)
+(pdfjsLib as any).GlobalWorkerOptions.workerSrc =
+  `https://unpkg.com/pdfjs-dist@${(pdfjsLib as any).version}/build/pdf.worker.min.mjs`;
 
 class DraftService {
   private extractMetricsFromHtml(html: string) {
@@ -35,7 +34,7 @@ class DraftService {
     const { data, error } = await safeQuery('drafts/list', () =>
       supabase
         .from('drafts')
-        .select('id,title,content_html,cover_image_url,tags,status,created_at,updated_at,quiz_questions_json,custom_author')
+        .select('id,title,content_html,cover_image_url,tags,status,created_at,updated_at,quiz_questions_json,custom_author,rejection_reason')
         .eq('user_id', userId)
         .order('updated_at', { ascending: false })
         .then((res: any) => {
@@ -55,6 +54,7 @@ class DraftService {
         tags: row.tags || [],
         status: row.status || 'draft',
         customAuthor: row.custom_author || undefined,
+        rejectionReason: row.rejection_reason || undefined,
         createdAt: row.created_at || new Date().toISOString(),
         updatedAt: row.updated_at || new Date().toISOString(),
         wordCount: metrics.wordCount,
@@ -70,7 +70,7 @@ class DraftService {
     const { data, error } = await safeQuery('drafts/get', () =>
       supabase
         .from('drafts')
-        .select('id,title,content_html,cover_image_url,tags,status,created_at,updated_at,quiz_questions_json,custom_author')
+        .select('id,title,content_html,cover_image_url,tags,status,created_at,updated_at,quiz_questions_json,custom_author,rejection_reason')
         .eq('id', id)
         .single()
         .then((res: any) => {
@@ -92,6 +92,7 @@ class DraftService {
       tags: (data as any).tags || [],
       status: (data as any).status || 'draft',
       customAuthor: (data as any).custom_author || undefined,
+      rejectionReason: (data as any).rejection_reason || undefined,
       createdAt: (data as any).created_at || new Date().toISOString(),
       updatedAt: (data as any).updated_at || new Date().toISOString(),
       wordCount: metrics.wordCount,
@@ -103,13 +104,16 @@ class DraftService {
 
   async saveDraft(draft: Omit<Draft, 'id' | 'createdAt' | 'updatedAt' | 'wordCount' | 'readingTime'> & { id?: string; userId?: string } & { quizQuestions?: any[] }): Promise<Draft> {
     const html = draft.contentHtml || '';
+    const status = draft.status || 'draft';
     const payload: any = {
       title: draft.title,
       content_html: html,
       cover_image_url: draft.coverImage || null,
       tags: draft.tags || [],
-      status: draft.status || 'draft',
+      status,
       custom_author: draft.customAuthor || null,
+      // Clear rejection reason when transitioning back to draft/submitted
+      ...(status === 'draft' || status === 'submitted' ? { rejection_reason: null } : {}),
       // Optional: persist quiz questions if column exists
       quiz_questions_json: (draft as any).quizQuestions ?? undefined,
     };
@@ -156,6 +160,7 @@ class DraftService {
       tags: saved.tags || [],
       status: saved.status || 'draft',
       customAuthor: saved.custom_author || undefined,
+      rejectionReason: saved.rejection_reason || undefined,
       createdAt: saved.created_at || new Date().toISOString(),
       updatedAt: saved.updated_at || new Date().toISOString(),
       wordCount: metrics.wordCount,
@@ -216,7 +221,7 @@ class DraftService {
   async submitForReview(id: string): Promise<boolean> {
     const { error } = await supabase
       .from('drafts')
-      .update({ status: 'submitted', updated_at: new Date().toISOString() })
+      .update({ status: 'submitted', updated_at: new Date().toISOString(), rejection_reason: null })
       .eq('id', id);
     if (error) throw error;
     return true;
@@ -366,7 +371,7 @@ class DraftService {
   async rejectDraft(id: string, reason?: string): Promise<boolean> {
     const { error } = await supabase
       .from('drafts')
-      .update({ status: 'rejected', updated_at: new Date().toISOString(), review_note: reason || null })
+      .update({ status: 'rejected', updated_at: new Date().toISOString(), rejection_reason: reason || null })
       .eq('id', id);
     if (error) throw error;
     return true;
