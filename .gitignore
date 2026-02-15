@@ -10,3 +10,5 @@ node_modules
 .env.production.local
 .env.staging.local
 dist
+scripts/update_role.sql
+edify.budd.codes.conf
