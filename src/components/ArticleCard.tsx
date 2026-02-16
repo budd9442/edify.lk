@@ -63,7 +63,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="group relative overflow-hidden rounded-xl bg-dark-900 border border-dark-800 hover:border-primary-500/50 transition-all duration-300"
+        className="group relative overflow-hidden rounded-xl bg-dark-900/50 border border-dark-800 hover:border-primary-500/50 transition-all duration-300"
       >
         <div className={`${hasValidCover ? 'aspect-w-16 aspect-h-9' : 'min-h-[200px] flex flex-col justify-end'} relative`}>
           <Link to={`/article/${article.slug}`}>
@@ -149,22 +149,10 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="group bg-dark-900 border border-dark-800 rounded-lg p-4 sm:p-6 hover:border-primary-500/50 transition-all duration-300"
+      className="group relative overflow-hidden bg-dark-900/50 border border-dark-800 rounded-xl hover:border-primary-500/50 transition-all duration-300"
     >
-      <div className="flex flex-col sm:flex-row gap-4">
-        {hasValidCover && (
-          <Link
-            to={`/article/${article.slug}`}
-            className="order-1 sm:order-2 w-full aspect-video sm:w-48 sm:h-32 sm:flex-shrink-0 block"
-          >
-            <img
-              src={article.coverImage!}
-              alt={article.title}
-              className="w-full h-full object-cover rounded-lg group-hover:opacity-90 transition-opacity"
-            />
-          </Link>
-        )}
-        <div className="order-2 sm:order-1 flex-1 min-w-0">
+      <div className="flex flex-col sm:flex-row min-h-0">
+        <div className="order-2 sm:order-1 flex-1 min-w-0 p-4 sm:p-6">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-3">
             {article.customAuthor ? (
               <span className="flex items-center space-x-2">
@@ -226,6 +214,22 @@ const ArticleCard: React.FC<ArticleCardProps> = ({ article, featured = false }) 
             </div>
           </div>
         </div>
+        {hasValidCover && (
+          <Link
+            to={`/article/${article.slug}`}
+            className="order-1 sm:order-2 relative w-full aspect-video sm:aspect-auto sm:w-52 sm:min-w-[180px] sm:min-h-full sm:self-stretch block overflow-hidden"
+          >
+            <img
+              src={article.coverImage!}
+              alt={article.title}
+              className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300 article-card-image-fade"
+            />
+            <div
+              className="absolute inset-0 bg-gradient-to-t from-dark-900/60 via-transparent to-transparent sm:hidden"
+              aria-hidden
+            />
+          </Link>
+        )}
       </div>
     </motion.div>
   );

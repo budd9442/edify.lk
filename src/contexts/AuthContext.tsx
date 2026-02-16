@@ -62,6 +62,8 @@ const AuthContext = createContext<{
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
+  resetPasswordForEmail: (email: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
   clearError: () => void;
 } | null>(null);
@@ -278,6 +280,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const resetPasswordForEmail = async (email: string) => {
+    const redirectTo = `${typeof window !== 'undefined' ? window.location.origin : ''}/reset-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+    if (error) throw error;
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  };
+
   const updateUser = (updates: Partial<User>) => {
     dispatch({ type: 'UPDATE_USER', payload: updates });
   };
@@ -291,6 +304,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     login,
     register,
     logout,
+    resetPasswordForEmail,
+    updatePassword,
     updateUser,
     clearError,
   };

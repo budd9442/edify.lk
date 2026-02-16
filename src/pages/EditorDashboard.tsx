@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { editorService, EditorStats, ArticleManagementData } from '../services/editorService';
 import {
@@ -9,6 +10,7 @@ import {
   Star,
   StarOff,
   Trash2,
+  Pencil,
   BarChart3,
   Users,
   TrendingUp,
@@ -31,6 +33,7 @@ const EditorDashboard: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'featured' | 'recent'>('all');
   const [error, setError] = useState<string | null>(null);
+  const [actionDraftId, setActionDraftId] = useState<string | null>(null);
 
   const isEditor = authState.user?.role === 'editor' || authState.user?.role === 'admin';
 
@@ -89,6 +92,8 @@ const EditorDashboard: React.FC = () => {
   };
 
   const handleApproveSubmission = async (draftId: string) => {
+    if (actionDraftId) return;
+    setActionDraftId(draftId);
     try {
       await editorService.approveDraft(draftId);
       setPendingSubmissions(prev => prev.filter(draft => draft.id !== draftId));
@@ -96,17 +101,24 @@ const EditorDashboard: React.FC = () => {
       showSuccess('Draft approved and published successfully');
     } catch (e) {
       showError('Failed to approve draft');
+    } finally {
+      setActionDraftId(null);
     }
   };
 
   const handleRejectSubmission = async (draftId: string) => {
+    if (actionDraftId) return;
     const reason = prompt('Please provide a reason for rejection (optional):');
+    if (reason === null) return; // User cancelled prompt
+    setActionDraftId(draftId);
     try {
       await editorService.rejectDraft(draftId, reason || undefined);
       setPendingSubmissions(prev => prev.filter(draft => draft.id !== draftId));
       showSuccess('Draft rejected successfully');
     } catch (e) {
       showError('Failed to reject draft');
+    } finally {
+      setActionDraftId(null);
     }
   };
 
@@ -246,6 +258,13 @@ const EditorDashboard: React.FC = () => {
                           <span>{article.likes} likes</span>
                         </div>
                         <div className="flex justify-end gap-2">
+                          <Link
+                            to={`/write?edit=${article.id}`}
+                            className="p-2 bg-dark-800 rounded-lg text-primary-400"
+                            title="Edit"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Link>
                           <button
                             onClick={() => handleToggleFeatured(article.id, article.featured)}
                             className="p-2 bg-dark-800 rounded-lg text-gray-400"
@@ -275,8 +294,8 @@ const EditorDashboard: React.FC = () => {
                       <p className="text-xs text-gray-400 mb-3">by {submission.author.name}</p>
                       <div className="flex justify-between gap-2">
                         <a href={`/article/preview/${submission.id}`} className="flex-1 py-2 bg-dark-800 rounded-lg text-center text-xs font-medium text-blue-400">Preview</a>
-                        <button onClick={() => handleApproveSubmission(submission.id)} className="flex-1 py-2 bg-green-900/20 text-green-400 rounded-lg text-xs font-medium">Approve</button>
-                        <button onClick={() => handleRejectSubmission(submission.id)} className="flex-1 py-2 bg-red-900/20 text-red-400 rounded-lg text-xs font-medium">Reject</button>
+                        <button onClick={() => handleApproveSubmission(submission.id)} disabled={actionDraftId === submission.id} className="flex-1 py-2 bg-green-900/20 text-green-400 rounded-lg text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed">Approve</button>
+                        <button onClick={() => handleRejectSubmission(submission.id)} disabled={actionDraftId === submission.id} className="flex-1 py-2 bg-red-900/20 text-red-400 rounded-lg text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed">Reject</button>
                       </div>
                     </div>
                   ))}
@@ -497,6 +516,13 @@ const EditorDashboard: React.FC = () => {
                             </td>
                             <td className="p-4 text-right">
                               <div className="flex justify-end gap-2">
+                                <Link
+                                  to={`/write?edit=${article.id}`}
+                                  className="p-2 hover:bg-dark-600 rounded-lg text-gray-400 hover:text-primary-400"
+                                  title="Edit"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Link>
                                 <button
                                   onClick={() => handleToggleFeatured(article.id, article.featured)}
                                   className="p-2 hover:bg-dark-600 rounded-lg text-gray-400 hover:text-yellow-400"
@@ -562,15 +588,17 @@ const EditorDashboard: React.FC = () => {
                                 </a>
                                 <button
                                   onClick={() => handleApproveSubmission(submission.id)}
-                                  className="flex items-center gap-1 px-3 py-1.5 bg-green-900/20 text-green-400 rounded-lg text-sm border border-green-900/30 hover:bg-green-900/30"
+                                  disabled={actionDraftId === submission.id}
+                                  className="flex items-center gap-1 px-3 py-1.5 bg-green-900/20 text-green-400 rounded-lg text-sm border border-green-900/30 hover:bg-green-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                  <CheckCircle2 className="w-3 h-3" /> Approve
+                                  <CheckCircle2 className="w-3 h-3" /> {actionDraftId === submission.id ? 'Processing...' : 'Approve'}
                                 </button>
                                 <button
                                   onClick={() => handleRejectSubmission(submission.id)}
-                                  className="flex items-center gap-1 px-3 py-1.5 bg-red-900/20 text-red-400 rounded-lg text-sm border border-red-900/30 hover:bg-red-900/30"
+                                  disabled={actionDraftId === submission.id}
+                                  className="flex items-center gap-1 px-3 py-1.5 bg-red-900/20 text-red-400 rounded-lg text-sm border border-red-900/30 hover:bg-red-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                  <XCircle className="w-3 h-3" /> Reject
+                                  <XCircle className="w-3 h-3" /> {actionDraftId === submission.id ? 'Processing...' : 'Reject'}
                                 </button>
                               </div>
                             </td>

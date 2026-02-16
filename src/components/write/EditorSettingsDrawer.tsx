@@ -173,13 +173,13 @@ const EditorSettingsDrawer: React.FC<EditorSettingsDrawerProps> = ({
                     )}
 
                     {activeSection === 'quiz' && (
-                        <div className="pb-8">
-                            <div className="mb-6 flex items-start gap-3 p-4 bg-purple-900/10 rounded-lg border border-purple-500/10">
-                                <PieChart className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                        <div className="pb-4">
+                            <div className="mb-4 flex items-start gap-3 p-3 bg-primary-900/10 rounded-lg border border-primary-500/10">
+                                <PieChart className="w-4 h-4 text-primary-400 mt-0.5 flex-shrink-0" />
                                 <div>
-                                    <h4 className="text-sm font-medium text-purple-300 mb-1">Interactive Quiz</h4>
-                                    <p className="text-xs text-purple-200/70 leading-relaxed">
-                                        Engage your readers by adding a quiz. Questions can be auto-generated from your content using AI.
+                                    <h4 className="text-xs font-medium text-primary-300 mb-0.5">Interactive Quiz</h4>
+                                    <p className="text-[11px] text-gray-400 leading-relaxed">
+                                        Add questions to engage readers. Use Generate with AI to create from your content.
                                     </p>
                                 </div>
                             </div>

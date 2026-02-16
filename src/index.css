@@ -176,6 +176,32 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Article card image fade - image on RIGHT, long gradual fade (text overlays faded area) */
+  @media (min-width: 640px) {
+    .article-card-image-fade {
+      -webkit-mask-image: linear-gradient(to right, transparent 0%, black 82%);
+      mask-image: linear-gradient(to right, transparent 0%, black 82%);
+      -webkit-mask-size: 100% 100%;
+      mask-size: 100% 100%;
+    }
+  }
+
+  /* Article card image fade (mobile) - image on right, fades on left */
+  .article-card-image-fade-mobile {
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 78%);
+    mask-image: linear-gradient(to right, transparent 0%, black 78%);
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+  }
+
+  /* Article card image fade - image on LEFT, fades on RIGHT */
+  .article-card-image-fade-left {
+    -webkit-mask-image: linear-gradient(to left, transparent 0%, black 82%);
+    mask-image: linear-gradient(to left, transparent 0%, black 82%);
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+  }
 }
 
 /* Custom scrollbar */

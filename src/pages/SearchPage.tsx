@@ -107,7 +107,7 @@ const SearchPage: React.FC = () => {
         <div className="flex flex-col lg:flex-row gap-8">
           {searchType === 'articles' && (
             <aside className="lg:w-64 space-y-6">
-              <div className="bg-dark-900 border border-dark-800 rounded-lg p-4">
+              <div className="bg-dark-900/50 border border-dark-800 rounded-xl p-4">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
                   <SortAsc className="w-5 h-5" />
                   <span>Sort by</span>
@@ -132,7 +132,7 @@ const SearchPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-dark-900 border border-dark-800 rounded-lg p-4">
+              <div className="bg-dark-900/50 border border-dark-800 rounded-xl p-4">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
                   <Filter className="w-5 h-5" />
                   <span>Filter by topics</span>
@@ -176,11 +176,11 @@ const SearchPage: React.FC = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className="bg-dark-900 border border-dark-800 rounded-lg p-4 sm:p-6 hover:border-primary-500/50 transition-all duration-300"
+                    className="bg-dark-900/50 border border-dark-800 rounded-xl overflow-hidden hover:border-primary-500/50 transition-all duration-300"
                   >
                     <Link to={`/article/${article.slug}`}>
-                      <div className="flex flex-col sm:flex-row gap-4 min-w-0">
-                        <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row min-h-0">
+                        <div className="flex-1 min-w-0 p-4 sm:p-6">
                           <div className="flex items-center space-x-2 mb-3">
                             {article.tags.slice(0, 3).map((tag: string) => (
                               <TagPill
@@ -239,11 +239,11 @@ const SearchPage: React.FC = () => {
                         </div>
 
                         {article.coverImage && (
-                          <div className="w-32 h-24 flex-shrink-0">
+                          <div className="relative order-1 sm:order-2 w-full aspect-video sm:aspect-auto sm:w-52 sm:min-w-[180px] sm:min-h-full sm:self-stretch flex-shrink-0 overflow-hidden">
                             <img
                               src={article.coverImage}
                               alt={article.title}
-                              className="w-full h-full object-cover rounded-lg"
+                              className="absolute inset-0 w-full h-full object-cover object-center article-card-image-fade"
                             />
                           </div>
                         )}

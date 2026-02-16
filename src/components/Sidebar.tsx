@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { TrendingUp, Users, Plus } from 'lucide-react';
+import { TrendingUp, Users, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import supabase from '../services/supabaseClient';
 import { FollowButton } from './follow/FollowButton';
 import { useAuth } from '../contexts/AuthContext';
 import Avatar from './common/Avatar';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const Sidebar: React.FC = () => {
   const { state, dispatch } = useApp();
   const { state: authState } = useAuth();
   const [trendingTopics, setTrendingTopics] = useState<Array<{ name: string; count: number }>>([]);
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
+  const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
   const [topAuthors, setTopAuthors] = useState<Array<{ id: string; name: string; avatar: string; followersCount: number }>>([]);
 
   useEffect(() => {
@@ -80,6 +85,16 @@ const Sidebar: React.FC = () => {
     load();
   }, []);
 
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = newsletterEmail.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(email)) return;
+    setNewsletterSubmitting(true);
+    await new Promise(r => setTimeout(r, 500));
+    setNewsletterSubscribed(true);
+    setNewsletterSubmitting(false);
+  };
+
   const handleFollow = (userId: string) => {
     const isFollowing = state.followedUsers.includes(userId);
     if (isFollowing) {
@@ -95,7 +110,7 @@ const Sidebar: React.FC = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-dark-900 border border-dark-800 rounded-lg p-6"
+        className="bg-dark-900/50 border border-dark-800 rounded-xl p-6"
       >
         <div className="flex items-center space-x-2 mb-4">
           <TrendingUp className="w-5 h-5 text-primary-500" />
@@ -121,7 +136,7 @@ const Sidebar: React.FC = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-dark-900 border border-dark-800 rounded-lg p-6"
+        className="bg-dark-900/50 border border-dark-800 rounded-xl p-6"
       >
         <div className="flex items-center space-x-2 mb-4">
           <Users className="w-5 h-5 text-primary-500" />
@@ -176,20 +191,39 @@ const Sidebar: React.FC = () => {
         transition={{ delay: 0.2 }}
         className="bg-gradient-to-r from-primary-900/20 to-primary-800/20 border border-primary-800/30 rounded-lg p-6"
       >
-        <h3 className="text-lg font-semibold text-white mb-2">Stay Updated</h3>
-        <p className="text-gray-300 text-sm mb-4">
-          Get the latest articles and insights delivered to your inbox.
-        </p>
-        <div className="space-y-3">
-          <input
-            type="email"
-            placeholder="Enter your email"
-            className="w-full px-3 py-2 bg-dark-800 text-white rounded-lg border border-dark-700 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none"
-          />
-          <button className="w-full bg-primary-600 text-white py-2 rounded-lg hover:bg-primary-700 transition-colors">
-            Subscribe
-          </button>
-        </div>
+        {newsletterSubscribed ? (
+          <div className="flex flex-col items-center text-center py-2">
+            <CheckCircle2 className="w-10 h-10 text-green-500 mb-3" />
+            <h3 className="text-lg font-semibold text-white mb-1">You&apos;re subscribed!</h3>
+            <p className="text-gray-300 text-sm">
+              Look out for our best reads in your inbox.
+            </p>
+          </div>
+        ) : (
+          <>
+            <h3 className="text-lg font-semibold text-white mb-2">Stay Updated</h3>
+            <p className="text-gray-300 text-sm mb-4">
+              Get the latest articles and insights delivered to your inbox.
+            </p>
+            <form onSubmit={handleNewsletterSubmit} className="space-y-3">
+              <input
+                type="email"
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
+                placeholder="Enter your email"
+                className="w-full px-3 py-2 bg-dark-800 text-white rounded-lg border border-dark-700 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none"
+                disabled={newsletterSubmitting}
+              />
+              <button
+                type="submit"
+                disabled={newsletterSubmitting}
+                className="w-full bg-primary-600 text-white py-2 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {newsletterSubmitting ? 'Subscribing...' : 'Subscribe'}
+              </button>
+            </form>
+          </>
+        )}
       </motion.div>
     </aside>
   );

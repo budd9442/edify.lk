@@ -4,18 +4,20 @@ import { PenTool, Type, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Draft } from '../types/payload';
 import { draftService } from '../services/draftService';
+import { editorService } from '../services/editorService';
 import { organizeContentWithAI } from '../services/aiService';
 import ImportHandler from '../components/write/ImportHandler';
 import DashboardView from '../components/write/DashboardView';
 import EditorView from '../components/write/EditorView';
 import PreviewView from '../components/write/PreviewView';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import { useToast } from '../hooks/useToast';
 
 const WriteDashboard: React.FC = () => {
   const { state: authState } = useAuth();
   const { showSuccess, showError } = useToast();
   const location = useLocation();
+  const navigate = useNavigate();
   const loadInFlightRef = useRef(false);
   const [activeView, setActiveView] = useState<'options' | 'editor' | 'preview'>('options');
   const [showImportModal, setShowImportModal] = useState(false);
@@ -30,10 +32,56 @@ const WriteDashboard: React.FC = () => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [autoSavedAt, setAutoSavedAt] = useState<string | null>(null);
   const saveTimerRef = useRef<number | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [isEditingArticle, setIsEditingArticle] = useState(false);
 
   useEffect(() => {
     loadDrafts();
   }, [authState.isAuthenticated, authState.user?.id]);
+
+  // Load article for editing when ?edit=articleId (editors only)
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    const isEditor = authState.user?.role === 'editor' || authState.user?.role === 'admin';
+    if (!editId || !isEditor || !authState.isAuthenticated || !authState.user) return;
+
+    const loadArticleForEdit = async () => {
+      setLoading(true);
+      try {
+        const article = await editorService.getArticleForEdit(editId);
+        if (article) {
+          const draftLike = {
+            id: article.id,
+            title: article.title || '',
+            contentHtml: article.contentHtml || '',
+            coverImage: article.coverImage,
+            tags: article.tags || [],
+            customAuthor: article.customAuthor,
+            status: 'published' as const,
+            createdAt: '',
+            updatedAt: '',
+            wordCount: 0,
+            readingTime: 5,
+          };
+          (draftLike as any).quizQuestions = (article as any).quizQuestions || [];
+          setCurrentDraft(draftLike);
+          setIsEditingArticle(true);
+          setActiveView('editor');
+        } else {
+          showError('Article not found');
+          setSearchParams({});
+        }
+      } catch (e) {
+        console.error('Failed to load article for edit:', e);
+        showError('Failed to load article');
+        setSearchParams({});
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadArticleForEdit();
+  }, [searchParams, authState.user?.role, authState.isAuthenticated]);
 
   // Show editor tutorial when creating new article (only once per new article)
   useEffect(() => {
@@ -266,39 +314,46 @@ const WriteDashboard: React.FC = () => {
     setSaving(true);
     setSaveError(null);
     try {
-      const wasNew = !currentDraft.id;
-      //console.log('[WRITE DEBUG] saving draft with CA:', currentDraft.customAuthor);
-      const savedDraft = await draftService.saveDraft({
-        id: currentDraft.id,
-        title: currentDraft.title || 'Untitled', // Default title if only content is present
-        contentHtml: currentDraft.contentHtml || '',
-        coverImage: currentDraft.coverImage,
-        tags: currentDraft.tags || [],
-        customAuthor: currentDraft.customAuthor,
-        status: 'draft',
-        userId: authState.user?.id,
-        // include quiz questions so they persist
-        quizQuestions: (currentDraft as any).quizQuestions || []
-      });
-      //console.log('[WRITE DEBUG] saved draft response CA:', savedDraft.customAuthor);
+      if (isEditingArticle && currentDraft.id) {
+        await editorService.updateArticle(currentDraft.id, {
+          title: currentDraft.title || 'Untitled',
+          excerpt: editorService.extractExcerpt(currentDraft.contentHtml || ''),
+          contentHtml: currentDraft.contentHtml || '',
+          coverImage: currentDraft.coverImage,
+          tags: currentDraft.tags || [],
+          customAuthor: currentDraft.customAuthor,
+        });
+        setAutoSavedAt(new Date().toISOString());
+        showSuccess('Article updated successfully');
+      } else {
+        const wasNew = !currentDraft.id;
+        const savedDraft = await draftService.saveDraft({
+          id: currentDraft.id,
+          title: currentDraft.title || 'Untitled',
+          contentHtml: currentDraft.contentHtml || '',
+          coverImage: currentDraft.coverImage,
+          tags: currentDraft.tags || [],
+          customAuthor: currentDraft.customAuthor,
+          status: 'draft',
+          userId: authState.user?.id,
+          quizQuestions: (currentDraft as any).quizQuestions || []
+        });
 
-      setDrafts(prev => {
-        const existing = prev.find(d => d.id === savedDraft.id);
-        if (existing) {
-          return prev.map(d => d.id === savedDraft.id ? savedDraft : d);
-        } else {
-          return [savedDraft, ...prev];
-        }
-      });
+        setDrafts(prev => {
+          const existing = prev.find(d => d.id === savedDraft.id);
+          if (existing) {
+            return prev.map(d => d.id === savedDraft.id ? savedDraft : d);
+          } else {
+            return [savedDraft, ...prev];
+          }
+        });
 
-      setCurrentDraft(savedDraft);
-      if (wasNew) {
-        // Refresh list so the newly created draft appears immediately
-        loadDrafts();
+        setCurrentDraft(savedDraft);
+        if (wasNew) loadDrafts();
+        setAutoSavedAt(new Date().toISOString());
       }
-      setAutoSavedAt(new Date().toISOString());
     } catch (error) {
-      console.error('Failed to save draft:', error);
+      console.error('Failed to save:', error);
       const msg = error instanceof Error ? error.message : 'Failed to save draft';
       setSaveError(msg);
     } finally {
@@ -309,7 +364,7 @@ const WriteDashboard: React.FC = () => {
   // Debounced auto-save when title, tags, or contentHtml change
   useEffect(() => {
     if (!currentDraft) return;
-    if (currentDraft.status === 'submitted') return;
+    if (currentDraft.status === 'submitted' && !isEditingArticle) return;
 
     // Auto-save only if there is content
     const hasContent = !!(currentDraft.contentHtml && (
@@ -442,7 +497,17 @@ const WriteDashboard: React.FC = () => {
               onSave={handleSaveDraft}
               onSubmit={handleSubmitForReview}
               onPreview={() => setActiveView('preview')}
-              onBack={() => setActiveView('options')}
+              onBack={() => {
+                if (isEditingArticle) {
+                  setSearchParams({});
+                  setIsEditingArticle(false);
+                  setCurrentDraft(null);
+                  navigate('/editor');
+                } else {
+                  setActiveView('options');
+                }
+              }}
+              isEditingArticle={isEditingArticle}
               onOrganize={handleAiOrganize}
               organizingWithAI={organizingWithAI}
               saving={saving}
@@ -458,8 +523,6 @@ const WriteDashboard: React.FC = () => {
               currentDraft={currentDraft as Draft}
               onBack={() => setActiveView('options')}
               onEdit={() => setActiveView('editor')}
-              onOrganize={() => handleAiOrganize('')}
-              organizingWithAI={organizingWithAI}
             />
           )}
         </AnimatePresence>
@@ -508,35 +571,30 @@ const WriteDashboard: React.FC = () => {
                 {/* Content */}
                 <div className="p-4 space-y-4">
                   <div className="text-sm text-gray-300">
-                    <p className="mb-3 font-medium text-white">Select some text and use the toolbar to format your text:</p>
+                    <p className="mb-3 font-medium text-white">Select text to format with the floating toolbar, or use the settings menu:</p>
                     <ul className="space-y-2 text-xs">
                       <li className="flex items-center">
                         <span className="w-2 h-2 bg-primary-400 rounded-full mr-3 flex-shrink-0"></span>
-                        <span><strong>Bold</strong>, &nbsp; <em>italic</em>, &nbsp; <u>underline</u> &nbsp; or &nbsp; <code className="bg-dark-800 px-1 rounded text-primary-300">code formatting</code> &nbsp; for emphasis</span>
+                        <span><strong>Bold</strong>, <em>italic</em>, <u>underline</u>, or <code className="bg-dark-800 px-1 rounded text-primary-300">code</code> from the floating toolbar</span>
                       </li>
                       <li className="flex items-center">
                         <span className="w-2 h-2 bg-primary-400 rounded-full mr-3 flex-shrink-0"></span>
-                        <span>Headers (H1, H2, H3) for structure</span>
+                        <span>Headers (H1–H3), lists, and blockquotes for structure</span>
                       </li>
                       <li className="flex items-center">
                         <span className="w-2 h-2 bg-primary-400 rounded-full mr-3 flex-shrink-0"></span>
-                        <span>Lists and blockquotes for organization</span>
+                        <span>Add images and resize them by dragging the corners</span>
                       </li>
                       <li className="flex items-center">
                         <span className="w-2 h-2 bg-primary-400 rounded-full mr-3 flex-shrink-0"></span>
-                        <span>Links and images for rich content</span>
+                        <span>Use the settings menu (left) for cover image, tags, and quiz</span>
                       </li>
                     </ul>
 
                     <div className="mt-4 pt-3 border-t border-dark-700">
-                      <div className="space-y-2">
-                        <p className="text-xs text-gray-400">
-                          <span className="font-medium text-white">💡 Pro Tip:</span> You can use the <span className="text-primary-300 font-medium">Organize with AI</span> button to help you format your content.
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          <span className="font-medium text-white">🧠 Quiz Builder:</span> In the quiz builder you can add questions and answers to your article. They can be generated with the <span className="text-primary-300 font-medium">Generate with AI</span> button as well.
-                        </p>
-                      </div>
+                      <p className="text-xs text-gray-400">
+                        <span className="font-medium text-white">🧠 Quiz Builder:</span> Open settings and use the quiz section to add questions. Use <span className="text-primary-300 font-medium">Generate with AI</span> to create questions from your content.
+                      </p>
                     </div>
                   </div>
                 </div>

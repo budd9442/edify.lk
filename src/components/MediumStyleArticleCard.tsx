@@ -56,15 +56,15 @@ const MediumStyleArticleCard: React.FC<MediumStyleArticleCardProps> = ({ article
     return (
         <Link
             to={`/article/${article.slug}`}
-            className="flex gap-4 py-4 px-4 border-b border-dark-800 hover:bg-dark-900/30 transition-colors"
+            className="flex gap-4 overflow-hidden py-4 px-4 border-b border-dark-800 hover:bg-dark-900/30 transition-colors"
         >
             {/* Left: Thumbnail - Only render if valid cover exists */}
             {showCover && (
-                <div className="flex-shrink-0 w-28 h-28 bg-dark-800 rounded-lg overflow-hidden">
+                <div className="relative flex-shrink-0 w-32 min-w-[8rem] self-stretch">
                     <img
                         src={article.coverImage!}
                         alt={article.title}
-                        className="w-full h-full object-cover"
+                        className="absolute inset-0 w-full h-full object-cover object-center article-card-image-fade-left"
                         onError={() => setImageError(true)}
                     />
                 </div>

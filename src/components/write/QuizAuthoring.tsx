@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Plus, Trash2, Loader2, ChevronDown, ChevronUp, CheckCircle2, Circle } from 'lucide-react';
+import { Sparkles, Plus, Trash2, Loader2, ChevronDown, CheckCircle2, Circle } from 'lucide-react';
 import { generateQuizFromHtml, GeneratedQuizQuestion } from '../../services/aiService';
 
 export interface EditableQuizQuestion extends GeneratedQuizQuestion { }
@@ -81,125 +81,108 @@ const QuizAuthoring: React.FC<QuizAuthoringProps> = ({
   const remainingCount = Math.max(0, maxQuestions - usedCount);
 
   return (
-    <div className="mt-8 bg-dark-900 border border-dark-800 rounded-xl overflow-hidden">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-4 border-b border-dark-800 bg-gradient-to-r from-primary-900/20 to-primary-800/10 gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-5 h-5 text-white" />
+    <div className="bg-dark-900/50 border border-dark-800 rounded-xl overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 py-2.5 border-b border-dark-800 gap-2">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-primary-600/90 rounded-lg flex items-center justify-center flex-shrink-0">
+            <Sparkles className="w-3.5 h-3.5 text-white" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">Quiz Builder</h3>
-            <p className="text-xs text-gray-400">Max {maxQuestions} questions • Multiple choice</p>
+            <h3 className="text-sm font-semibold text-white">Quiz Builder</h3>
+            <p className="text-[11px] text-gray-500">Max {maxQuestions} • Multiple choice</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            disabled={isGenerating || !articleHtml}
-            onClick={() => generateWithAI(5)}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors"
-            title="Generate quiz with AI"
-          >
-            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            <span>Generate with AI</span>
-          </button>
-        </div>
+        <button
+          disabled={isGenerating || !articleHtml}
+          onClick={() => generateWithAI(5)}
+          className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium transition-colors"
+          title="Generate quiz with AI"
+        >
+          {isGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+          <span>Generate with AI</span>
+        </button>
       </div>
 
-      <div className="p-4 sm:p-6 space-y-4">
+      <div className="p-3 space-y-2">
         {questions.length === 0 && (
-          <div className="text-center py-12 border-2 border-dashed border-dark-800 rounded-xl">
-            <Sparkles className="w-8 h-8 text-dark-600 mx-auto mb-3" />
-            <p className="text-gray-400 font-medium">No questions yet</p>
-            <p className="text-sm text-gray-500 mt-1">Add a question manually or generate with AI</p>
+          <div className="text-center py-8 border border-dashed border-dark-700 rounded-lg">
+            <Sparkles className="w-6 h-6 text-dark-600 mx-auto mb-2" />
+            <p className="text-gray-500 text-sm">No questions yet</p>
+            <p className="text-[11px] text-gray-600 mt-0.5">Add manually or generate with AI</p>
             <button
               onClick={addBlankQuestion}
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-800 text-white hover:bg-dark-700 transition-colors text-sm font-medium"
+              className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dark-800 text-gray-300 hover:bg-dark-700 hover:text-white text-xs font-medium transition-colors"
             >
-              <Plus className="w-4 h-4" />
-              <span>Add First Question</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Question</span>
             </button>
           </div>
         )}
 
-        <div className="space-y-3">
+        <div className="space-y-1.5">
           {questions.map((q, index) => {
             const isExpanded = expandedIndex === index;
             return (
               <div
                 key={index}
                 className={`border transition-all duration-200 rounded-lg overflow-hidden ${isExpanded
-                    ? 'border-primary-500/50 bg-dark-900/50 ring-1 ring-primary-500/20'
-                    : 'border-dark-800 bg-dark-900 hover:border-dark-700'
+                    ? 'border-primary-500/40 bg-dark-900/80'
+                    : 'border-dark-800 bg-dark-900/50 hover:border-dark-700'
                   }`}
               >
-                {/* Header - Always visible */}
                 <div
                   onClick={() => setExpandedIndex(isExpanded ? null : index)}
-                  className="flex items-center justify-between px-4 py-3 cursor-pointer select-none group"
+                  className="flex items-center justify-between px-3 py-2 cursor-pointer select-none group"
                 >
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <div className={`
-                        flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold flex-shrink-0 transition-colors
-                        ${isExpanded ? 'bg-primary-600 text-white' : 'bg-dark-800 text-gray-400 group-hover:bg-dark-700'}
-                      `}>
+                  <div className="flex items-center gap-2 overflow-hidden min-w-0">
+                    <div className={`flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold flex-shrink-0 ${isExpanded ? 'bg-primary-600 text-white' : 'bg-dark-800 text-gray-500 group-hover:bg-dark-700'}`}>
                       {index + 1}
                     </div>
-                    <span className={`text-sm truncate font-medium ${q.question ? 'text-gray-200' : 'text-gray-500 italic'}`}>
+                    <span className={`text-xs truncate font-medium ${q.question ? 'text-gray-300' : 'text-gray-500 italic'}`}>
                       {q.question || 'New Question'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 flex-shrink-0">
                     <button
                       onClick={(e) => removeQuestion(index, e)}
-                      className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
+                      className="p-1 text-gray-500 hover:text-red-400 hover:bg-red-900/20 rounded transition-colors"
                       title="Remove question"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                     <div className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''} text-gray-500`}>
-                      <ChevronDown className="w-4 h-4" />
+                      <ChevronDown className="w-3.5 h-3.5" />
                     </div>
                   </div>
                 </div>
 
-                {/* Body - Collapsible */}
                 {isExpanded && (
-                  <div className="p-4 border-t border-dark-800/50 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Question</label>
+                  <div className="px-3 pb-3 pt-2 border-t border-dark-800 space-y-2.5">
+                    <div>
+                      <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wider block mb-1">Question</label>
                       <input
                         value={q.question}
                         onChange={(e) => updateQuestion(index, (old) => ({ ...old, question: e.target.value }))}
-                        placeholder="Enter question text..."
-                        className="w-full bg-dark-950 border border-dark-700 rounded-lg px-3 py-2.5 text-white placeholder-dark-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none transition-all"
+                        placeholder="Enter question..."
+                        className="w-full bg-dark-950 border border-dark-700 rounded-lg px-2.5 py-2 text-sm text-white placeholder-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 focus:outline-none"
                         autoFocus
                       />
                     </div>
 
-                    <div className="space-y-3">
-                      <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Options</label>
-                      <div className="grid grid-cols-1 gap-2">
+                    <div>
+                      <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wider block mb-1.5">Options</label>
+                      <div className="space-y-1.5">
                         {q.options.map((opt, optIndex) => {
                           const isCorrect = q.correctAnswer === optIndex;
                           return (
-                            <div
-                              key={optIndex}
-                              className={`flex items-center gap-3 p-1 rounded-lg transition-colors ${isCorrect ? 'bg-green-900/10' : ''}`}
-                            >
+                            <div key={optIndex} className={`flex items-center gap-2 rounded-lg ${isCorrect ? 'bg-primary-900/15' : ''}`}>
                               <button
                                 onClick={() => updateQuestion(index, (old) => ({ ...old, correctAnswer: optIndex }))}
-                                className={`
-                                        flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all
-                                        ${isCorrect
-                                    ? 'bg-green-500 text-white'
-                                    : 'bg-dark-800 text-gray-500 hover:bg-dark-700 hover:text-gray-300'
-                                  }
-                                      `}
-                                title={isCorrect ? "Correct Answer" : "Mark as Correct"}
+                                className={`flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-all ${isCorrect ? 'bg-primary-600 text-white' : 'bg-dark-800 text-gray-500 hover:bg-dark-700 hover:text-gray-400'}`}
+                                title={isCorrect ? 'Correct' : 'Mark as correct'}
                               >
-                                {isCorrect ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
+                                {isCorrect ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
                               </button>
-
                               <input
                                 value={opt}
                                 onChange={(e) => updateQuestion(index, (old) => {
@@ -208,13 +191,7 @@ const QuizAuthoring: React.FC<QuizAuthoringProps> = ({
                                   return { ...old, options: next };
                                 })}
                                 placeholder={`Option ${optIndex + 1}`}
-                                className={`
-                                        flex-1 bg-dark-950 border rounded-lg px-3 py-2.5 text-gray-200 placeholder-dark-500 focus:outline-none transition-all
-                                        ${isCorrect
-                                    ? 'border-green-500/50 ring-1 ring-green-500/20'
-                                    : 'border-dark-700 focus:border-primary-500 focus:ring-1 focus:ring-primary-500'
-                                  }
-                                      `}
+                                className={`flex-1 bg-dark-950 border rounded-lg px-2.5 py-2 text-xs text-gray-200 placeholder-gray-600 focus:outline-none ${isCorrect ? 'border-primary-500/40' : 'border-dark-700 focus:border-primary-500/60'}`}
                               />
                             </div>
                           );
@@ -222,14 +199,14 @@ const QuizAuthoring: React.FC<QuizAuthoringProps> = ({
                       </div>
                     </div>
 
-                    <div className="space-y-1.5 pt-2">
-                      <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Explanation (Optional)</label>
+                    <div>
+                      <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wider block mb-1">Explanation (optional)</label>
                       <textarea
                         value={q.explanation || ''}
                         onChange={(e) => updateQuestion(index, (old) => ({ ...old, explanation: e.target.value }))}
-                        placeholder="Explain why the answer is correct..."
+                        placeholder="Why this answer is correct..."
                         rows={2}
-                        className="w-full bg-dark-950 border border-dark-700 rounded-lg px-3 py-2.5 text-gray-300 placeholder-dark-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none transition-all resize-none"
+                        className="w-full bg-dark-950 border border-dark-700 rounded-lg px-2.5 py-2 text-xs text-gray-300 placeholder-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 focus:outline-none resize-none"
                       />
                     </div>
                   </div>
@@ -239,19 +216,16 @@ const QuizAuthoring: React.FC<QuizAuthoringProps> = ({
           })}
         </div>
 
-        {/* Footer Actions */}
         {questions.length > 0 && (
           <div className="flex items-center justify-between pt-2 border-t border-dark-800">
-            <div className="text-xs text-gray-500 font-medium">
-              {usedCount}/{maxQuestions} questions used
-            </div>
+            <span className="text-[11px] text-gray-500">{usedCount}/{maxQuestions}</span>
             <button
               disabled={!canAdd}
               onClick={addBlankQuestion}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-800 text-white hover:bg-dark-700 hover:text-primary-400 border border-dark-700 hover:border-dark-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-dark-800 text-gray-300 hover:bg-dark-700 hover:text-primary-400 border border-dark-700 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <Plus className="w-4 h-4" />
-              <span>Add Question</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add</span>
             </button>
           </div>
         )}

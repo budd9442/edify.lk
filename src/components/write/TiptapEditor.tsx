@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Image from '@tiptap/extension-image';
+import { ImageWithFallback } from '../../extensions/ImageWithFallback';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
@@ -44,7 +44,18 @@ const TiptapEditor: React.FC<TiptapEditorProps> = ({
             StarterKit.configure({
                 codeBlock: false, // We use the lowlight extension
             }),
-            Image,
+            ImageWithFallback.configure({
+                resize: {
+                    enabled: true,
+                    directions: ['bottom-left', 'bottom-right', 'top-left', 'top-right'],
+                    minWidth: 50,
+                    minHeight: 50,
+                    alwaysPreserveAspectRatio: false,
+                },
+                HTMLAttributes: {
+                    class: 'rounded-lg',
+                },
+            }),
             Link.configure({
                 openOnClick: false,
                 HTMLAttributes: {
@@ -118,6 +129,27 @@ const TiptapEditor: React.FC<TiptapEditorProps> = ({
                     max-width: 100%;
                     border-radius: 0.5rem;
                 }
+                /* Selected image - clear selection outline */
+                .tiptap-editor-wrapper .ProseMirror [data-resize-container].ProseMirror-selectednode {
+                    outline: none;
+                    box-shadow: 0 0 0 2px #AC834F;
+                    border-radius: 0.5rem;
+                    overflow: hidden;
+                }
+                /* Resize handles - visible when image container is selected */
+                .tiptap-editor-wrapper .ProseMirror [data-resize-handle] {
+                    width: 12px;
+                    height: 12px;
+                    background: #AC834F;
+                    border: 1px solid rgba(255,255,255,0.3);
+                    border-radius: 2px;
+                    z-index: 10;
+                    opacity: 0.9;
+                }
+                .tiptap-editor-wrapper .ProseMirror [data-resize-handle="bottom-right"] { cursor: nwse-resize; }
+                .tiptap-editor-wrapper .ProseMirror [data-resize-handle="bottom-left"] { cursor: nesw-resize; }
+                .tiptap-editor-wrapper .ProseMirror [data-resize-handle="top-right"] { cursor: nesw-resize; }
+                .tiptap-editor-wrapper .ProseMirror [data-resize-handle="top-left"] { cursor: nwse-resize; }
             `}</style>
             {/* {editor && (
                 <BubbleMenu editor={editor} tippyOptions={{ duration: 100 }}>

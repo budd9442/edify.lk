@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { LoginCredentials } from "../types/payload";
@@ -14,6 +14,8 @@ const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { login, state } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const successMessage = (location.state as { message?: string })?.message;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -50,6 +52,13 @@ const LoginPage: React.FC = () => {
               Welcome Back
             </h1>
           </div>
+
+          {/* Success Message (e.g. after password reset) */}
+          {successMessage && (
+            <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+              <p className="text-green-400 text-xs font-medium">{successMessage}</p>
+            </div>
+          )}
 
           {/* Error Message */}
           {state.error && (
@@ -102,7 +111,7 @@ const LoginPage: React.FC = () => {
                 </button>
               </div>
               <div className="flex justify-end">
-                <a href="#" className="text-xs text-dark-400 hover:text-primary-500 transition-colors">Forgot Password?</a>
+                <Link to="/forgot-password" className="text-xs text-dark-400 hover:text-primary-500 transition-colors">Forgot Password?</Link>
               </div>
             </div>
 
@@ -167,6 +176,12 @@ const LoginPage: React.FC = () => {
               <p className="text-gray-400">Please enter your details to sign in.</p>
             </div>
 
+            {successMessage && (
+              <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <p className="text-green-400 text-sm">{successMessage}</p>
+              </div>
+            )}
+
             {state.error && (
               <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-3">
                 <div className="w-2 h-2 bg-red-500 rounded-full" />
@@ -216,7 +231,7 @@ const LoginPage: React.FC = () => {
                   </button>
                 </div>
                 <div className="flex justify-end mt-2">
-                  <a href="#" className="text-sm text-primary-500 hover:text-primary-400">Forgot password?</a>
+                  <Link to="/forgot-password" className="text-sm text-primary-500 hover:text-primary-400">Forgot password?</Link>
                 </div>
               </div>
 

@@ -209,7 +209,7 @@ const ExplorePage: React.FC = () => {
       <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Desktop Tabs */}
-        <div className="flex items-center mb-8 bg-dark-900 p-1 rounded-lg border border-dark-800 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="flex items-center mb-8 bg-dark-900/50 p-1 rounded-xl border border-dark-800 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="flex items-center space-x-1 flex-nowrap">
             {tabs.map(tab => {
               const Icon = tab.icon;
@@ -329,7 +329,7 @@ const ExplorePage: React.FC = () => {
                 </div>
 
                 {/* Tag Cloud */}
-                <div className="bg-dark-900 border border-dark-800 rounded-lg p-6 mb-8">
+                <div className="bg-dark-900/50 border border-dark-800 rounded-xl p-6 mb-8">
                   <h3 className="text-lg font-semibold text-white mb-4">Popular Topics</h3>
                   <div className="flex flex-wrap gap-3">
                     {allTags.map(tag => (

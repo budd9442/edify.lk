@@ -19,11 +19,11 @@ const ArticleCardMobile: React.FC<ArticleCardMobileProps> = ({ article, index = 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
-            className="bg-dark-900/50 border border-dark-800 rounded-xl p-4 active:scale-[0.99] transition-transform mb-4"
+            className="bg-dark-900/50 border border-dark-800 rounded-xl overflow-hidden active:scale-[0.99] transition-transform mb-4"
         >
             <Link to={`/article/${article.slug}`}>
-                <div className="flex gap-4">
-                    <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex min-h-0">
+                    <div className="flex-1 min-w-0 p-4 space-y-2">
                         {/* Author */}
                         <div className="flex items-center gap-2">
                             {article.customAuthor ? (
@@ -74,11 +74,11 @@ const ArticleCardMobile: React.FC<ArticleCardMobileProps> = ({ article, index = 
                     </div>
                     {/* Image */}
                     {hasValidCover && (
-                        <div className="w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-dark-800">
+                        <div className="relative w-28 min-w-[7rem] flex-shrink-0 self-stretch">
                             <img
                                 src={article.coverImage!}
                                 alt={article.title}
-                                className="w-full h-full object-cover"
+                                className="absolute inset-0 w-full h-full object-cover object-center article-card-image-fade-mobile"
                                 loading="lazy"
                             />
                         </div>

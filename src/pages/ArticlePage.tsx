@@ -556,7 +556,7 @@ const ArticlePage: React.FC = () => {
           <motion.article
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-dark-900 border border-dark-800 rounded-xl p-4 sm:p-6 lg:p-8 shadow-2xl"
+            className="bg-[#10131B] border border-dark-800 rounded-xl p-4 sm:p-6 lg:p-8 shadow-2xl"
           >
             {/* Article Header */}
             <header className="mb-8">

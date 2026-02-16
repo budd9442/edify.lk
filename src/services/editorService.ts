@@ -507,6 +507,81 @@ export const editorService = {
     return data as any;
   },
 
+  // Get full article for editing (editors only)
+  async getArticleForEdit(articleId: string): Promise<Partial<ArticleManagementData> & { contentHtml: string; coverImage?: string } | null> {
+    const { data, error } = await safeQuery('editor/getArticleForEdit', async () => {
+      const { data: article, error: fetchError } = await supabase
+        .from('articles')
+        .select('id, title, excerpt, content_html, cover_image_url, tags, custom_author')
+        .eq('id', articleId)
+        .eq('status', 'published')
+        .single();
+
+      if (fetchError || !article) return null;
+
+      const { data: quiz } = await supabase
+        .from('quizzes')
+        .select('questions_json')
+        .eq('article_id', articleId)
+        .maybeSingle();
+
+      const questions = (quiz?.questions_json as any[]) || [];
+      const quizQuestions = questions.map((q: any) => ({
+        question: q?.question || '',
+        options: Array.isArray(q?.options) ? q.options : [],
+        correctAnswer: Number.isInteger(q?.correctAnswer) ? q.correctAnswer : 0,
+        explanation: q?.explanation,
+        points: 1,
+      }));
+
+      return {
+        id: article.id,
+        title: article.title,
+        excerpt: article.excerpt,
+        contentHtml: article.content_html || '',
+        coverImage: article.cover_image_url || undefined,
+        tags: article.tags || [],
+        customAuthor: article.custom_author || undefined,
+        quizQuestions,
+      };
+    });
+
+    if (error || !data) return null;
+    return data as any;
+  },
+
+  // Update article content (editors only)
+  async updateArticle(articleId: string, updates: {
+    title?: string;
+    excerpt?: string;
+    contentHtml?: string;
+    coverImage?: string;
+    tags?: string[];
+    customAuthor?: string;
+  }): Promise<void> {
+    const { error } = await safeQuery('editor/updateArticle', async () => {
+      const payload: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+      if (updates.title !== undefined) payload.title = updates.title;
+      if (updates.excerpt !== undefined) payload.excerpt = updates.excerpt;
+      if (updates.contentHtml !== undefined) payload.content_html = updates.contentHtml;
+      if (updates.coverImage !== undefined) payload.cover_image_url = updates.coverImage;
+      if (updates.tags !== undefined) payload.tags = updates.tags;
+      if (updates.customAuthor !== undefined) payload.custom_author = updates.customAuthor;
+
+      const { error: updateError } = await supabase
+        .from('articles')
+        .update(payload)
+        .eq('id', articleId);
+
+      if (updateError) throw updateError;
+      return true;
+    });
+
+    if (error) throw error;
+  },
+
   // Helper function to extract excerpt from HTML
   extractExcerpt(html: string, maxLength: number = 200): string {
     const text = html

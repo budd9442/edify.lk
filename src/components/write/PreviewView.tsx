@@ -1,22 +1,18 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { PenTool, Loader2, ArrowLeft } from 'lucide-react';
+import { PenTool, ArrowLeft } from 'lucide-react';
 import { Draft } from '../../types/payload';
 
 interface PreviewViewProps {
     currentDraft: Draft;
     onEdit: () => void;
     onBack: () => void;
-    onOrganize: () => void;
-    organizingWithAI: boolean;
 }
 
 const PreviewView: React.FC<PreviewViewProps> = ({
     currentDraft,
     onEdit,
     onBack,
-    onOrganize,
-    organizingWithAI,
 }) => {
     return (
         <motion.div
@@ -53,29 +49,13 @@ const PreviewView: React.FC<PreviewViewProps> = ({
                 </div>
 
                 {currentDraft.status !== 'published' && (
-                    <div className="grid grid-cols-2 gap-3 w-full">
-                        <button
-                            onClick={onOrganize}
-                            disabled={organizingWithAI || !currentDraft?.contentHtml}
-                            className="flex items-center justify-center space-x-2 px-4 py-3 bg-purple-600/10 text-purple-400 border border-purple-500/20 rounded-xl hover:bg-purple-600/20 transition-all disabled:opacity-50"
-                        >
-                            {organizingWithAI ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                </svg>
-                            )}
-                            <span>Organize</span>
-                        </button>
-                        <button
-                            onClick={onEdit}
-                            className="flex items-center justify-center space-x-2 px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all shadow-lg shadow-primary-900/20"
-                        >
-                            <PenTool className="w-4 h-4" />
-                            <span>Edit</span>
-                        </button>
-                    </div>
+                    <button
+                        onClick={onEdit}
+                        className="flex items-center justify-center space-x-2 px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all shadow-lg shadow-primary-900/20 w-full"
+                    >
+                        <PenTool className="w-4 h-4" />
+                        <span>Edit</span>
+                    </button>
                 )}
             </div>
 
@@ -108,29 +88,13 @@ const PreviewView: React.FC<PreviewViewProps> = ({
                     </div>
 
                     {currentDraft.status !== 'published' && (
-                        <div className="flex gap-3">
-                            <button
-                                onClick={onOrganize}
-                                disabled={organizingWithAI || !currentDraft?.contentHtml}
-                                className="flex items-center justify-center space-x-2 px-4 py-3 bg-purple-600/10 text-purple-400 border border-purple-500/20 rounded-xl hover:bg-purple-600/20 transition-all disabled:opacity-50"
-                            >
-                                {organizingWithAI ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                    </svg>
-                                )}
-                                <span>Organize</span>
-                            </button>
-                            <button
-                                onClick={onEdit}
-                                className="flex items-center justify-center space-x-2 px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all shadow-lg shadow-primary-900/20"
-                            >
-                                <PenTool className="w-4 h-4" />
-                                <span>Edit</span>
-                            </button>
-                        </div>
+                        <button
+                            onClick={onEdit}
+                            className="flex items-center justify-center space-x-2 px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all shadow-lg shadow-primary-900/20"
+                        >
+                            <PenTool className="w-4 h-4" />
+                            <span>Edit</span>
+                        </button>
                     )}
                 </div>
             </div>
