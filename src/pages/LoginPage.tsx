@@ -138,6 +138,11 @@ const LoginPage: React.FC = () => {
               </Link>
             </p>
           </div>
+
+          {/* Logos */}
+          <div className="pt-8 flex justify-center">
+            <img src="/logos.png" alt="Partner Logos" className="h-12 w-auto object-contain transition-all duration-500" />
+          </div>
           <p className="mt-8 text-[10px] text-dark-500 text-center opacity-50 uppercase tracking-widest">
             Copyright Exposition. 2026
           </p>
@@ -256,6 +261,11 @@ const LoginPage: React.FC = () => {
                   Sign up for free
                 </Link>
               </p>
+            </div>
+
+            {/* Logos */}
+            <div className="mt-12 flex justify-center">
+              <img src="/logos.png" alt="Partner Logos" className="h-16 w-auto object-contain transition-all duration-500" />
             </div>
           </div>
         </div>
