@@ -1,0 +1,7 @@
+# Per-function configuration
+# See: https://supabase.com/docs/guides/functions/function-configuration
+
+# Gateway JWT verification disabled (avoids 401 with asymmetric signing keys).
+# Auth is enforced inside the function via supabase.auth.getUser(token).
+[functions.gemini-api]
+verify_jwt = false

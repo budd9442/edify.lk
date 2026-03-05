@@ -276,51 +276,102 @@ const ArticlePage: React.FC = () => {
             {article.title}
           </h1>
 
-          {/* Author & Meta */}
-          <div className="flex items-center gap-3 mb-6">
-            {article.customAuthor ? (
-              <div className="w-10 h-10 rounded-full bg-dark-800 flex items-center justify-center text-lg font-bold text-gray-400 border border-dark-700 flex-shrink-0">
-                {article.customAuthor.charAt(0).toUpperCase()}
-              </div>
-            ) : (
-              <Link to={`/profile/${article.author.id}`} className="flex-shrink-0">
-                <Avatar
-                  src={article.author.avatar}
-                  alt={article.author.name}
-                  className="w-10 h-10 border border-dark-700"
-                />
-              </Link>
-            )}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
+          {/* Author Info */}
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              {article.customAuthor ? (
+                <div className="w-12 h-12 rounded-full bg-dark-800 flex items-center justify-center text-lg font-bold text-gray-400 border border-dark-700 flex-shrink-0 shadow-sm">
+                  {article.customAuthor.charAt(0).toUpperCase()}
+                </div>
+              ) : (
+                <Link to={`/profile/${article.author.id}`} className="flex-shrink-0 relative group">
+                  <Avatar
+                    src={article.author.avatar}
+                    alt={article.author.name}
+                    className="w-12 h-12 border border-dark-700 shadow-sm"
+                  />
+                </Link>
+              )}
+              <div className="flex flex-col justify-center">
                 {article.customAuthor ? (
-                  <span className="font-medium text-white text-sm truncate block mb-0.5">{article.customAuthor}</span>
+                  <span className="font-bold text-white text-base leading-tight">{article.customAuthor}</span>
                 ) : (
-                  <Link to={`/profile/${article.author.id}`} className="font-medium text-white text-sm truncate block mb-0.5">
+                  <Link to={`/profile/${article.author.id}`} className="font-bold text-white text-base leading-tight hover:text-primary-400 transition-colors">
                     {article.author.name}
                   </Link>
                 )}
-                {!article.customAuthor && (
-                  <FollowButton
-                    authorId={article.author.id}
-                    compact
-                    onChange={(isFollowing) => {
-                      setArticle(prev => prev ? {
-                        ...prev,
-                        author: {
-                          ...prev.author,
-                          followersCount: Math.max(0, prev.author.followersCount + (isFollowing ? 1 : -1))
-                        }
-                      } as any : prev);
-                    }}
-                  />
-                )}
+                <div className="text-[11px] text-gray-400 flex items-center gap-1.5 mt-1 font-medium">
+                  <span>{formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true })}</span>
+                  <span className="w-1 h-1 rounded-full bg-dark-600"></span>
+                  <span>{article.readingTime} min read</span>
+                </div>
               </div>
-              <div className="text-xs text-gray-400 flex items-center gap-2">
-                <span>{formatDistanceToNow(new Date(article.publishedAt))} ago</span>
-                <span>•</span>
-                <span>{article.readingTime} min read</span>
+            </div>
+
+            {!article.customAuthor && (
+              <div className="flex-shrink-0">
+                <FollowButton
+                  authorId={article.author.id}
+                  compact
+                  onChange={(isFollowing) => {
+                    setArticle(prev => prev ? {
+                      ...prev,
+                      author: {
+                        ...prev.author,
+                        followersCount: Math.max(0, prev.author.followersCount + (isFollowing ? 1 : -1))
+                      }
+                    } as any : prev);
+                  }}
+                />
               </div>
+            )}
+          </div>
+
+          {/* Stats & Actions Bar */}
+          <div className="flex items-center justify-between bg-dark-900/80 backdrop-blur-sm border border-dark-800 rounded-2xl p-2 mb-8 shadow-sm">
+            <div className="flex items-center px-1 space-x-4">
+              {/* Prominent Like Button */}
+              <button
+                onClick={handleLike}
+                className={`flex items-center justify-center gap-2 px-3 py-1.5 rounded-xl transition-all ${isLiked
+                    ? 'bg-red-500/10 text-red-500 border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.1)]'
+                    : 'bg-dark-800 text-gray-400 border border-dark-700 hover:bg-dark-700 active:scale-95'
+                  }`}
+                aria-label="Like article"
+              >
+                <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+                <span className="font-bold text-sm tracking-wide">{likesCount}</span>
+              </button>
+
+              <button
+                onClick={() => document.querySelector('section')?.scrollIntoView({ behavior: 'smooth' })}
+                className="flex items-center gap-2 text-gray-400 hover:text-gray-300 transition-colors"
+                aria-label="View comments"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span className="text-sm font-semibold">{article.comments.length}</span>
+              </button>
+
+              <div className="flex items-center gap-2 text-gray-400">
+                <Eye className="w-4 h-4" />
+                <span className="text-sm font-semibold">{(article.views || 0).toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 pr-1">
+              <button
+                onClick={() => setIsShareOpen(!isShareOpen)}
+                className="p-2.5 text-gray-400 hover:text-white bg-dark-800 hover:bg-dark-700 rounded-xl transition-all active:scale-95 border border-dark-700"
+                aria-label="Share article"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+              <button
+                className="p-2.5 text-gray-400 hover:text-white bg-dark-800 hover:bg-dark-700 rounded-xl transition-all active:scale-95 border border-dark-700"
+                aria-label="Save article"
+              >
+                <BookmarkPlus className="w-4 h-4" />
+              </button>
             </div>
           </div>
 

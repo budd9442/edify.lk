@@ -1,8 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "npm:@supabase/supabase-js@2"
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+function unauthorized(msg: string) {
+    return new Response(JSON.stringify({ error: msg }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+    })
 }
 
 serve(async (req) => {
@@ -12,6 +20,23 @@ serve(async (req) => {
     }
 
     try {
+        // Manual JWT verification (we use verify_jwt=false at gateway due to compatibility)
+        const authHeader = req.headers.get('Authorization')
+        if (!authHeader?.startsWith('Bearer ')) {
+            return unauthorized('Missing or invalid Authorization header')
+        }
+        const token = authHeader.replace('Bearer ', '').trim()
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
+        if (!supabaseUrl || !supabaseAnonKey) {
+            throw new Error('Missing Supabase env vars')
+        }
+        const supabase = createClient(supabaseUrl, supabaseAnonKey)
+        const { error: authError } = await supabase.auth.getUser(token)
+        if (authError) {
+            return unauthorized('Unauthorized')
+        }
+
         const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
         if (!GEMINI_API_KEY) {
             throw new Error('Missing GEMINI_API_KEY environment variable')
